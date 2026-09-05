@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+/*
+  Design tokens. Values in the "measured" group were sampled from the live
+  reference product so the canvas reads as the same family — see docs/PRD.md §2.
+  This editor is deliberately light-only: circuit art is drawn with physical
+  component colours that have no dark-mode equivalent.
+*/
+:root {
+  color-scheme: light;
+
+  --canvas-bg: #f4f5f6;
+  --grid-dot: #d8dbdf;
+  --select: #3b8ed7;
+  --net-highlight: #7fbf34;
+  --wire-shadow: #bfbfbf;
+
+  --pcb-blue: #316e99;
+  --silk: #ffffff;
+  --header-dark: #292c2d;
+  --header-mid: #3c4042;
+
+  --bb-body: #e6e6e6;
+  --bb-ring: #d1d1d1;
+  --bb-ring2: #bfbfbf;
+  --bb-bore: #383838;
+
+  --warn: #e3b341;
+  --danger: #c11f1f;
+  --ok: #3d9e36;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overscroll-behavior: none;
+}
+
+body {
+  background: #ffffff;
+  color: #171717;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The canvas owns its own pointer semantics; never let text selection leak in. */
+svg {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Thin, unobtrusive scrollbars in the panels. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd0d6 transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #cbd0d6;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #aeb4bb;
+  background-clip: content-box;
+}
