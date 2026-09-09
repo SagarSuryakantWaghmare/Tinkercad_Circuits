@@ -10,8 +10,12 @@ import type { Circuit } from '../mna/Circuit';
 import { diodeStamp, ledParams, LED_I_RATED } from './passive';
 import { logicDevice } from './digital';
 import {
+  checkRating,
   clamp,
+  damageOf,
   defineDevice,
+  formatSI,
+  isBroken,
   num,
   R_CLOSED,
   R_OPEN,
@@ -86,6 +90,11 @@ defineDevice('seven-segment-4', (): Device => ({
 
 defineDevice('light-bulb', (): Device => ({
   stamp(c, ctx) {
+    if (isBroken(ctx)) {
+      // A blown filament is an open circuit.
+      c.stampResistance(ctx.node('terminal1'), ctx.node('terminal2'), R_OPEN);
+      return;
+    }
     const vRated = Math.max(0.1, num(ctx.props.voltage, 5));
     const watts = Math.max(0.001, num(ctx.props.power, 0.5));
     const rHot = (vRated * vRated) / watts;
@@ -96,19 +105,43 @@ defineDevice('light-bulb', (): Device => ({
     ctx.s.r = r;
   },
   commit(c, ctx) {
+    if (isBroken(ctx)) {
+      ctx.s.heat = 0;
+      ctx.s.power = 0;
+      return;
+    }
     const v = c.v(ctx.node('terminal1')) - c.v(ctx.node('terminal2'));
     const r = Math.max(0.05, ctx.s.r ?? 100);
     const p = (v * v) / r;
+    const vRated = Math.max(0.1, num(ctx.props.voltage, 5));
     const watts = Math.max(0.001, num(ctx.props.power, 0.5));
     const target = clamp(p / watts, 0, 1.6);
     // First-order thermal lag; a small lamp reaches temperature in ~30 ms.
     const a = clamp(ctx.dt / 0.03, 0, 1);
     ctx.s.heat = (ctx.s.heat ?? 0) * (1 - a) + target * a;
     ctx.s.power = p;
+
+    // Over-volt a filament lamp and it flares bright, then goes. The hold is
+    // what makes that sequence visible rather than instantaneous.
+    checkRating(ctx, v, {
+      label: 'Light bulb',
+      quantity: 'voltage',
+      warn: vRated * 1.15,
+      max: vRated * 1.5,
+      hold: 0.4,
+      suggest: () =>
+        `This bulb is rated ${formatSI(vRated, 'V')}. From a higher supply it ` +
+        'needs a series resistor, or a bulb rated for that voltage.',
+    });
   },
   output(_, ctx) {
     const heat = clamp(ctx.s.heat ?? 0, 0, 1);
-    return { brightness: Math.pow(heat, 0.6), power: ctx.s.power ?? 0 };
+    return {
+      brightness: isBroken(ctx) ? 0 : Math.pow(heat, 0.6),
+      power: ctx.s.power ?? 0,
+      damage: damageOf(ctx),
+      burnt: isBroken(ctx),
+    };
   },
 }));
 

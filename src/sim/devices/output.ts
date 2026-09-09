@@ -2,7 +2,29 @@ import { audio } from '../audio';
 import type { LcdState, NeoState } from '../mcu/runtime';
 import { diodeStamp, ledParams, LED_I_RATED } from './passive';
 import { findPeripheral, mcuHandle, mcuPinOf } from './resolve';
-import { clamp, defineDevice, num, R_OPEN, type Device, type DeviceCtx } from './types';
+import {
+  checkRating,
+  clamp,
+  damageOf,
+  defineDevice,
+  formatSI,
+  isBroken,
+  num,
+  R_OPEN,
+  type Device,
+  type DeviceCtx,
+} from './types';
+
+/**
+ * Coils and drivers fail on sustained over-voltage rather than on a spike.
+ *
+ * A motor or a servo run from too high a rail cooks its winding over seconds,
+ * not milliseconds, and the inrush as it starts is entirely normal — so every
+ * one of these ratings carries a hold time long enough not to punish it.
+ */
+function ratedVoltage(ctx: DeviceCtx, fallback: number) {
+  return Math.max(num(ctx.props.voltage, fallback), 0.5);
+}
 import type { Circuit } from '../mna/Circuit';
 
 const brightnessOf = (i: number) => clamp(Math.sqrt(Math.max(0, i) / LED_I_RATED), 0, 1);
@@ -91,6 +113,12 @@ defineDevice('dc-motor', (): Device => ({
   stamp(c, ctx) {
     const a = ctx.node('terminal1');
     const b = ctx.node('terminal2');
+    if (isBroken(ctx)) {
+      // A burnt-out winding is an open circuit and the rotor is dead weight.
+      c.stampResistance(a, b, R_OPEN);
+      ctx.s.rpm = 0;
+      return;
+    }
     const ra = 8;
     const g = 1 / ra;
     // Winding resistance in series with the back-EMF of the spinning rotor.
@@ -112,12 +140,26 @@ defineDevice('dc-motor', (): Device => ({
     ctx.s.rpm = Math.abs(next) < 1 ? 0 : next;
     ctx.s.current = current;
     ctx.s.angle = ((ctx.s.angle ?? 0) + (ctx.s.rpm * 360 * ctx.dt) / 60) % 360;
+
+    const rated = ratedVoltage(ctx, 6);
+    checkRating(ctx, v, {
+      label: 'Motor',
+      quantity: 'voltage',
+      warn: rated * 1.5,
+      max: rated * 2.5,
+      hold: 1,
+      suggest: () =>
+        `This motor is rated for about ${formatSI(rated, 'V')}. Drive it from a ` +
+        'lower supply, or through a driver that can limit the voltage.',
+    });
   },
   output(_, ctx) {
+    const dead = isBroken(ctx);
     return {
-      rpm: ctx.s.rpm ?? 0,
+      rpm: dead ? 0 : ctx.s.rpm ?? 0,
       angle: ctx.s.angle ?? 0,
-      current: ctx.s.current ?? 0,
+      current: dead ? 0 : ctx.s.current ?? 0,
+      damage: damageOf(ctx),
     };
   },
 }));
@@ -208,18 +250,41 @@ defineDevice('stepper', (): Device => ({
 
 // ─── Solenoid ────────────────────────────────────────────────────────────────
 
+const SOLENOID_OHMS = 20;
+
 defineDevice('solenoid', (): Device => ({
   stamp(c, ctx) {
-    c.stampResistance(ctx.node('terminal1'), ctx.node('terminal2'), 20);
+    c.stampResistance(
+      ctx.node('terminal1'),
+      ctx.node('terminal2'),
+      isBroken(ctx) ? R_OPEN : SOLENOID_OHMS,
+    );
   },
   commit(c, ctx) {
     const v = Math.abs(c.v(ctx.node('terminal1')) - c.v(ctx.node('terminal2')));
+    if (isBroken(ctx)) {
+      ctx.s.engaged = 0;
+      return;
+    }
     const want = v > 3 ? 1 : 0;
     const cur = ctx.s.engaged ?? 0;
     ctx.s.engaged = cur + (want - cur) * Math.min(1, ctx.dt * 25);
+
+    // A solenoid coil is rated for a duty cycle, not for sitting energised —
+    // what kills one is being left on, so this is deliberately power-based.
+    checkRating(ctx, (v * v) / SOLENOID_OHMS, {
+      label: 'Solenoid',
+      quantity: 'power',
+      warn: 3,
+      max: 6,
+      hold: 4,
+      suggest: () =>
+        'Drive the solenoid in short pulses, or from a lower voltage — its ' +
+        'coil is not rated to stay energised at this power.',
+    });
   },
   output(_, ctx) {
-    return { engaged: ctx.s.engaged ?? 0 };
+    return { engaged: ctx.s.engaged ?? 0, damage: damageOf(ctx) };
   },
 }));
 
@@ -231,14 +296,28 @@ defineDevice('solenoid', (): Device => ({
  * otherwise it is measured from the square wave the sketch is toggling, so a
  * hand-written `digitalWrite` loop makes a noise too.
  */
-function sounder(impedance: number, wave: OscillatorType): Device {
+function sounder(impedance: number, wave: OscillatorType, maxVolts: number): Device {
   return {
     needsFineStep: true,
     stamp(c, ctx) {
-      c.stampResistance(ctx.node('terminal1'), ctx.node('terminal2'), impedance);
+      c.stampResistance(
+        ctx.node('terminal1'),
+        ctx.node('terminal2'),
+        isBroken(ctx) ? R_OPEN : impedance,
+      );
     },
     commit(c, ctx) {
       const v = c.v(ctx.node('terminal1')) - c.v(ctx.node('terminal2'));
+      checkRating(ctx, v, {
+        label: wave === 'square' ? 'Piezo' : 'Speaker',
+        quantity: 'voltage',
+        warn: maxVolts,
+        max: maxVolts * 1.5,
+        hold: 0.5,
+        suggest: () =>
+          `Keep the drive below about ${formatSI(maxVolts, 'V')} — through a ` +
+          'series resistor if it is being driven straight from a supply.',
+      });
       const high = v > 1.5;
       const wasHigh = ctx.s.high === 1;
 
@@ -287,8 +366,9 @@ function sounder(impedance: number, wave: OscillatorType): Device {
   };
 }
 
-defineDevice('piezo', () => sounder(1200, 'square'));
-defineDevice('speaker', () => sounder(8, 'triangle'));
+// A piezo disc is happy on logic levels; an 8 Ω speaker is not.
+defineDevice('piezo', () => sounder(1200, 'square', 12));
+defineDevice('speaker', () => sounder(8, 'triangle', 5));
 
 // ─── Character LCD ───────────────────────────────────────────────────────────
 
