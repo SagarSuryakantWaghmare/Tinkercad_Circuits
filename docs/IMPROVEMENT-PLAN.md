@@ -442,17 +442,29 @@ Seven phases, each independently shippable and independently verifiable.
 *Do this first: highest value, most visible, and the area where the competition
 is weakest.*
 
-| Task | Files |
-|---|---|
-| `rating` / `thermal` / `failureMode` helpers; a `damage` output every part publishes | `src/sim/devices/types.ts` |
-| Adopt a two-tier **warning / breakdown** split | `src/sim/devices/types.ts` |
-| Move the resistor's mutation out of `output()` into `commit()` | `src/sim/devices/passive.ts` |
-| Structured `FailureReport` — part, cause, measured value, rating, **suggested fix** | `src/sim/devices/types.ts`, `src/sim/Simulation.ts` |
-| Extend failure to motors, servos, BJT/MOSFET/Darlington, regulator, relay, solenoid, bulb, speaker, displays, ICs, MCU pins | `src/sim/devices/*.ts` |
-| **Battery short-circuit and over-current** — silent in Tinkercad | `src/sim/devices/sources.ts` |
-| Warning badge and damage overlay in part art | `src/parts/primitives.tsx`, `src/parts/**` |
-| Toast + inspector badge + a persistent failure log for the run | `src/editor/**`, `src/state/simStore.ts` |
-| "Protect components" toggle | `src/state/editorStore.ts`, `src/sim/Simulation.ts` |
+| Task | Files | Status |
+|---|---|---|
+| `Rating` / hold-time helpers; a `damage` output every part publishes | `src/sim/devices/types.ts` | **done** |
+| Adopt a two-tier **warning / breakdown** split | `src/sim/devices/types.ts` | **done** |
+| Move the resistor's mutation out of `output()` into `commit()` | `src/sim/devices/passive.ts` | **done** |
+| Structured `FailureReport` — part, cause, measured value, rating, **suggested fix** | `src/sim/devices/types.ts`, `src/sim/Simulation.ts` | **done** |
+| `Device.check()` for faults visible in the wiring, before any solve | `src/sim/devices/types.ts`, `src/sim/Simulation.ts` | **done** |
+| **Battery short-circuit and over-current** — silent in Tinkercad | `src/sim/devices/sources.ts` | **done** |
+| Bulb, motors, solenoid, piezo/speaker | `src/sim/devices/output.ts`, `extras.ts` | **done** |
+| Warning badge and damage overlay, drawn generically from part bounds | `src/canvas/items/DamageMark.tsx` | **done** |
+| Failure log panel with the remedy, click-to-select | `src/editor/FailurePanel.tsx` | **done** |
+| Extend failure to BJT/MOSFET/Darlington, regulator, relay, optocoupler | `src/sim/devices/semiconductors.ts` | todo |
+| MCU pin over-current — 20 mA warn / 40 mA break / 200 mA total | `src/sim/devices/mcu.ts` | todo |
+| Displays and ICs — supply out of range, pin over-current | `src/sim/devices/output.ts`, `digital.ts` | todo |
+| "Protect components" toggle | `src/state/editorStore.ts`, `src/sim/Simulation.ts` | todo |
+
+**Verified so far.** A 9 V battery straight onto an LED reports *"Current
+through the LED reached 5.73 A, past its absolute maximum of 50 mA"* and
+suggests **390 Ω** — the correct E12 value, computed from the supply the
+circuit contains rather than from the LED's sagged terminal voltage. A 5 V bulb
+on 9 V warns as it flares and then goes open; the same bulb on 5 V survives
+untouched. A wire across the battery terminals is caught structurally. All 33
+starters run with no spurious failures.
 
 Use Tinkercad's published thresholds (§3.1) as the starting values for parts we
 both have; they are sane and it makes cross-checking easy.
