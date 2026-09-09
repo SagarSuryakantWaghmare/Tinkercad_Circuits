@@ -219,7 +219,7 @@ measured against.
 
 Priority additions:
 
-- **Breadboard** — `size` (Mini / Small / Full) and `colour`. Solves §3.4.
+- ~~**Breadboard** — `size` (Mini / Small / Full)~~ **done**; `colour` still todo.
 - **Batteries** — `voltage`, `capacity`, `internalResistance`. Internal
   resistance is already what makes a short behave sanely; exposing it turns the
   battery into a teaching instrument.
@@ -473,6 +473,11 @@ both have; they are sane and it makes cross-checking easy.
 the cause, the measured value, the rating and a suggested fix; failures are
 logged for the run; the protect toggle prevents damage.
 
+> **Framework note.** `PartDef.size` and `.origin` may now be functions of
+> props (`sizeOf` / `originOf`), which any variable-geometry part needs — the
+> NeoPixel strip `length` property in §3.3 can use the same mechanism instead
+> of shipping seven more catalogue entries.
+
 ### P2 — Component properties
 Give the 98 property-less parts real settings, per §3.2 — starting with
 breadboard size, battery voltage/capacity/internal resistance, resistor power
@@ -497,10 +502,15 @@ whose model does not resolve fails the build rather than shipping inert, and
 nothing in Tinkercad's 110 lacks a counterpart here.
 
 ### P4 — Discoverability
-Re-curate the Basic set against the 26-part reference in §3.6; add `description`
-and `pinout` to `PartDef` and fill them in; component detail on hover and
-selection; recently-used and favourites. Grow the starter library toward their
-67 — their Arduino set tracks the stock IDE examples, which is a good spine.
+| Task | Status |
+|---|---|
+| Breadboard size as a property, replacing three catalogue entries | **done** |
+| Migrate saved designs off the old breadboard ids without shrinking them | **done** |
+| Re-curate the Basic set against the 26-part reference in §3.6 | **done** — now one ordered list in the registry, not a flag in fifteen files |
+| `description` on `PartDef`, surfaced in the panel and inspector | **done** — starting set plus the parts reached for next |
+| `pinout` help for multi-pin parts | todo |
+| Recently used and favourites | todo |
+| Grow the starter library toward their 67 | todo |
 
 **Done when:** a first-time user finds a full-size breadboard, a servo and an
 LCD without being told where to look.
