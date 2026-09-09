@@ -1,34 +1,71 @@
 import { LED_COLORS } from '@/lib/tokens';
 import {
+  checkRating,
   clamp,
+  damageOf,
   defineDevice,
+  formatSI,
   GMIN,
+  isBroken,
   num,
   pnjlim,
   R_CLOSED,
   R_OPEN,
+  standardResistor,
+  supplyVoltage,
   VT,
   type Device,
+  type DeviceCtx,
 } from './types';
+
+/** Standard through-hole power ratings, for suggesting a bigger part. */
+const RESISTOR_WATTS = [0.125, 0.25, 0.5, 1, 2, 5];
 
 // ─── Resistor ────────────────────────────────────────────────────────────────
 
+const resistorOhms = (ctx: DeviceCtx) => Math.max(num(ctx.props.resistance, 220), 1e-6);
+
 defineDevice('resistor', (): Device => ({
   stamp(c, ctx) {
-    const r = Math.max(num(ctx.props.resistance, 220), 1e-6);
-    c.stampResistance(ctx.node('a'), ctx.node('b'), r);
+    // A resistor that has burnt through is an open circuit, not a resistor.
+    c.stampResistance(
+      ctx.node('a'),
+      ctx.node('b'),
+      isBroken(ctx) ? R_OPEN : resistorOhms(ctx),
+    );
+  },
+  commit(c, ctx) {
+    if (isBroken(ctx)) return;
+    const v = c.v(ctx.node('a')) - c.v(ctx.node('b'));
+    const p = (v * v) / resistorOhms(ctx);
+    ctx.s.power = p;
+    const rated = Math.max(num(ctx.props.powerRating, 0.25), 0.001);
+    checkRating(ctx, p, {
+      label: 'Resistor',
+      quantity: 'power',
+      warn: rated,
+      // Past twice its rating it discolours and then opens; a film resistor
+      // survives a short spike, so this needs to be sustained.
+      max: rated * 2,
+      hold: 0.25,
+      suggest: (watts) => {
+        const bigger = RESISTOR_WATTS.find((w) => w >= watts);
+        return bigger
+          ? `Fit a ${formatSI(bigger, 'W')} resistor here, or drop the voltage across it.`
+          : 'Reduce the voltage across this resistor — no through-hole part will take that.';
+      },
+    });
   },
   output(c, ctx) {
-    const a = ctx.node('a');
-    const b = ctx.node('b');
-    const r = Math.max(num(ctx.props.resistance, 220), 1e-6);
-    const v = c.v(a) - c.v(b);
-    const i = v / r;
-    const p = v * i;
-    // Quarter-watt part: past 125 % it discolours, past 200 % it opens.
-    const burnt = ctx.s.burnt === 1 || p > 0.5;
-    if (p > 0.5) ctx.s.burnt = 1;
-    return { voltage: v, current: i, power: p, burnt };
+    const r = resistorOhms(ctx);
+    const v = c.v(ctx.node('a')) - c.v(ctx.node('b'));
+    return {
+      voltage: v,
+      current: isBroken(ctx) ? 0 : v / r,
+      power: ctx.s.power ?? 0,
+      damage: damageOf(ctx),
+      burnt: isBroken(ctx),
+    };
   },
 }));
 
@@ -53,13 +90,39 @@ function capacitor(polarised: boolean): Device {
       const pa = polarised ? ctx.node('+') : ctx.node('a');
       const pb = polarised ? ctx.node('-') : ctx.node('b');
       ctx.s.vprev = c.v(pa) - c.v(pb);
-      if (polarised && ctx.s.vprev < -1) ctx.s.burnt = 1;
-      if (ctx.s.vprev > num(ctx.props.voltage, 50) * 1.5) ctx.s.burnt = 1;
+      if (isBroken(ctx)) return;
+      const rated = num(ctx.props.voltage, 50);
+
+      // An electrolytic put in backwards fails on its own account, well below
+      // its forward rating — it is the single most common way to kill one.
+      if (polarised && ctx.s.vprev < -1) {
+        ctx.s.__broken = 1;
+        ctx.report({
+          severity: 'breakdown',
+          title: 'Capacitor destroyed',
+          detail:
+            `This electrolytic is wired backwards — its negative pin sits ` +
+            `${formatSI(Math.abs(ctx.s.vprev), 'V')} above its positive one.`,
+          suggestion: 'Turn the capacitor round: the stripe marks the negative leg.',
+        });
+        return;
+      }
+
+      checkRating(ctx, ctx.s.vprev, {
+        label: 'Capacitor',
+        quantity: 'voltage',
+        warn: rated,
+        max: rated * 1.5,
+        hold: 0.05,
+        suggest: (v) =>
+          `Use a capacitor rated for at least ${formatSI(v * 1.5, 'V')}.`,
+      });
     },
-    output(c, ctx) {
+    output(_, ctx) {
       return {
         voltage: ctx.s.vprev ?? 0,
-        burnt: ctx.s.burnt === 1,
+        damage: damageOf(ctx),
+        burnt: isBroken(ctx),
       };
     },
   };
@@ -180,11 +243,26 @@ export function ledParams(colour: string): DiodeParams & { vf: number } {
   return { is, n, bv: 5, vf };
 }
 
+/**
+ * The series resistor this LED needed, worked out from the supply the circuit
+ * actually contains rather than from its sagged terminal voltage.
+ */
+function suggestLedResistor(ctx: DeviceCtx, vf: number): string | undefined {
+  const supply = supplyVoltage(ctx);
+  if (supply <= vf) return 'Add a series resistor to limit the current.';
+  const ideal = (supply - vf) / LED_I_RATED;
+  const r = standardResistor(ideal);
+  return (
+    `A ${formatSI(supply, 'V')} supply needs about ${formatSI(r, '\u03a9')} in ` +
+    `series with this LED to hold it near ${formatSI(LED_I_RATED, 'A')}.`
+  );
+}
+
 defineDevice('led', (): Device => ({
   nonlinear: true,
   stamp(c, ctx) {
     const p = ledParams(String(ctx.props.color ?? 'red'));
-    if (ctx.s.burnt === 1) {
+    if (isBroken(ctx)) {
       c.stampConductance(ctx.node('anode'), ctx.node('cathode'), GMIN);
       return;
     }
@@ -193,22 +271,28 @@ defineDevice('led', (): Device => ({
     diodeStamp(c, ctx, ctx.node('anode'), ctx.node('cathode'), p);
   },
   commit(c, ctx) {
-    const i = ledCurrent(c, ctx);
-    if (i > LED_I_MAX) {
-      ctx.s.overload = (ctx.s.overload ?? 0) + ctx.dt;
-      if (ctx.s.overload > 0.05) ctx.s.burnt = 1;
-    } else {
-      ctx.s.overload = 0;
-    }
+    if (isBroken(ctx)) return;
+    const p = ledParams(String(ctx.props.color ?? 'red'));
+    checkRating(ctx, ledCurrent(c, ctx), {
+      label: 'LED',
+      quantity: 'current',
+      warn: LED_I_RATED,
+      max: LED_I_MAX,
+      // A real die takes a moment to cook, and a brief inrush should not
+      // destroy an LED that would have survived it.
+      hold: 0.05,
+      suggest: () => suggestLedResistor(ctx, p.vf),
+    });
   },
   output(c, ctx) {
-    const i = ledCurrent(c, ctx);
+    const i = isBroken(ctx) ? 0 : ledCurrent(c, ctx);
     // Perceived brightness rises much faster than current at the low end.
-    const brightness = ctx.s.burnt === 1 ? 0 : clamp(Math.sqrt(i / LED_I_RATED), 0, 1);
+    const brightness = isBroken(ctx) ? 0 : clamp(Math.sqrt(i / LED_I_RATED), 0, 1);
     return {
       current: i,
       brightness,
-      burnt: ctx.s.burnt === 1,
+      damage: damageOf(ctx),
+      burnt: isBroken(ctx),
       overloaded: i > LED_I_MAX,
     };
   },
@@ -270,10 +354,24 @@ defineDevice('fuse', (): Device => ({
     );
   },
   commit(c, ctx) {
+    if (ctx.s.blown === 1) return;
+    const rating = num(ctx.props.rating, 1);
     const i = Math.abs((c.v(ctx.node('a')) - c.v(ctx.node('b'))) / R_CLOSED);
-    if (i > num(ctx.props.rating, 1)) ctx.s.blown = 1;
+    if (i > rating) {
+      ctx.s.blown = 1;
+      ctx.s.__broken = 1;
+      ctx.report({
+        severity: 'breakdown',
+        title: 'Fuse blown',
+        detail:
+          `${formatSI(i, 'A')} flowed through a fuse rated ` +
+          `${formatSI(rating, 'A')}, so it opened the circuit.`,
+        // A blown fuse is the fuse doing its job, so the remedy is upstream.
+        suggestion: 'Find what is drawing the extra current before replacing it.',
+      });
+    }
   },
   output(_, ctx) {
-    return { blown: ctx.s.blown === 1 };
+    return { blown: ctx.s.blown === 1, damage: damageOf(ctx) };
   },
 }));

@@ -5,6 +5,7 @@ import { Circuit } from './mna/Circuit';
 import { buildNetlist, type Netlist } from './net/buildNetlist';
 import {
   makeDevice,
+  SUPPLY_PREFIX,
   type Device,
   type DeviceCtx,
   type FailureReport,
@@ -123,6 +124,12 @@ export class Simulation {
     const next: Bound[] = [];
     this.warnings = [];
 
+    // Sources re-publish their voltage on every stamp, so drop the old entries
+    // rather than leaving a deleted battery's rating behind to be read.
+    for (const key of [...this.shared.keys()]) {
+      if (key.startsWith(SUPPLY_PREFIX)) this.shared.delete(key);
+    }
+
     let branchCursor = 0;
     for (const d of this.netlist.devices) {
       const inst = this.design.parts[d.partId];
@@ -161,6 +168,9 @@ export class Simulation {
     this.bound = next;
     this.circuit = new Circuit(this.netlist.netCount, branchCursor);
     this.dt = this.bound.some((b) => b.device.needsFineStep) ? DT_FINE : DT_COARSE;
+
+    // Faults that are visible in the wiring alone, before anything is solved.
+    for (const b of this.bound) b.device.check?.(b.ctx);
 
     // Breakpoints live in the document, so a design reopened with them still
     // stops where its author left the marks — not only when the gutter is

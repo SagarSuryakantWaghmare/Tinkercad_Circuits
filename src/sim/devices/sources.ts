@@ -1,9 +1,13 @@
 import {
+  checkRating,
   clamp,
+  damageOf,
   defineDevice,
+  isBroken,
   num,
   R_CLOSED,
   R_OPEN,
+  SUPPLY_PREFIX,
   type Device,
 } from './types';
 
@@ -16,24 +20,73 @@ import {
  * the way the reference product does.
  */
 function battery(defaultV: number, rInternal: number): Device {
+  const nominalOf = (ctx: Parameters<Device['stamp']>[1]) => {
+    const cells = Math.max(1, num(ctx.props.cells, 1));
+    return num(ctx.props.voltage, defaultV) * (ctx.props.cells !== undefined ? cells : 1);
+  };
+  // What the cell can deliver before it cooks. Internal resistance is the
+  // honest proxy: a coin cell has a lot of it and can source very little.
+  const iMax = 2.5 / rInternal;
+
   return {
+    check(ctx) {
+      // Both terminals on one net is a dead short. There is no operating point
+      // to measure — the whole circuit collapses to a single node — so this has
+      // to be caught from the wiring rather than from a solve.
+      if (ctx.node('+') !== ctx.node('-')) return;
+      ctx.s.__broken = 1;
+      ctx.report({
+        severity: 'breakdown',
+        title: 'Battery shorted',
+        detail:
+          'Both battery terminals are connected to the same point, so the ' +
+          'cell is driving a dead short through its own internal resistance.',
+        suggestion:
+          'Put the load between + and − rather than wiring them together.',
+      });
+    },
     stamp(c, ctx) {
-      const cells = Math.max(1, num(ctx.props.cells, 1));
-      const v = num(ctx.props.voltage, defaultV) * (ctx.props.cells !== undefined ? cells : 1);
+      const nominal = nominalOf(ctx);
+      // Publish for models that need to size a remedy — see supplyVoltage().
+      ctx.shared.set(`${SUPPLY_PREFIX}${ctx.partId}`, nominal);
+
+      if (isBroken(ctx)) {
+        // A flat cell is not a short: it stops sourcing and goes high-impedance.
+        c.stampResistance(ctx.node('+'), ctx.node('-'), R_OPEN);
+        return;
+      }
       const g = 1 / rInternal;
       c.stampConductance(ctx.node('+'), ctx.node('-'), g);
-      c.stampCurrentSource(ctx.node('-'), ctx.node('+'), v * g);
+      c.stampCurrentSource(ctx.node('-'), ctx.node('+'), nominal * g);
+    },
+    commit(c, ctx) {
+      if (isBroken(ctx)) return;
+      const nominal = nominalOf(ctx);
+      const i = (nominal - (c.v(ctx.node('+')) - c.v(ctx.node('-')))) / rInternal;
+      ctx.s.i = i;
+      checkRating(ctx, i, {
+        label: 'Battery',
+        quantity: 'current',
+        warn: iMax * 0.5,
+        max: iMax,
+        // Cells get hot rather than exploding instantly; a couple of seconds of
+        // abuse is what finishes one.
+        hold: 2,
+        suggest: () =>
+          'Something is drawing far too much current — look for a short, or a ' +
+          'part wired straight across the battery with no resistor.',
+      });
     },
     output(c, ctx) {
-      const cells = Math.max(1, num(ctx.props.cells, 1));
-      const nominal = num(ctx.props.voltage, defaultV) * (ctx.props.cells !== undefined ? cells : 1);
+      const nominal = nominalOf(ctx);
       const vt = c.v(ctx.node('+')) - c.v(ctx.node('-'));
-      const i = (nominal - vt) / rInternal;
+      const i = isBroken(ctx) ? 0 : (nominal - vt) / rInternal;
       return {
-        voltage: vt,
+        voltage: isBroken(ctx) ? 0 : vt,
         current: i,
         nominal,
-        shorted: Math.abs(i) > 5,
+        damage: damageOf(ctx),
+        shorted: Math.abs(i) > iMax * 0.5,
       };
     },
   };
