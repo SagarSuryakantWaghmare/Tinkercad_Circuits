@@ -1,4 +1,5 @@
 import type { CategoryId, PartDef, PropValue } from './types';
+import { PART_DESCRIPTIONS } from './descriptions';
 
 const registry = new Map<string, PartDef<never>>();
 
@@ -82,6 +83,12 @@ export function basicParts(): PartDef<never>[] {
 /** Ids in BASIC_PART_IDS that no part actually defines. Empty is the goal. */
 export function missingBasicParts(): string[] {
   return BASIC_PART_IDS.filter((id) => !registry.has(id));
+}
+
+/** What this part is, for the panel and the inspector. Empty when unknown. */
+export function describePart(def: PartDef<never> | undefined): string {
+  if (!def) return '';
+  return def.description ?? PART_DESCRIPTIONS[def.id] ?? '';
 }
 
 /** Substring search over name + keywords + category, ranked by match position. */

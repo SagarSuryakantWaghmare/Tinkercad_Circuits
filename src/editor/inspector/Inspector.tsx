@@ -2,7 +2,7 @@
 
 import { useEditorStore } from '@/state/editorStore';
 import { useDesignStore } from '@/state/designStore';
-import { getPartDef } from '@/parts/registry';
+import { describePart, getPartDef } from '@/parts/registry';
 import type { PropSchema, PropValue } from '@/parts/types';
 import { WIRE_COLORS } from '@/lib/tokens';
 import { IconMirror, IconRotate, IconTrash } from '../icons';
@@ -57,7 +57,9 @@ export function Inspector() {
   return (
     <div className="pointer-events-auto w-[236px] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-[0_8px_28px_rgba(15,23,42,0.14)]">
       <header className="flex items-center justify-between border-b border-neutral-100 px-3 py-2">
-        <span className="truncate text-[12.5px] font-semibold text-neutral-800">{def.name}</span>
+        <span className="truncate text-[12.5px] font-semibold text-neutral-800" title={def.name}>
+          {def.name}
+        </span>
         <div className="flex items-center gap-0.5 text-neutral-500">
           <IconBtn
             title="Rotate (R)"
@@ -102,6 +104,12 @@ export function Inspector() {
           </IconBtn>
         </div>
       </header>
+
+      {describePart(def) && (
+        <p className="border-b border-neutral-100 px-3 py-2 text-[11.5px] leading-snug text-neutral-500">
+          {describePart(def)}
+        </p>
+      )}
 
       <div className="space-y-2.5 px-3 py-2.5">
         <Field label="Name">

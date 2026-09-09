@@ -153,6 +153,11 @@ export interface PartDef<P extends Record<string, PropValue> = Record<string, Pr
   category: CategoryId;
   /** Extra search terms beyond the name. */
   keywords?: string[];
+  /**
+   * One line on what this part is and what it is for, for someone who does not
+   * already know. Falls back to the shared table in `descriptions.ts`.
+   */
+  description?: string;
 
   /** Bounding size in world units, used for the hit area and marquee. */
   /**

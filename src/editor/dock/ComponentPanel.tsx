@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useEditorStore } from '@/state/editorStore';
-import { allParts, basicParts, searchParts } from '@/parts/registry';
+import { allParts, basicParts, describePart, searchParts } from '@/parts/registry';
 import { CATEGORIES, type PartDef } from '@/parts/types';
 import { PartThumb } from './PartThumb';
 import { StartersDrawer } from './StartersDrawer';
@@ -141,7 +141,7 @@ function Grid({
               ? 'border-sky-500 bg-sky-50 ring-1 ring-sky-200'
               : 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50'
           }`}
-          title={p.name}
+          title={describePart(p) ? `${p.name} — ${describePart(p)}` : p.name}
         >
           <span className="flex h-[58px] w-full items-center justify-center">
             <PartThumb def={p} />
