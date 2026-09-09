@@ -8,6 +8,8 @@ import type { PartInstance } from '@/state/design';
 import type { ComponentView } from '@/state/editorStore';
 import { useSimStore } from '@/state/simStore';
 import { C } from '@/lib/tokens';
+import { DamageMark } from './DamageMark';
+import type { DamageState } from '@/sim/devices/types';
 
 interface Props {
   inst: PartInstance;
@@ -114,6 +116,20 @@ function PlacedPartInner({
           />
         )}
       </g>
+
+      {/*
+        Over-stress and destruction are drawn here rather than in each part's
+        own art, so publishing `damage` from a device model is all it takes.
+      */}
+      <DamageMark
+        damage={(state?.damage as DamageState | undefined) ?? 'ok'}
+        width={size.w}
+        height={size.h}
+        originX={origin.x}
+        originY={origin.y}
+        rotation={inst.rotation}
+        mirrored={inst.mirrored}
+      />
 
       {/*
         A renamed component says so on the canvas. The label counter-rotates so

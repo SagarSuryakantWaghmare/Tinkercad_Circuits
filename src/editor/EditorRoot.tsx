@@ -11,6 +11,7 @@ import { Inspector } from './inspector/Inspector';
 import { CodePanel } from './code/CodePanel';
 import { contentBounds, useHotkeys } from './useHotkeys';
 import { ShortcutsDialog } from './ShortcutsDialog';
+import { FailurePanel } from './FailurePanel';
 import { useSimulation } from '@/sim/useSimulation';
 import { useEditorStore } from '@/state/editorStore';
 import { useDesignStore } from '@/state/designStore';
@@ -161,6 +162,7 @@ export function EditorRoot({ designId }: { designId?: string }) {
           </div>
 
           <ZoomReadout />
+          <FailurePanel />
           <Toast />
           {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
         </div>
