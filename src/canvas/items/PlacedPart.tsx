@@ -2,7 +2,7 @@
 
 import { memo, useMemo } from 'react';
 import { getPartDef } from '@/parts/registry';
-import { terminalsOf, type PropValue } from '@/parts/types';
+import { originOf, sizeOf, terminalsOf, type PropValue } from '@/parts/types';
 import { BlockSymbol, SCHEMATIC_SYMBOLS } from '@/parts/schematic';
 import type { PartInstance } from '@/state/design';
 import type { ComponentView } from '@/state/editorStore';
@@ -57,7 +57,10 @@ function PlacedPartInner({
 
   if (!def) return null;
 
-  const { size, origin } = def;
+  // Geometry can depend on the instance's own settings — a breadboard's
+  // bounding box changes with its size property.
+  const size = sizeOf(def, inst.props as never);
+  const origin = originOf(def, inst.props as never);
   const Art = schematic?.Symbol ?? def.Art;
   const transform = `translate(${inst.x},${inst.y}) rotate(${inst.rotation}) scale(${
     inst.mirrored ? -1 : 1

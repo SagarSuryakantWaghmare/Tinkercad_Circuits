@@ -229,7 +229,6 @@ export const Microbit = definePart({
   name: 'micro:bit',
   category: 'microcontrollers',
   keywords: ['microbit', 'micro:bit', 'bbc', 'education', 'board', 'nrf52'],
-  basic: true,
   size: { w: W + 20, h: H + 40 },
   origin: { x: (W + 20) / 2, y: (H + 40) / 2 - 10 },
   substrate: true,

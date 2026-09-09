@@ -50,13 +50,12 @@ function MotorArt({ state }: ArtProps<MotorProps>) {
   );
 }
 
-function makeMotor(id: string, name: string, keywords: string[], basic = false) {
+function makeMotor(id: string, name: string, keywords: string[]) {
   return definePart<MotorProps>({
     id,
     name,
     category: 'output',
     keywords,
-    basic,
     size: { w: 152, h: 80 },
     origin: { x: 76, y: 40 },
     model: 'dc-motor',
@@ -72,7 +71,7 @@ function makeMotor(id: string, name: string, keywords: string[], basic = false) 
   });
 }
 
-export const DcMotor = makeMotor('dc-motor', 'DC Motor', ['motor', 'dc', 'spin', 'rotate'], true);
+export const DcMotor = makeMotor('dc-motor', 'DC Motor', ['motor', 'dc', 'spin', 'rotate']);
 export const Gearmotor = makeMotor('gearmotor', 'Hobby Gearmotor', [
   'gearmotor',
   'geared',
@@ -127,13 +126,12 @@ function ServoArt({ props, state }: ArtProps<ServoProps>) {
   );
 }
 
-function makeServo(id: string, name: string, kind: string, keywords: string[], basic = false) {
+function makeServo(id: string, name: string, kind: string, keywords: string[]) {
   return definePart<ServoProps>({
     id,
     name,
     category: 'output',
     keywords,
-    basic,
     size: { w: 128, h: 92 },
     origin: { x: 64, y: 46 },
     model: 'servo',
@@ -163,7 +161,6 @@ export const MicroServo = makeServo(
   'Micro Servo',
   'positional',
   ['servo', 'sg90', 'positional', 'motor', 'angle'],
-  true,
 );
 export const ContinuousServo = makeServo(
   'continuous-servo',

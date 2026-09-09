@@ -17,7 +17,6 @@ export function dip(opts: {
   keywords: string[];
   roles?: Record<string, 'power' | 'gnd'>;
   groups?: Record<string, string>;
-  basic?: boolean;
   Art?: (p: ArtProps) => React.ReactElement;
 }) {
   const half = opts.pins.length / 2;
@@ -43,7 +42,6 @@ export function dip(opts: {
     name: opts.name,
     category: 'ics',
     keywords: opts.keywords,
-    basic: opts.basic,
     size: { w: bodyW + 16, h: 76 },
     origin: { x: (bodyW + 16) / 2, y: 38 },
     socketable: true,
@@ -77,7 +75,6 @@ export const Timer555 = dip({
   name: '555 Timer',
   label: 'NE555',
   sub: 'TIMER',
-  basic: true,
   model: 'timer-555',
   keywords: ['555', 'timer', 'astable', 'monostable', 'oscillator', 'ne555'],
   pins: ['GND', 'TRIG', 'OUT', 'RESET', 'CTRL', 'THR', 'DIS', 'VCC'],
@@ -115,7 +112,6 @@ export const ShiftRegister595 = dip({
   name: 'Shift Register [74HC595]',
   label: '74HC595',
   sub: 'SIPO',
-  basic: true,
   model: '74hc595',
   keywords: ['shift register', '74hc595', 'sipo', 'expander', 'serial'],
   pins: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'GND', 'Q7S', 'OE', 'STCP', 'SHCP', 'MR', 'DS', 'Q0', 'VCC'],

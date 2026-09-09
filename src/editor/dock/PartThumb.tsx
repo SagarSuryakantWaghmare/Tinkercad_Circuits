@@ -1,7 +1,7 @@
 'use client';
 
 import { memo } from 'react';
-import type { PartDef } from '@/parts/types';
+import { originOf, sizeOf, type PartDef } from '@/parts/types';
 
 /**
  * Panel thumbnail. Renders the part's real art inside a fitted viewBox so the
@@ -12,7 +12,10 @@ function PartThumbInner({ def, box = 62 }: { def: PartDef<never>; box?: number }
     const T = def.Thumb;
     return <T />;
   }
-  const { size, origin } = def;
+  // A thumbnail has no instance behind it, so it shows the part at its
+  // default settings.
+  const size = sizeOf(def, def.defaults);
+  const origin = originOf(def, def.defaults);
   const pad = 6;
   const vb = `${-origin.x - pad} ${-origin.y - pad} ${size.w + pad * 2} ${size.h + pad * 2}`;
   const Art = def.Art;

@@ -7,7 +7,7 @@ import type { PartInstance, WireEnd } from '@/state/design';
 import { useEditorStore, type WireAnchor } from '@/state/editorStore';
 import { useSimStore } from '@/state/simStore';
 import { getPartDef } from '@/parts/registry';
-import { terminalsOf, type PropValue } from '@/parts/types';
+import { originOf, sizeOf, terminalsOf, type PropValue } from '@/parts/types';
 import {
   rectFromPoints,
   rectsIntersect,
@@ -349,8 +349,8 @@ export function CanvasRoot() {
   function boundsOf(inst: (typeof design.parts)[string]): Rect {
     const def = getPartDef(inst.type)!;
     return transformedBounds(
-      def.size,
-      def.origin,
+      sizeOf(def, inst.props as never),
+      originOf(def, inst.props as never),
       { x: inst.x, y: inst.y },
       inst.rotation,
       inst.mirrored,

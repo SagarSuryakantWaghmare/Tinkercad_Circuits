@@ -28,7 +28,6 @@ function moduleBoard(opts: {
   model: string;
   keywords: string[];
   pins?: string[];
-  basic?: boolean;
   w?: number;
   h?: number;
   /** Drawn above the header, centred on the origin. */
@@ -69,7 +68,6 @@ function moduleBoard(opts: {
     name: opts.name,
     category: 'input',
     keywords: opts.keywords,
-    basic: opts.basic,
     size: { w: w + 10, h: h + 40 },
     origin: { x: (w + 10) / 2, y: (h + 40) / 2 - 14 },
     socketable: true,
@@ -160,7 +158,6 @@ export const PirSensor = moduleBoard({
   name: 'PIR Sensor',
   label: 'HC-SR501',
   model: 'pir-sensor',
-  basic: true,
   keywords: ['pir', 'motion', 'passive infrared', 'presence', 'occupancy'],
   w: 90,
   h: 90,
@@ -377,7 +374,7 @@ export const RtcModule = moduleBoard({
 
 // ─── Ultrasonic ──────────────────────────────────────────────────────────────
 
-function ultrasonicPart(id: string, name: string, pins: string[], keywords: string[], basic = false) {
+function ultrasonicPart(id: string, name: string, pins: string[], keywords: string[]) {
   const w = 130;
   const h = 76;
   return definePart({
@@ -385,7 +382,6 @@ function ultrasonicPart(id: string, name: string, pins: string[], keywords: stri
     name,
     category: 'input',
     keywords,
-    basic,
     size: { w: w + 10, h: h + 40 },
     origin: { x: (w + 10) / 2, y: (h + 40) / 2 - 14 },
     socketable: true,
@@ -451,7 +447,6 @@ export const Ultrasonic4 = ultrasonicPart(
   'Ultrasonic Distance Sensor (4-pin)',
   ['VCC', 'TRIG', 'ECHO', 'GND'],
   ['ultrasonic', 'distance', 'hc-sr04', 'sonar', 'range', 'proximity'],
-  true,
 );
 export const Ultrasonic3 = ultrasonicPart(
   'ultrasonic-3pin',

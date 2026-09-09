@@ -29,8 +29,59 @@ export function partsInCategory(cat: CategoryId): PartDef<never>[] {
   return allParts().filter((p) => p.category === cat);
 }
 
+/**
+ * What a beginner sees before opening "All components", in the order shown.
+ *
+ * Kept as one list rather than a flag on each part because "is this a starting
+ * component?" is a judgement about the whole palette, not about any single
+ * part, and it was previously spread over a dozen files — which is how ours
+ * ended up offering a 555 timer and a shift register but no motor, no servo
+ * and one breadboard.
+ *
+ * Deliberately discrete parts and boards only: no timers, no logic, no shift
+ * registers. Everything else is one dropdown away.
+ */
+export const BASIC_PART_IDS: readonly string[] = [
+  'resistor',
+  'led',
+  'pushbutton',
+  'potentiometer',
+  'capacitor',
+  'slideswitch',
+  'battery-9v',
+  'battery-coin',
+  'battery-aa',
+  'breadboard',
+  'microbit',
+  'uno-r3',
+  'vibration-motor',
+  'dc-motor',
+  'micro-servo',
+  'gearmotor',
+  'npn-transistor',
+  'led-rgb',
+  'diode',
+  'photoresistor',
+  'soil-moisture',
+  'ultrasonic-4pin',
+  'pir-sensor',
+  'piezo',
+  'temperature-sensor',
+  'multimeter',
+];
+
 export function basicParts(): PartDef<never>[] {
-  return allParts().filter((p) => p.basic);
+  const out: PartDef<never>[] = [];
+  for (const id of BASIC_PART_IDS) {
+    const def = registry.get(id);
+    if (def) out.push(def);
+  }
+  return out;
+}
+
+/** Ids in BASIC_PART_IDS that no part actually defines. Empty is the goal. */
+export function missingBasicParts(): string[] {
+  return BASIC_PART_IDS.filter((id) => !registry.has(id));
 }
 
 /** Substring search over name + keywords + category, ranked by match position. */

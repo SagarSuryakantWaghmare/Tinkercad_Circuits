@@ -75,14 +75,12 @@ function makeBjt(
   model: 'npn' | 'pnp',
   label: string,
   keywords: string[],
-  basic = false,
 ) {
   return definePart<BjtProps>({
     id,
     name,
     category: 'powercontrol',
     keywords,
-    basic,
     size: { w: 42, h: 54 },
     origin: { x: 21, y: 18 },
     socketable: true,
@@ -103,7 +101,6 @@ export const NpnTransistor = makeBjt(
   'npn',
   '2N3904',
   ['transistor', 'npn', 'bjt', 'switch', 'amplifier', '2n2222'],
-  true,
 );
 export const PnpTransistor = makeBjt(
   'pnp-transistor',

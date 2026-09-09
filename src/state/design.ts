@@ -111,11 +111,49 @@ void loop()
  * Designs saved before the micro:bit engine existed have no Python program or
  * language field, and must not lose their Arduino sketch when opened.
  */
+/**
+ * Parts that used to be separate entries and are now one part with a setting.
+ *
+ * Dropping the old ids outright would make those components vanish from any
+ * design already saved with them — silently, since an unresolved type is
+ * simply skipped. Mapping them forward costs a few lines and keeps every
+ * existing design openable.
+ */
+const RENAMED_PARTS: Record<string, { type: string; props: Record<string, PropValue> }> = {
+  'breadboard-mini': { type: 'breadboard', props: { size: 'mini' } },
+  'breadboard-small': { type: 'breadboard', props: { size: 'small' } },
+};
+
+function migrateParts(parts: Record<string, PartInstance>): Record<string, PartInstance> {
+  let changed = false;
+  const out: Record<string, PartInstance> = {};
+  for (const id in parts) {
+    const inst = parts[id];
+    // `breadboard` used to mean the full-size board specifically. An instance
+    // saved without a size predates the setting, so it must stay full-size
+    // rather than picking up today's default and quietly shrinking.
+    if (inst.type === 'breadboard' && inst.props?.size === undefined) {
+      changed = true;
+      out[id] = { ...inst, props: { ...inst.props, size: 'full' } };
+      continue;
+    }
+
+    const to = RENAMED_PARTS[inst.type];
+    if (!to) {
+      out[id] = inst;
+      continue;
+    }
+    changed = true;
+    out[id] = { ...inst, type: to.type, props: { ...to.props, ...inst.props } };
+  }
+  return changed ? out : parts;
+}
+
 export function migrateDesign(raw: Design): Design {
   const code = (raw.code ?? {}) as Partial<CodeState>;
   return {
     ...raw,
-    parts: raw.parts ?? {},
+    parts: migrateParts(raw.parts ?? {}),
     wires: raw.wires ?? {},
     notes: raw.notes ?? {},
     code: {

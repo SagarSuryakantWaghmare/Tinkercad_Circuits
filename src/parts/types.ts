@@ -153,13 +153,19 @@ export interface PartDef<P extends Record<string, PropValue> = Record<string, Pr
   category: CategoryId;
   /** Extra search terms beyond the name. */
   keywords?: string[];
-  /** Appears in the default "Basic" view of the components panel. */
-  basic?: boolean;
 
   /** Bounding size in world units, used for the hit area and marquee. */
-  size: { w: number; h: number };
-  /** Rotation centre in local coordinates. */
-  origin: Vec2;
+  /**
+   * Bounding size in world units, used for the hit area and the marquee.
+   *
+   * A function where the part's geometry depends on its settings — a
+   * breadboard is three times wider at full size than at mini, and a hit area
+   * sized for the largest case would swallow everything placed near a small
+   * one.
+   */
+  size: { w: number; h: number } | ((props: P) => { w: number; h: number });
+  /** Rotation centre in local coordinates; a function when `size` is one. */
+  origin: Vec2 | ((props: P) => Vec2);
 
   /** Static list, or a function of props for parts whose pin count varies. */
   terminals: TerminalDef[] | ((props: P) => TerminalDef[]);
@@ -187,4 +193,18 @@ export function terminalsOf<P extends Record<string, PropValue>>(
   props: P,
 ): TerminalDef[] {
   return typeof def.terminals === 'function' ? def.terminals(props) : def.terminals;
+}
+
+export function sizeOf<P extends Record<string, PropValue>>(
+  def: PartDef<P>,
+  props: P,
+): { w: number; h: number } {
+  return typeof def.size === 'function' ? def.size(props) : def.size;
+}
+
+export function originOf<P extends Record<string, PropValue>>(
+  def: PartDef<P>,
+  props: P,
+): Vec2 {
+  return typeof def.origin === 'function' ? def.origin(props) : def.origin;
 }

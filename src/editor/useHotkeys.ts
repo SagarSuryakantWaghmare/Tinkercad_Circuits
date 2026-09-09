@@ -5,6 +5,7 @@ import { useDesignStore } from '@/state/designStore';
 import { useEditorStore } from '@/state/editorStore';
 import { transformedBounds, unionRect, type Rect } from '@/lib/geometry';
 import { getPartDef } from '@/parts/registry';
+import { originOf, sizeOf } from '@/parts/types';
 import { WIRE_COLORS } from '@/lib/tokens';
 import { rotationStepFor } from '@/canvas/snapping';
 
@@ -18,7 +19,13 @@ export function contentBounds(): Rect | null {
     if (!def) continue;
     box = unionRect(
       box,
-      transformedBounds(def.size, def.origin, { x: inst.x, y: inst.y }, inst.rotation, inst.mirrored),
+      transformedBounds(
+        sizeOf(def, inst.props as never),
+        originOf(def, inst.props as never),
+        { x: inst.x, y: inst.y },
+        inst.rotation,
+        inst.mirrored,
+      ),
     );
   }
   return box;
@@ -35,7 +42,13 @@ export function selectionBounds(): Rect | null {
     if (!def) continue;
     box = unionRect(
       box,
-      transformedBounds(def.size, def.origin, { x: inst.x, y: inst.y }, inst.rotation, inst.mirrored),
+      transformedBounds(
+        sizeOf(def, inst.props as never),
+        originOf(def, inst.props as never),
+        { x: inst.x, y: inst.y },
+        inst.rotation,
+        inst.mirrored,
+      ),
     );
   }
   return box;

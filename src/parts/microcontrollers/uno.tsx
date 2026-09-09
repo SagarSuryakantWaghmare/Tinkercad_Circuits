@@ -322,7 +322,6 @@ export const UnoR3 = definePart({
   name: 'Uno R3',
   category: 'microcontrollers',
   keywords: ['arduino', 'uno', 'atmega328', 'microcontroller', 'board', 'mcu'],
-  basic: true,
   size: { w: W + 22, h: H },
   origin: { x: W / 2 + 11, y: H / 2 },
   substrate: true,

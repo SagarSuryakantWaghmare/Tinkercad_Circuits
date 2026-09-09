@@ -9,7 +9,6 @@ export const Battery9V = definePart({
   name: '9V Battery',
   category: 'power',
   keywords: ['battery', 'power', 'pp3', 'supply', '9 volt'],
-  basic: true,
   size: { w: 96, h: 128 },
   origin: { x: 48, y: 64 },
   model: 'battery',
@@ -69,7 +68,6 @@ function cylindricalCell(
     name,
     category: 'power',
     keywords,
-    basic: id === 'battery-aa',
     // Sized for the largest pack so the hit area never lags the art; the
     // terminals themselves follow the actual count.
     size: { w: bodyW * MAX_CELLS + 30, h: bodyH + 20 },
@@ -174,7 +172,6 @@ export const CoinCell = definePart({
   name: '3V Coin Cell Battery',
   category: 'power',
   keywords: ['coin', 'cr2032', 'button cell', '3v', 'battery'],
-  basic: true,
   size: { w: 84, h: 72 },
   origin: { x: 42, y: 36 },
   model: 'battery',
