@@ -3,7 +3,12 @@ import type { DeviceOut, PropValue } from '@/parts/types';
 import type { Design } from '@/state/design';
 import { Circuit } from './mna/Circuit';
 import { buildNetlist, type Netlist } from './net/buildNetlist';
-import { makeDevice, type Device, type DeviceCtx } from './devices/types';
+import {
+  makeDevice,
+  type Device,
+  type DeviceCtx,
+  type FailureReport,
+} from './devices/types';
 import { simBus } from './bus';
 import type { SimSnapshot } from '@/state/simStore';
 import { MCU_KEY, type McuHandle } from './devices/mcu';
@@ -58,6 +63,8 @@ export class Simulation {
   private warnings: { partId?: string; message: string }[] = [];
   private convergenceFailures = 0;
   private gminBoost = 0;
+  private failures: FailureReport[] = [];
+  private failureKeys = new Set<string>();
   private breakpointLines: number[] = [];
   private breakpointsPending = false;
   private running = false;
@@ -77,6 +84,10 @@ export class Simulation {
   }
 
   start() {
+    // Damage does not survive a restart: a run begins with undamaged parts and
+    // an empty log, which is what makes "try it again" a useful instruction.
+    this.failures = [];
+    this.failureKeys.clear();
     this.build();
     this.running = true;
     this.lastWall = performance.now();
@@ -134,6 +145,7 @@ export class Simulation {
         branch0,
         dt: this.dt,
         t: this.t,
+        report: (r) => this.noteFailureReport(d.partId, r),
         node: (terminal: string) => {
           let n = nodeCache.get(terminal);
           if (n === undefined) {
@@ -294,6 +306,21 @@ export class Simulation {
     if (++this.convergenceFailures === 20) this.warnings.push({ message });
   }
 
+  /**
+   * Record a part failing. A model calls this on every timestep the fault
+   * persists, so the same event is folded into one entry — otherwise a shorted
+   * LED would file a thousand identical reports a second.
+   */
+  private noteFailureReport(partId: string, r: Omit<FailureReport, 'partId' | 't'>) {
+    const key = `${partId}|${r.severity}|${r.title}`;
+    if (this.failureKeys.has(key)) return;
+    this.failureKeys.add(key);
+    this.failures.push({ ...r, partId, t: this.t });
+    // A run that destroys a hundred parts has one underlying cause; keep the
+    // first of them, which is the one that explains the rest.
+    if (this.failures.length > 50) this.failures.length = 50;
+  }
+
   private publish() {
     const parts: Record<string, DeviceOut> = {};
     for (const b of this.bound) {
@@ -320,6 +347,7 @@ export class Simulation {
       terminalNet,
       serial: h ? h.board.serialTx : [],
       warnings: this.warnings.slice(-4),
+      failures: this.failures,
     });
   }
 
