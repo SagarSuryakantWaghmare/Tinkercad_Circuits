@@ -4,6 +4,7 @@ import {
   clamp,
   damageOf,
   defineDevice,
+  destroy,
   formatSI,
   GMIN,
   isBroken,
@@ -96,8 +97,7 @@ function capacitor(polarised: boolean): Device {
       // An electrolytic put in backwards fails on its own account, well below
       // its forward rating — it is the single most common way to kill one.
       if (polarised && ctx.s.vprev < -1) {
-        ctx.s.__broken = 1;
-        ctx.report({
+        destroy(ctx, {
           severity: 'breakdown',
           title: 'Capacitor destroyed',
           detail:
@@ -358,6 +358,8 @@ defineDevice('fuse', (): Device => ({
     const rating = num(ctx.props.rating, 1);
     const i = Math.abs((c.v(ctx.node('a')) - c.v(ctx.node('b'))) / R_CLOSED);
     if (i > rating) {
+      // A fuse blowing is the fuse working, so protection does not stop it —
+      // the whole point of the part is to be the thing that fails.
       ctx.s.blown = 1;
       ctx.s.__broken = 1;
       ctx.report({
@@ -366,7 +368,6 @@ defineDevice('fuse', (): Device => ({
         detail:
           `${formatSI(i, 'A')} flowed through a fuse rated ` +
           `${formatSI(rating, 'A')}, so it opened the circuit.`,
-        // A blown fuse is the fuse doing its job, so the remedy is upstream.
         suggestion: 'Find what is drawing the extra current before replacing it.',
       });
     }

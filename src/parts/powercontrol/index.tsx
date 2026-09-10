@@ -90,7 +90,10 @@ function makeBjt(
     props: [
       { key: 'beta', label: 'Current gain (hFE)', kind: 'number', min: 10, max: 1000, step: 10 },
     ],
-    defaults: { beta: 100, is: 1e-14 },
+    // Datasheet absolute maximums for a 2N3904-class small-signal part. The
+    // simulator reads these to decide when the part has been destroyed, so a
+    // Darlington is not judged against a signal transistor's limits.
+    defaults: { beta: 100, is: 1e-14, icMax: 0.2, ibMax: 0.05, pMax: 0.625 },
     Art: () => <To92 label={label} sub={model.toUpperCase()} />,
   });
 }
@@ -121,7 +124,8 @@ export const DarlingtonNpn = definePart<BjtProps>({
   model: 'npn',
   terminals: threeLegs(['base', 'collector', 'emitter'], 36),
   props: [{ key: 'beta', label: 'Current gain (hFE)', kind: 'number', min: 100, max: 10000, step: 100 }],
-  defaults: { beta: 1000, is: 1e-14 },
+  // A TIP120 is a power part: 5 A continuous, 65 W with a heatsink.
+  defaults: { beta: 1000, is: 1e-14, icMax: 5, ibMax: 0.12, pMax: 65 },
   Art: ({ state }: ArtProps<BjtProps>) => (
     <To220 label="TIP120" hot={Math.abs(Number(state?.ic ?? 0)) > 0.5} />
   ),
@@ -138,7 +142,7 @@ export const DarlingtonPnp = definePart<BjtProps>({
   model: 'pnp',
   terminals: threeLegs(['base', 'collector', 'emitter'], 36),
   props: [{ key: 'beta', label: 'Current gain (hFE)', kind: 'number', min: 100, max: 10000, step: 100 }],
-  defaults: { beta: 1000, is: 1e-14 },
+  defaults: { beta: 1000, is: 1e-14, icMax: 5, ibMax: 0.12, pMax: 65 },
   Art: () => <To220 label="TIP125" />,
 });
 

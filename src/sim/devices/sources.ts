@@ -3,6 +3,7 @@ import {
   clamp,
   damageOf,
   defineDevice,
+  destroy,
   isBroken,
   num,
   R_CLOSED,
@@ -34,8 +35,7 @@ function battery(defaultV: number, rInternal: number): Device {
       // to measure — the whole circuit collapses to a single node — so this has
       // to be caught from the wiring rather than from a solve.
       if (ctx.node('+') !== ctx.node('-')) return;
-      ctx.s.__broken = 1;
-      ctx.report({
+      destroy(ctx, {
         severity: 'breakdown',
         title: 'Battery shorted',
         detail:
