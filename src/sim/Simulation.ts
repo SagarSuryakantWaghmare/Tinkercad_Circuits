@@ -159,7 +159,7 @@ export class Simulation {
       const nodeCache = new Map<string, number>();
       const ctx: DeviceCtx = {
         partId: d.partId,
-        props: this.propsFor(inst.type, inst.props),
+        props: this.propsFor(d.partId, inst.type, inst.props),
         s: previous?.ctx.s ?? {},
         shared: this.shared,
         branch0,
@@ -191,14 +191,20 @@ export class Simulation {
     this.setBreakpoints(this.design.code.breakpoints);
   }
 
-  /** Device-visible props, with the program folded in for whichever board. */
-  private propsFor(type: string, props: Record<string, PropValue>) {
+  /**
+   * Device-visible props, with this board's own program folded in.
+   *
+   * A board without an entry of its own falls back to the shared sketch, so a
+   * single-board design behaves exactly as it always did.
+   */
+  private propsFor(partId: string, type: string, props: Record<string, PropValue>) {
     const def = getPartDef(type);
+    const own = this.design.code.boards?.[partId];
     if (def?.model?.startsWith('mcu-')) {
-      return { ...props, __source: this.design.code.text };
+      return { ...props, __source: own ?? this.design.code.text };
     }
     if (def?.model === 'microbit') {
-      return { ...props, __python: this.design.code.python };
+      return { ...props, __python: own ?? this.design.code.python };
     }
     return props;
   }

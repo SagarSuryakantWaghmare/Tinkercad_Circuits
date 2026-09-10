@@ -69,6 +69,15 @@ export interface CodeState {
   /** micro:bit MicroPython program. */
   python: string;
   libraries: string[];
+  /**
+   * Sketches belonging to one specific board, keyed by part id.
+   *
+   * A design with a single board keeps using `text` / `python` and never
+   * touches this. The moment there are two, each needs its own program — two
+   * Arduinos talking to each other over serial is a normal exercise and was
+   * impossible while every board was handed the same source.
+   */
+  boards: Record<string, string>;
   breakpoints: number[];
   /** Once blocks have been abandoned for text the conversion is one-way. */
   blocksAbandoned: boolean;
@@ -164,6 +173,7 @@ export function migrateDesign(raw: Design): Design {
       microbitBlocksXml: code.microbitBlocksXml ?? '',
       python: code.python ?? DEFAULT_PYTHON,
       libraries: code.libraries ?? [],
+      boards: code.boards ?? {},
       breakpoints: code.breakpoints ?? [],
       blocksAbandoned: code.blocksAbandoned ?? false,
     },
@@ -186,6 +196,7 @@ export function emptyDesign(id: string, name = 'Untitled Circuit'): Design {
       microbitBlocksXml: '',
       python: DEFAULT_PYTHON,
       libraries: [],
+      boards: {},
       breakpoints: [],
       blocksAbandoned: false,
     },
