@@ -17,6 +17,7 @@ import {
   type Vec2,
 } from '@/lib/geometry';
 import { C } from '@/lib/tokens';
+import { formatSI } from '@/sim/devices/types';
 import { GRID_VISIBLE_ZOOM, PITCH, snap, TERMINAL_HIT_R } from '@/lib/units';
 import { PlacedPart } from './items/PlacedPart';
 import { DraftWire, WireItem, type ResolvedWire } from './items/WireItem';
@@ -38,6 +39,9 @@ export function CanvasRoot() {
 
   const ed = useEditorStore();
   const running = useSimStore((s) => s.runState === 'running' || s.runState === 'paused');
+  // Solved node voltages, so hovering a pin can read out what is on it.
+  const liveNetV = useSimStore((s) => s.snapshot.netV);
+  const liveTerminalNet = useSimStore((s) => s.snapshot.terminalNet);
 
   // ── geometry index, rebuilt only when the document actually changes ────────
   const terminalIndex = useMemo(() => indexTerminals(design), [design]);
@@ -729,7 +733,12 @@ export function CanvasRoot() {
         )}
 
         {/* 8 — hovered terminal */}
-        <TerminalHover design={design} hover={ed.hoverTerminal} index={terminalIndex} />
+        <TerminalHover
+          design={design}
+          hover={ed.hoverTerminal}
+          index={terminalIndex}
+          live={running ? { netV: liveNetV, terminalNet: liveTerminalNet } : null}
+        />
 
         {/* 9 — selection */}
         <g pointerEvents="none" data-export="false">
@@ -815,20 +824,42 @@ function MarqueeRect({ from, to }: { from: Vec2; to: Vec2 }) {
   );
 }
 
+/**
+ * Terminal name on hover, and — while the simulation runs — the voltage there.
+ *
+ * The reference product makes you wire up a multimeter to answer "what is on
+ * this pin?". The solver already knows, so hovering is enough; the meter stays
+ * for readings you want pinned to the canvas next to the circuit.
+ */
 function TerminalHover({
   design,
   hover,
   index,
+  live,
 }: {
   design: ReturnType<typeof useDesignStore.getState>['design'];
   hover: { partId: string; terminal: string } | null;
   index: Map<string, ReturnType<typeof worldTerminals>[number]>;
+  live: { netV: Float64Array; terminalNet: Record<string, number> } | null;
 }) {
   if (!hover) return null;
-  const t = index.get(`${hover.partId}:${hover.terminal}`);
+  const key = `${hover.partId}:${hover.terminal}`;
+  const t = index.get(key);
   if (!t) return null;
   const inst = design.parts[hover.partId];
-  const label = inst?.name ? `${inst.name} · ${t.def.name}` : t.def.name;
+  const name = inst?.name ? `${inst.name} · ${t.def.name}` : t.def.name;
+
+  let label = name;
+  if (live) {
+    const net = live.terminalNet[key];
+    // −1 is the ground datum and reads as exactly zero; an unconnected
+    // terminal has no net at all and has nothing to report.
+    if (net === -1) label = `${name}  0 V`;
+    else if (net !== undefined && net < live.netV.length) {
+      label = `${name}  ${formatSI(live.netV[net], 'V')}`;
+    }
+  }
+
   return (
     <g pointerEvents="none">
       <circle cx={t.pos.x} cy={t.pos.y} r={5.5} fill={C.netHighlight} opacity={0.35} />
