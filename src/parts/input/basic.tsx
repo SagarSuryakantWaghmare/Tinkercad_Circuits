@@ -9,7 +9,11 @@ import { ColdIcon, HotIcon, MoonIcon, PartSlider, SunIcon } from '../simControls
 // Four legs; the two on each side are permanently tied, and pressing bridges
 // left to right. Terminal names match the product's 1a/1b/2a/2b convention.
 
-function PushbuttonArt({ state, simulating, interact }: ArtProps<Record<string, never>>) {
+interface ButtonProps extends Record<string, string | number> {
+  action: string;
+}
+
+function PushbuttonArt({ state, simulating, interact }: ArtProps<ButtonProps>) {
   const pressed = !!state?.pressed;
   return (
     <g>
@@ -58,7 +62,7 @@ function PushbuttonArt({ state, simulating, interact }: ArtProps<Record<string, 
   );
 }
 
-export const Pushbutton = definePart({
+export const Pushbutton = definePart<ButtonProps>({
   id: 'pushbutton',
   name: 'Pushbutton',
   category: 'input',
@@ -73,8 +77,19 @@ export const Pushbutton = definePart({
     { name: '1b', type: 'breadboard_male', x: -15, y: 25, dir: [0, 1], group: 'L' },
     { name: '2b', type: 'breadboard_male', x: 15, y: 25, dir: [0, 1], group: 'R' },
   ],
-  props: [],
-  defaults: {},
+  props: [
+    {
+      key: 'action',
+      label: 'Contacts',
+      kind: 'select',
+      options: [
+        { value: 'no', label: 'Normally open — closes when pressed' },
+        { value: 'nc', label: 'Normally closed — opens when pressed' },
+      ],
+      help: 'A normally-closed button is how an end-stop or a door switch is wired.',
+    },
+  ],
+  defaults: { action: 'no' },
   Art: PushbuttonArt,
 });
 

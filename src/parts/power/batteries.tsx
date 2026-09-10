@@ -4,6 +4,36 @@ import { Silk } from '../primitives';
 
 // ─── 9 V battery ─────────────────────────────────────────────────────────────
 
+/**
+ * Settings every cell shares.
+ *
+ * Internal resistance is the interesting one: it decides how far the terminals
+ * sag under load and how much current a short can draw, so it is the
+ * difference between a coin cell and a car battery. The reference product
+ * fixes both of these and lets you change neither.
+ */
+const BATTERY_PROPS = [
+  {
+    key: 'voltage',
+    label: 'Voltage',
+    kind: 'number' as const,
+    min: 0.1,
+    max: 60,
+    step: 0.1,
+    unit: 'V',
+  },
+  {
+    key: 'internalResistance',
+    label: 'Internal resistance',
+    kind: 'number' as const,
+    min: 0.01,
+    max: 100,
+    step: 0.1,
+    unit: '\u03a9',
+    help: 'How much the terminals sag under load, and how hard it can be shorted.',
+  },
+];
+
 export const Battery9V = definePart({
   id: 'battery-9v',
   name: '9V Battery',
@@ -16,8 +46,8 @@ export const Battery9V = definePart({
     { name: '+', type: 'wire', x: -20, y: -62, dir: [0, -1], role: 'power' },
     { name: '-', type: 'wire', x: 20, y: -62, dir: [0, -1], role: 'gnd' },
   ],
-  props: [],
-  defaults: { voltage: 9 },
+  props: BATTERY_PROPS,
+  defaults: { voltage: 9, internalResistance: 1.2 },
   Art: () => (
     <g>
       <rect x={-42} y={-52} width={84} height={108} rx={6} fill="#2A2C2F" stroke="#151719" />
@@ -179,8 +209,8 @@ export const CoinCell = definePart({
     { name: '+', type: 'wire', x: 0, y: -32, dir: [0, -1], role: 'power' },
     { name: '-', type: 'wire', x: 0, y: 32, dir: [0, 1], role: 'gnd' },
   ],
-  props: [],
-  defaults: { voltage: 3 },
+  props: BATTERY_PROPS,
+  defaults: { voltage: 3, internalResistance: 10 },
   Art: () => (
     <g>
       <circle cx={0} cy={0} r={30} fill="#C4C9CE" stroke="#9AA0A6" strokeWidth={1.2} />
@@ -215,8 +245,8 @@ export const BatteryPack = definePart({
     { name: '+', type: 'wire', x: -20, y: -60, dir: [0, -1], role: 'power' },
     { name: '-', type: 'wire', x: 20, y: -60, dir: [0, -1], role: 'gnd' },
   ],
-  props: [],
-  defaults: { voltage: 6 },
+  props: BATTERY_PROPS,
+  defaults: { voltage: 6, internalResistance: 1.2 },
   Art: () => (
     <g>
       <rect x={-62} y={-52} width={124} height={104} rx={5} fill="#2B2E31" stroke="#17191B" />

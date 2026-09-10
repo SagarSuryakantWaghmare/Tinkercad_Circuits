@@ -20,14 +20,17 @@ import {
  * singular matrix, which is what lets us show the "battery is shorted" warning
  * the way the reference product does.
  */
-function battery(defaultV: number, rInternal: number): Device {
+function battery(defaultV: number, defaultR: number): Device {
   const nominalOf = (ctx: Parameters<Device['stamp']>[1]) => {
     const cells = Math.max(1, num(ctx.props.cells, 1));
     return num(ctx.props.voltage, defaultV) * (ctx.props.cells !== undefined ? cells : 1);
   };
-  // What the cell can deliver before it cooks. Internal resistance is the
-  // honest proxy: a coin cell has a lot of it and can source very little.
-  const iMax = 2.5 / rInternal;
+  // Internal resistance is what makes a cell behave like itself: it sets how
+  // far the terminals sag under load and how much a short can draw. Exposing
+  // it turns the battery into something you can experiment with rather than a
+  // fixed ideal source — Tinkercad does not let you touch it at all.
+  const resistanceOf = (ctx: Parameters<Device['stamp']>[1]) =>
+    Math.max(num(ctx.props.internalResistance, defaultR), 0.01);
 
   return {
     check(ctx) {
@@ -55,15 +58,19 @@ function battery(defaultV: number, rInternal: number): Device {
         c.stampResistance(ctx.node('+'), ctx.node('-'), R_OPEN);
         return;
       }
-      const g = 1 / rInternal;
+      const g = 1 / resistanceOf(ctx);
       c.stampConductance(ctx.node('+'), ctx.node('-'), g);
       c.stampCurrentSource(ctx.node('-'), ctx.node('+'), nominal * g);
     },
     commit(c, ctx) {
       if (isBroken(ctx)) return;
       const nominal = nominalOf(ctx);
-      const i = (nominal - (c.v(ctx.node('+')) - c.v(ctx.node('-')))) / rInternal;
+      const rInt = resistanceOf(ctx);
+      const i = (nominal - (c.v(ctx.node('+')) - c.v(ctx.node('-')))) / rInt;
       ctx.s.i = i;
+      // What the cell can deliver before it cooks, from its own impedance: a
+      // coin cell has a lot of it and can source very little.
+      const iMax = 2.5 / rInt;
       checkRating(ctx, i, {
         label: 'Battery',
         quantity: 'current',
@@ -79,14 +86,15 @@ function battery(defaultV: number, rInternal: number): Device {
     },
     output(c, ctx) {
       const nominal = nominalOf(ctx);
+      const rInt = resistanceOf(ctx);
       const vt = c.v(ctx.node('+')) - c.v(ctx.node('-'));
-      const i = isBroken(ctx) ? 0 : (nominal - vt) / rInternal;
+      const i = isBroken(ctx) ? 0 : (nominal - vt) / rInt;
       return {
         voltage: isBroken(ctx) ? 0 : vt,
         current: i,
         nominal,
         damage: damageOf(ctx),
-        shorted: Math.abs(i) > iMax * 0.5,
+        shorted: Math.abs(i) > 2.5 / rInt / 2,
       };
     },
   };
@@ -155,7 +163,10 @@ defineDevice('solar-panel', (): Device => ({
 
 defineDevice('pushbutton', (): Device => ({
   stamp(c, ctx) {
-    const closed = ctx.s.pressed === 1;
+    // A normally-closed button conducts until you press it, which is how a
+    // door switch or an end-stop is wired.
+    const inverted = String(ctx.props.action ?? 'no') === 'nc';
+    const closed = (ctx.s.pressed === 1) !== inverted;
     // The two legs on each side are already tied by the part's terminal groups;
     // this bridges left to right when the cap is down.
     c.stampResistance(ctx.node('1a'), ctx.node('2a'), closed ? R_CLOSED : R_OPEN);
@@ -165,7 +176,8 @@ defineDevice('pushbutton', (): Device => ({
     if (event === 'toggle') ctx.s.pressed = ctx.s.pressed === 1 ? 0 : 1;
   },
   output(_, ctx) {
-    return { pressed: ctx.s.pressed === 1 };
+    const inverted = String(ctx.props.action ?? 'no') === 'nc';
+    return { pressed: ctx.s.pressed === 1, closed: (ctx.s.pressed === 1) !== inverted };
   },
 }));
 
