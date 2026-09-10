@@ -1,6 +1,17 @@
 import type { Circuit } from '../mna/Circuit';
 import { audio } from '../audio';
-import { clamp, defineDevice, num, R_OPEN, type Device, type DeviceCtx } from './types';
+import {
+  checkRating,
+  clamp,
+  damageOf,
+  defineDevice,
+  formatSI,
+  isBroken,
+  num,
+  R_OPEN,
+  type Device,
+  type DeviceCtx,
+} from './types';
 
 /** Supply the logic family runs on, and the drive impedance of an output. */
 const VLOGIC = 5;
@@ -38,6 +49,20 @@ function floatPin(c: Circuit, ctx: DeviceCtx, name: string, gndName = 'GND') {
   c.stampResistance(ctx.node(name), ctx.node(gndName), R_OPEN);
 }
 
+/**
+ * Supply limits for the 74HC family, which is what these parts represent.
+ *
+ * Below the minimum a chip simply stops working; above the absolute maximum it
+ * is destroyed. Both matter to a learner, and neither was modelled: outputs
+ * were driven at a hard-coded five volts whatever the rail actually was, so a
+ * chip on a 12 V supply behaved exactly like one on 5 V and never complained.
+ */
+const LOGIC_VMIN = 2;
+const LOGIC_VMAX = 6;
+const LOGIC_VABS = 7;
+/** Absolute maximum current out of one 74HC output pin. */
+const LOGIC_IOUT_MAX = 0.025;
+
 export interface LogicSpec {
   inputs: (props: DeviceCtx['props']) => string[];
   outputs: (props: DeviceCtx['props']) => string[];
@@ -58,8 +83,27 @@ export interface LogicSpec {
  */
 export function logicDevice(spec: LogicSpec): Device {
   const gnd = spec.gnd ?? 'GND';
+
+  /**
+   * The rail this chip is actually running on.
+   *
+   * Returns null when there is no supply to speak of — either the part is one
+   * of the abstract gate symbols with no VCC pin at all, or it simply is not
+   * powered. Neither case is a fault, so neither should be reported as one.
+   */
+  const supplyOf = (c: Parameters<Device['stamp']>[0], ctx: DeviceCtx) => {
+    const v = pinV(c, ctx, 'VCC', gnd);
+    return Number.isFinite(v) && v > 0.5 ? v : null;
+  };
+
   return {
     stamp(c, ctx) {
+      const names = spec.outputs(ctx.props);
+      if (isBroken(ctx)) {
+        // A destroyed chip drives nothing at all.
+        for (const n of names) floatPin(c, ctx, n, gnd);
+        return;
+      }
       const ins = spec.inputs(ctx.props).map((n) => readBit(c, ctx, n, gnd));
 
       if (spec.clock) {
@@ -71,17 +115,78 @@ export function logicDevice(spec: LogicSpec): Device {
       }
 
       const outs = spec.compute(ins, ctx.s, ctx);
-      const names = spec.outputs(ctx.props);
+      // Outputs swing to the rail the chip is actually on, not to a constant.
+      const supply = supplyOf(c, ctx);
+      const rail = supply ?? VLOGIC;
       names.forEach((n, i) => {
         const v = outs[i];
         if (v === undefined) floatPin(c, ctx, n, gnd);
-        else driveBit(c, ctx, n, v, gnd);
+        else driveBit(c, ctx, n, v, gnd, rail);
       });
       ctx.s.__out = outs.reduce((acc, b, i) => acc + (b ? 1 << i : 0), 0);
       ctx.s.__in = ins.reduce((acc, b, i) => acc + (b ? 1 << i : 0), 0);
+      ctx.s.__rail = supply ?? 0;
+    },
+    commit(c, ctx) {
+      if (isBroken(ctx)) return;
+      const supply = supplyOf(c, ctx);
+      if (supply === null) return;
+
+      if (
+        checkRating(ctx, supply, {
+          label: 'Logic chip',
+          quantity: 'voltage',
+          warn: LOGIC_VMAX,
+          max: LOGIC_VABS,
+          hold: 0.05,
+          suggest: () =>
+            `A 74HC part runs on ${formatSI(LOGIC_VMIN, 'V')} to ` +
+            `${formatSI(LOGIC_VMAX, 'V')}. Feed it from a regulated 5 V rail.`,
+        }) === 'broken'
+      ) {
+        return;
+      }
+
+      // Each output pin has its own limit; an LED hung straight off one is the
+      // usual way past it.
+      //
+      // The current is the difference between where the pin is *trying* to sit
+      // and where it actually does, across its drive impedance. Measuring
+      // against the supply instead would read a pin driven low as though it
+      // were sourcing the whole rail, which condemns every idle output.
+      let worst = 0;
+      let worstPin = '';
+      const levels = ctx.s.__out ?? 0;
+      spec.outputs(ctx.props).forEach((n, idx) => {
+        const node = ctx.node(n);
+        if (node === undefined) return;
+        const target = (levels >> idx) & 1 ? supply : 0;
+        const i = Math.abs((target - pinV(c, ctx, n, gnd)) / R_DRIVE);
+        if (i > worst) {
+          worst = i;
+          worstPin = n;
+        }
+      });
+      if (worst > 0) {
+        checkRating(ctx, worst, {
+          label: 'Logic chip',
+          quantity: 'current',
+          warn: LOGIC_IOUT_MAX * 0.8,
+          max: LOGIC_IOUT_MAX * 1.4,
+          hold: 0.05,
+          suggest: () =>
+            `Output ${worstPin} is being asked for more than it can give. Put a ` +
+            'resistor in series, or buffer it with a transistor.',
+        });
+      }
     },
     output(_, ctx) {
-      return { inputs: ctx.s.__in ?? 0, outputs: ctx.s.__out ?? 0 };
+      return {
+        inputs: ctx.s.__in ?? 0,
+        outputs: ctx.s.__out ?? 0,
+        supply: ctx.s.__rail ?? 0,
+        damage: damageOf(ctx),
+      };
     },
   };
 }
