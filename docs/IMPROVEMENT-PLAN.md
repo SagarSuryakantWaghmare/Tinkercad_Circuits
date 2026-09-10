@@ -495,8 +495,8 @@ nothing to configure.
 
 ### P3 — Catalogue audit and parity
 Score all 156 parts against the five-point rubric in §3.3 and publish the table.
-Write the missing `mcp3008` and `eeprom` models, and add the registry assertion
-that every part's model resolves.
+~~Write the missing `mcp3008` and `eeprom` models, and add the registry
+assertion that every part's model resolves.~~ **done.**
 
 Add the parts from the §3.3 table: potato and lemon batteries, micro:bit with
 breakout, DC motor with encoder, 556, LM339/LM393, PCF8574, the Schmitt triggers
