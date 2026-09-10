@@ -137,6 +137,22 @@ export function Toolbar() {
           </button>
         ))}
         <Divider />
+        <button
+          onClick={() => ed.setProtectComponents(!ed.protectComponents)}
+          title={
+            ed.protectComponents
+              ? 'Protection on: parts report what would have destroyed them and survive it'
+              : 'Protection off: over-driven parts are destroyed, as they would be on a bench'
+          }
+          className={`rounded px-2 py-1 text-[11.5px] font-medium transition ${
+            ed.protectComponents
+              ? 'bg-emerald-50 text-emerald-700'
+              : 'text-neutral-600 hover:bg-neutral-100'
+          }`}
+        >
+          {ed.protectComponents ? 'Protected' : 'Protect'}
+        </button>
+        <Divider />
         <TBtn
           title="Keyboard shortcuts (?)"
           onClick={() => window.dispatchEvent(new CustomEvent('circuitlab:shortcuts'))}

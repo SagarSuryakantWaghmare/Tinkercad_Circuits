@@ -22,6 +22,7 @@ export function useSimulation() {
         onDiagnostics: (errors) => useSimStore.getState().setErrors(errors),
       });
       simRef.current = sim;
+      sim.setProtect(useEditorStore.getState().protectComponents);
       if (process.env.NODE_ENV !== 'production') {
         (window as unknown as Record<string, unknown>).__sim = sim;
       }
@@ -44,8 +45,16 @@ export function useSimulation() {
     };
 
     window.addEventListener('circuitlab:toggle-sim', toggle);
+
+    // Turning protection on mid-run should take effect immediately, so the
+    // switch is followed rather than read once at start.
+    const unsubscribe = useEditorStore.subscribe((s) =>
+      simRef.current?.setProtect(s.protectComponents),
+    );
+
     return () => {
       window.removeEventListener('circuitlab:toggle-sim', toggle);
+      unsubscribe();
       simRef.current?.stop();
     };
   }, []);

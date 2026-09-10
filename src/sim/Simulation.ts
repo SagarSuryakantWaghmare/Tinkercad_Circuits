@@ -68,6 +68,8 @@ export class Simulation {
   private failureKeys = new Set<string>();
   private breakpointLines: number[] = [];
   private breakpointsPending = false;
+  /** When on, parts report what would have destroyed them and survive it. */
+  private protect = false;
   private running = false;
   private serialCursor = 0;
 
@@ -233,6 +235,17 @@ export class Simulation {
     this.microbit()?.interp.resume();
   }
 
+  /**
+   * Turn component protection on or off, including mid-run.
+   *
+   * Parts already destroyed stay destroyed — protection stops the next
+   * failure, it does not undo the last one.
+   */
+  setProtect(on: boolean) {
+    this.protect = on;
+    for (const b of this.bound) b.ctx.protect = on;
+  }
+
   /** Advance a paused sketch by one statement. */
   stepOver() {
     this.mcu()?.interp.step();
@@ -254,6 +267,7 @@ export class Simulation {
     for (const b of this.bound) {
       b.ctx.dt = dt;
       b.ctx.t = this.t;
+      b.ctx.protect = this.protect;
     }
 
     const nonlinear = this.bound.some((b) => b.device.nonlinear);
@@ -357,7 +371,11 @@ export class Simulation {
       terminalNet,
       serial: h ? h.board.serialTx : [],
       warnings: this.warnings.slice(-4),
-      failures: this.failures,
+      // A copy, not the live array. The snapshot is meant to be an immutable
+      // frame, and a subscriber selecting `snapshot.failures` would otherwise
+      // never see a change: the reference stays identical while the contents
+      // grow, so the failure panel simply never re-rendered.
+      failures: [...this.failures],
     });
   }
 

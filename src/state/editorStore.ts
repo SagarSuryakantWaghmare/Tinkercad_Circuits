@@ -67,6 +67,9 @@ interface EditorStore {
 
   // panels & view ───────────────────────────────────────────────────────────
   codeOpen: boolean;
+  /** Stop components being destroyed; report what would have happened instead. */
+  protectComponents: boolean;
+  setProtectComponents: (v: boolean) => void;
   setCodeOpen: (v: boolean) => void;
   panelView: PanelView;
   setPanelView: (v: PanelView) => void;
@@ -189,6 +192,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   setMode: (m) => set({ mode: m }),
 
   codeOpen: false,
+  protectComponents: false,
+  setProtectComponents: (protectComponents) => set({ protectComponents }),
   setCodeOpen: (v) => set({ codeOpen: v }),
   panelView: 'basic',
   setPanelView: (v) => set({ panelView: v }),
