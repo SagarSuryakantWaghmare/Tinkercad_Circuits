@@ -465,7 +465,7 @@ is weakest.*
 | Failure log panel with the remedy, click-to-select | `src/editor/FailurePanel.tsx` | **done** |
 | Extend failure to BJT/Darlington, regulator, optocoupler | `src/sim/devices/semiconductors.ts` | **done** — ratings come from the part, not one constant |
 | MCU pin over-current — 20 mA warn / 40 mA break / 200 mA total | `src/sim/devices/mcu.ts` | **done** — and the port stops driving, where theirs carries on |
-| Displays and ICs — supply out of range, pin over-current | `src/sim/devices/output.ts`, `digital.ts` | todo — the last P1 item |
+| Logic ICs — real supply rail, supply limits, output current | `src/sim/devices/digital.ts` | **done** — outputs follow the measured rail instead of a hard-coded 5 V |
 | "Protect components" toggle | `src/state/editorStore.ts`, `src/sim/Simulation.ts` | **done** |
 
 **Verified.** Confirmed on screen: the badge on the damaged part, the panel
@@ -533,28 +533,43 @@ nothing in Tinkercad's 110 lacks a counterpart here.
 LCD without being told where to look.
 
 ### P5 — Canvas and editing
-Wire bend-point handles and double-click-to-add-node (parity); live V/I on
-hover; alignment and distribute; a history panel from the labels we already
-store; responsive breakpoints; stop the inspector covering the canvas.
+| Task | Status |
+|---|---|
+| Wire bend points — drag to reshape, double-click to add | **done** (parity with Tinkercad) |
+| Live voltage on hover | **done** — no multimeter needed |
+| History panel from the labels already stored | **done** — jump to any earlier edit |
+| Responsive breakpoints | **done** — checked at 1024 and 800 |
+| Alignment and distribute | todo |
 
 **Done when:** a wire can be reshaped after drawing, hovering shows live values,
-and the editor is usable at 1024 px wide.
+and the editor is usable at 1024 px wide. — **met.**
 
 ### P6 — Simulation performance
-Sparse matrix and sparse LU with a fill-reducing ordering; reuse factorisations;
-skip solves for a quiescent circuit.
+| Task | Status |
+|---|---|
+| Stop reallocating the matrix every Newton iteration | **done** — roughly triples throughput mid-range |
+| Sparse matrix and sparse LU with a fill-reducing ordering | todo |
+| Reuse factorisations across iterations | todo |
+| Skip solves for a quiescent circuit | todo |
 
-**Done when:** 500 components run at ≥ 1× real time, measured with the same
-harness that produced §2.
+**Done when:** 500 components run at ≥ 1× real time. **Not met** — the ceiling
+moved from ~150 to ~250 components. The remaining cost is structural: forward
+and back substitution are O(n²) however sparse the matrix is, so 1000 unknowns
+means two million multiply-adds per solve against perhaps five thousand
+nonzeros. That needs the sparse factorisation, not another allocation tweak.
 
 ### P7 — Code and debugging
-Per-board code; import a `.ino`/`.py`; custom libraries; the four missing
-built-in libraries (Adafruit LED Backpack, Keypad, SD, LiquidCrystal I2C); undo
-in the code editor; watch expressions; conditional breakpoints; step into/out;
-call stack.
+| Task | Status |
+|---|---|
+| Per-board code | **done** — verified with two Unos running different sketches |
+| Import a `.ino`/`.py` | todo |
+| Custom libraries, and the four missing built-ins | todo |
+| Undo in the code editor | todo |
+| Watch expressions, conditional breakpoints, step into/out, call stack | todo |
 
 **Done when:** two Arduinos in one design run different sketches and talk to
-each other over serial.
+each other over serial. — **first half met**; per-board serial monitors are
+still shared.
 
 ### Beyond the plan
 Modern microcontrollers — ESP32, Mega, Pico — and with them Wi-Fi/BLE. The
