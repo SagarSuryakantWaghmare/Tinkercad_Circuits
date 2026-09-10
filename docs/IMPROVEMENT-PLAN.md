@@ -67,14 +67,24 @@ deprecation notice. We ship three working parts there.
 
 Simulation throughput, measured on this machine:
 
-| Components | Solver nodes | ms per 1 ms simulated | Speed |
+| Components | Solver nodes | Before | After reusing the LU buffer |
 |---|---|---|---|
-| 20 | 40 | 0.03 | 37× real time |
-| 60 | 120 | 0.36 | 2.8× |
-| 120 | 240 | 0.37 | 2.7× |
-| 240 | 480 | 1.9 – 4.3 | **0.2 – 0.5× — slower than real time** |
+| 20 | 40 | 37× real time | **44×** |
+| 60 | 120 | 2.8× | **9.5×** |
+| 120 | 240 | 2.7× | **4.2×** |
+| 240 | 480 | 0.2 – 0.5× | **0.69×** |
+| 500 | 1000 | — | **0.15×** |
 
-Practical ceiling: **150–200 connected components**.
+The solver was allocating a fresh copy of the whole matrix on every Newton
+iteration — over a megabyte at a few hundred unknowns, several iterations a
+timestep, a thousand timesteps a second. Reusing one buffer roughly tripled
+throughput in the middle of the range.
+
+Practical ceiling is now around **250 connected components** rather than 150.
+Getting to 500 at real time still needs the sparse solver: the forward and
+back substitutions are O(n²) regardless of how sparse the matrix is, and at
+1000 unknowns that is two million multiply-adds per solve on a matrix with
+perhaps five thousand nonzeros.
 
 Two things already right: an empty breadboard contributes **0 solver nodes**
 (unconnected terminals are pruned), and netlist extraction is not a bottleneck
