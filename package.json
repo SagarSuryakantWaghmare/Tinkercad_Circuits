@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "dev:clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && next dev",
+    "clean": "node -e \"['.next','out'].forEach(d=>require('fs').rmSync(d,{recursive:true,force:true}))\""
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
