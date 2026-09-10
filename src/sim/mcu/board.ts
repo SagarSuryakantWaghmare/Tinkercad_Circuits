@@ -51,6 +51,19 @@ export class Board {
   /** Names for the parts a shield-style library drives, keyed by object id. */
   peripherals = new Map<string, unknown>();
 
+  /**
+   * Chips that answer a bus transaction, so a sketch talking to a real part
+   * gets a real answer.
+   *
+   * Without these, SPI.transfer() echoes its argument and Wire.read() returns
+   * zero — which is why an ADC or an EEPROM on the canvas did nothing at all.
+   * A device model registers itself each solver step; the runtime routes to
+   * whichever chip the sketch has selected.
+   */
+  spiTargets = new Map<string, { csPin: number; transfer(byte: number): number }>();
+  /** Keyed by 7-bit I2C address. */
+  i2cTargets = new Map<number, { write(bytes: number[]): void; read(n: number): number[] }>();
+
   reset() {
     this.modes.fill('input');
     this.duty.fill(0);
@@ -64,6 +77,8 @@ export class Board {
     this.servos.clear();
     this.tone = null;
     this.peripherals.clear();
+    this.spiTargets.clear();
+    this.i2cTargets.clear();
   }
 
   // ── digital / analog I/O ───────────────────────────────────────────────────

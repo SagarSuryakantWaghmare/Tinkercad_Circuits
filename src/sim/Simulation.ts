@@ -23,6 +23,7 @@ import './devices/semiconductors';
 import './devices/digital';
 import './devices/sensors';
 import './devices/extras';
+import './devices/ics';
 import './devices/instruments';
 import './devices/microbit';
 
@@ -140,7 +141,17 @@ export class Simulation {
       const key = `${d.partId}:${d.model}`;
       const previous = carry?.get(key);
       const device = previous?.device ?? makeDevice(d.model);
-      if (!device) continue;
+      if (!device) {
+        // A part naming a model nothing implements is placeable, wireable and
+        // completely inert. Saying so beats dropping it without a word, which
+        // is how two such parts went unnoticed in the catalogue for months.
+        const name = getPartDef(inst.type)?.name ?? inst.type;
+        this.warnings.push({
+          partId: d.partId,
+          message: `${name} is not simulated yet — it will sit in the circuit doing nothing.`,
+        });
+        continue;
+      }
 
       const branch0 = branchCursor;
       branchCursor += device.branches ?? 0;

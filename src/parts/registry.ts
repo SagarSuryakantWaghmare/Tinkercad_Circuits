@@ -85,6 +85,20 @@ export function missingBasicParts(): string[] {
   return BASIC_PART_IDS.filter((id) => !registry.has(id));
 }
 
+/**
+ * Parts naming an electrical model that nothing implements.
+ *
+ * Such a part is placeable and wireable and does absolutely nothing: the
+ * netlist lists it, `makeDevice` returns null, and the simulator drops it
+ * without a word. Two shipped that way — an ADC and an EEPROM — and neither
+ * was noticed until the catalogue was audited part by part.
+ */
+export function partsWithoutDeviceModel(hasModel: (model: string) => boolean): string[] {
+  return allParts()
+    .filter((p) => p.model && !hasModel(p.model))
+    .map((p) => `${p.id} (model: ${p.model})`);
+}
+
 /** What this part is, for the panel and the inspector. Empty when unknown. */
 export function describePart(def: PartDef<never> | undefined): string {
   if (!def) return '';

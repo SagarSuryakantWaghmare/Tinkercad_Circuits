@@ -522,16 +522,37 @@ function installNeoPixel(interp: Interpreter, board: Board) {
 function installWireSpiEeprom(interp: Interpreter, board: Board) {
   const eeprom = new Uint8Array(1024);
 
+  // I2C transaction state, mirroring how the Wire library batches bytes.
+  let txAddr = 0;
+  let txBuf: number[] = [];
+  let rxBuf: number[] = [];
+
   interp.constants.set(
     'Wire',
     new ObjectValue('TwoWire', {
       begin: () => 0,
-      beginTransmission: () => 0,
-      write: () => 1,
-      endTransmission: () => 0,
-      requestFrom: () => 0,
-      available: () => 0,
-      read: () => 0,
+      beginTransmission: (a) => {
+        txAddr = toNum(a[0]) & 0x7f;
+        txBuf = [];
+        return 0;
+      },
+      write: (a) => {
+        txBuf.push(toNum(a[0]) & 0xff);
+        return 1;
+      },
+      endTransmission: () => {
+        board.i2cTargets.get(txAddr)?.write(txBuf);
+        txBuf = [];
+        return 0;
+      },
+      requestFrom: (a) => {
+        const addr = toNum(a[0]) & 0x7f;
+        const n = Math.max(0, toNum(a[1]));
+        rxBuf = board.i2cTargets.get(addr)?.read(n) ?? new Array(n).fill(0);
+        return rxBuf.length;
+      },
+      available: () => rxBuf.length,
+      read: () => (rxBuf.length ? (rxBuf.shift() as number) : -1),
       setClock: () => 0,
     }) as unknown as Value,
   );
@@ -541,7 +562,17 @@ function installWireSpiEeprom(interp: Interpreter, board: Board) {
     new ObjectValue('SPIClass', {
       begin: () => 0,
       end: () => 0,
-      transfer: (a) => toNum(a[0]),
+      transfer: (a) => {
+        const byte = toNum(a[0]) & 0xff;
+        // Chip select is active low, so the selected chip is the one whose CS
+        // the sketch is currently holding down.
+        for (const t of board.spiTargets.values()) {
+          const d = board.drive(t.csPin);
+          if (d && d.v < 2.5) return t.transfer(byte) & 0xff;
+        }
+        // Nothing selected: an idle bus reads back what was sent.
+        return byte;
+      },
       setBitOrder: () => 0,
       setDataMode: () => 0,
       setClockDivider: () => 0,

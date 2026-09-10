@@ -15,7 +15,7 @@ import { FailurePanel } from './FailurePanel';
 import { useSimulation } from '@/sim/useSimulation';
 import { useEditorStore } from '@/state/editorStore';
 import { useDesignStore } from '@/state/designStore';
-import { allParts, getPartDef } from '@/parts/registry';
+import { allParts, getPartDef, partsWithoutDeviceModel } from '@/parts/registry';
 import { snapPlacement } from '@/canvas/snapping';
 import { useSimStore } from '@/state/simStore';
 import { buildNetlist } from '@/sim/net/buildNetlist';
@@ -67,7 +67,7 @@ export function EditorRoot({ designId }: { designId?: string }) {
       design: useDesignStore,
       editor: useEditorStore,
       sim: useSimStore,
-      parts: { allParts, getPartDef },
+      parts: { allParts, getPartDef, partsWithoutDeviceModel },
       starters: STARTERS,
       buildNetlist,
       snapPlacement,
