@@ -508,11 +508,23 @@ Score all 156 parts against the five-point rubric in §3.3 and publish the table
 ~~Write the missing `mcp3008` and `eeprom` models, and add the registry
 assertion that every part's model resolves.~~ **done.**
 
-Add the parts from the §3.3 table: potato and lemon batteries, micro:bit with
-breakout, DC motor with encoder, 556, LM339/LM393, PCF8574, the Schmitt triggers
-and multi-input gate ICs, and the DIP switch variants. Convert the NeoPixel
-ring/strip family to a single part with a `length` property rather than adding
-seven more entries. Add **bill-of-materials export**.
+Parts from the §3.3 table:
+
+| Part | Status |
+|---|---|
+| Potato and lemon batteries | **done** — 0.9 V behind ~800 Ω, so an LED stays dark |
+| 74HC14 / 74HC132 Schmitt triggers | **done** |
+| Triple 3-input and dual 4-input gate packages | **done** |
+| LM339 / LM393 comparators | **done** — open collector, so they wired-OR |
+| Bill-of-materials export | **done** — Send To → Component list |
+| micro:bit with breakout | todo |
+| DC motor with encoder | todo |
+| 556 dual timer | todo |
+| PCF8574 I2C expander | todo |
+| DIP switch variants — better as a `ways` property than three parts | todo |
+| NeoPixel `length` property instead of seven more entries | todo |
+
+The catalogue is 165 parts against Tinkercad's 110.
 
 **Done when:** the rubric table is published, every part scores 4 or 5, a part
 whose model does not resolve fails the build rather than shipping inert, and
