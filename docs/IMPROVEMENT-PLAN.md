@@ -31,32 +31,37 @@ Judgement calls are marked as such.
 
 Ordered by value per unit of work.
 
-| # | Item | Why |
+This was the opening assessment. Status is kept current, because a plan that
+still describes solved problems is worse than no plan.
+
+| # | Item | Status |
 |---|---|---|
-| 1 | **A shared failure framework across all parts** | Only 4 of our 156 components can fail. |
-| 2 | **Surface the failure to the user** | Ours is completely silent — measured `warnings: []`, `errors: []`. |
-| 3 | **Fail the things Tinkercad *can't*** | Their batteries, resistors, transistors and DC motors are indestructible. Shorting a battery does nothing. This is open ground. |
-| 4 | **Properties for the 98 components that have none** | Two thirds of the catalogue cannot be configured. |
-| 5 | **Breadboard size as a property** | We ship three; a user testing the app concluded we had one. |
-| 6 | **Per-board code** | Two Arduinos in one design are forced to run the same sketch. |
-| 7 | **Wire bend points** | Tinkercad has this and we don't — drag to bend, double-click to add a node. |
-| 8 | **Sparse solver** | We drop below real time at ~200 components. Measured. |
-| 9 | **Component descriptions** | We ship none, for any part. |
-| 10 | **Bill of materials export** | One of Tinkercad's three view modes. We have no equivalent. |
+| 1 | A shared failure framework across all parts | **done** |
+| 2 | Surface the failure to the user | **done** — badge on the part, panel with the remedy |
+| 3 | Fail the things Tinkercad *can't* | **done** — batteries, resistors, transistors, motors, and a dead short |
+| 4 | Properties for the components that have none | **in progress** — 65 of 165 have them, up from 58 of 156 |
+| 5 | Breadboard size as a property | **done** — three parts became one |
+| 6 | Per-board code | **done** — two Unos can run different sketches |
+| 7 | Wire bend points | **done** — drag to reshape, double-click to add |
+| 8 | Sparse solver | **partly** — ceiling moved 150 → 250 components; 500 still needs it |
+| 9 | Component descriptions | **done** — panel hover and inspector |
+| 10 | Bill of materials export | **done** — Send To → Component list |
 
 ---
 
 ## 2. Where we stand today (measured)
 
+The figures below are the **original audit**, kept as the baseline the work was
+measured against. Where they have moved, the current value follows.
+
 ```
-156 components across 12 categories      Tinkercad: 110 across the same 12
- 33 marked "Basic"                       Tinkercad: 26
- 58 have editable properties           → 98 have none  (Tinkercad: only ~19 of 110)
- 99 socketable into a breadboard
-  4 can fail                             (resistor, capacitor, LED, fuse)
-  4 programmable boards                  Tinkercad: 4, over the same 2 architectures
-  2 languages                            Arduino C++, MicroPython
- 33 starter circuits                     Tinkercad: 67
+156 → 165 components across 12 categories   Tinkercad: 110 across the same 12
+ 33 → 26 marked "Basic"                     Tinkercad: 26 (matched deliberately)
+ 58 → 65 have editable properties         → 100 still have none
+  4 → most can fail                         (was resistor, capacitor, LED, fuse only)
+  4 programmable boards, each with its own program now
+  2 languages                               Arduino C++, MicroPython
+ 33 starter circuits                        Tinkercad: 67 — still a gap
 ```
 
 Our twelve category headings turn out to match theirs exactly — General, Input,
