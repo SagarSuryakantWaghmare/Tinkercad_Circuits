@@ -9,6 +9,7 @@ import { useSimStore } from '@/state/simStore';
 import { getPartDef } from '@/parts/registry';
 import { originOf, sizeOf, terminalsOf, type PropValue } from '@/parts/types';
 import {
+  distToSegment,
   rectFromPoints,
   rectsIntersect,
   transformedBounds,
@@ -16,7 +17,7 @@ import {
   type Vec2,
 } from '@/lib/geometry';
 import { C } from '@/lib/tokens';
-import { GRID_VISIBLE_ZOOM, PITCH, TERMINAL_HIT_R } from '@/lib/units';
+import { GRID_VISIBLE_ZOOM, PITCH, snap, TERMINAL_HIT_R } from '@/lib/units';
 import { PlacedPart } from './items/PlacedPart';
 import { DraftWire, WireItem, type ResolvedWire } from './items/WireItem';
 import { NoteItem } from './items/NoteItem';
@@ -231,6 +232,16 @@ export function CanvasRoot() {
       return;
     }
 
+    if (mode.kind === 'dragWaypoint') {
+      const world = worldOf(e);
+      transact('Reshape wire', (dd) => {
+        const w = dd.wires[mode.wireId];
+        if (!w || !w.waypoints[mode.index]) return;
+        w.waypoints[mode.index] = { x: snap(world.x), y: snap(world.y) };
+      });
+      return;
+    }
+
     if (mode.kind === 'dragParts') {
       const d = downRef.current;
       if (!d) return;
@@ -284,6 +295,12 @@ export function CanvasRoot() {
       }
       ed.setMode({ kind: 'idle' });
       downRef.current = null;
+      return;
+    }
+
+    if (mode.kind === 'dragWaypoint') {
+      commit();
+      ed.setMode({ kind: 'idle' });
       return;
     }
 
@@ -344,6 +361,37 @@ export function CanvasRoot() {
       d.parts[id] = inst;
       useEditorStore.getState().select({ parts: [id] });
     });
+  }
+
+  /**
+   * Put a new bend point on a wire, at the position double-clicked.
+   *
+   * Inserted at the segment nearest the click rather than appended, so a bend
+   * added in the middle of a long wire stays in the middle instead of sending
+   * the route back on itself.
+   */
+  function addWaypoint(wireId: string, at: Vec2) {
+    const w = design.wires[wireId];
+    if (!w) return;
+    const ends = wires.find((r) => r.id === wireId);
+    if (!ends) return;
+
+    const path = [ends.a.pos, ...w.waypoints, ends.b.pos];
+    let bestIndex = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < path.length - 1; i++) {
+      const d = distToSegment(at, path[i], path[i + 1]);
+      if (d < bestDist) {
+        bestDist = d;
+        bestIndex = i;
+      }
+    }
+    transact('Add bend point', (dd) => {
+      const wire = dd.wires[wireId];
+      if (!wire) return;
+      wire.waypoints.splice(bestIndex, 0, { x: snap(at.x), y: snap(at.y) });
+    });
+    ed.select({ wires: [wireId] });
   }
 
   function boundsOf(inst: (typeof design.parts)[string]): Rect {
@@ -655,6 +703,15 @@ export function CanvasRoot() {
               onPointerDown={(e, id) => {
                 e.stopPropagation();
                 ed.select({ wires: [id], additive: e.shiftKey });
+              }}
+              onWaypointDown={(e, id, index) => {
+                e.stopPropagation();
+                begin('Reshape wire');
+                ed.setMode({ kind: 'dragWaypoint', wireId: id, index });
+              }}
+              onAddWaypoint={(e, id) => {
+                e.stopPropagation();
+                addWaypoint(id, ed.toWorld(screenOf(e)));
               }}
               onPointerEnter={() => {}}
               onPointerLeave={() => {}}
