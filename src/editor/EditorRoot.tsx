@@ -20,6 +20,7 @@ import { allParts, getPartDef, partsWithoutDeviceModel } from '@/parts/registry'
 import { snapPlacement } from '@/canvas/snapping';
 import { useSimStore } from '@/state/simStore';
 import { buildNetlist } from '@/sim/net/buildNetlist';
+import { makeDevice } from '@/sim/devices/types';
 import { useAutosave } from '@/persist/useAutosave';
 import { loadDesign, saveDesign } from '@/persist/store';
 import { emptyDesign } from '@/state/design';
@@ -70,6 +71,17 @@ export function EditorRoot({ designId }: { designId?: string }) {
   // or a headless browser without going through pointer events.
   useEffect(() => {
     if (process.env.NODE_ENV === 'production') return;
+    // A part whose model no device implements is dropped from every
+    // simulation in silence — you can place it, wire it, and nothing happens.
+    // Two shipped in that state before anyone noticed, so say so at startup
+    // rather than relying on someone thinking to check.
+    const inert = partsWithoutDeviceModel((m) => makeDevice(m) !== null);
+    if (inert.length) {
+      console.error(
+        `${inert.length} part(s) will be silently dropped from simulations:`,
+        inert,
+      );
+    }
     (window as unknown as Record<string, unknown>).__cl = {
       design: useDesignStore,
       editor: useEditorStore,
