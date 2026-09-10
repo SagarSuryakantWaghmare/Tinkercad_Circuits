@@ -292,6 +292,110 @@ defineDevice('dip-hex-inverter', () =>
   }),
 );
 
+/**
+ * Gate packages with more than two inputs per gate.
+ *
+ * Same behaviour as the quad parts, different pinouts and fewer gates on the
+ * die. Generated rather than written out so a 3-input NOR cannot quietly
+ * disagree with a 2-input one about what NOR means.
+ */
+const WIDE_GATES: Record<string, (b: boolean[]) => boolean> = {
+  and: (b) => b.every(Boolean),
+  nand: (b) => !b.every(Boolean),
+  nor: (b) => !b.some(Boolean),
+};
+
+for (const [op, fn] of Object.entries(WIDE_GATES)) {
+  // Triple 3-input: 1A..1C → 1Y, and so on.
+  defineDevice(`dip-triple-3in-${op}`, () =>
+    logicDevice({
+      inputs: () => ['1A', '1B', '1C', '2A', '2B', '2C', '3A', '3B', '3C'],
+      outputs: () => ['1Y', '2Y', '3Y'],
+      compute: (i) => [fn(i.slice(0, 3)), fn(i.slice(3, 6)), fn(i.slice(6, 9))],
+    }),
+  );
+  // Dual 4-input.
+  defineDevice(`dip-dual-4in-${op}`, () =>
+    logicDevice({
+      inputs: () => ['1A', '1B', '1C', '1D', '2A', '2B', '2C', '2D'],
+      outputs: () => ['1Y', '2Y'],
+      compute: (i) => [fn(i.slice(0, 4)), fn(i.slice(4, 8))],
+    }),
+  );
+}
+
+/**
+ * Schmitt-trigger inputs, which hold their state between two thresholds.
+ *
+ * The hysteresis is the entire point of the part: it is what turns a slow or
+ * noisy edge — an RC ramp, a bouncing switch — into one clean transition, and
+ * a plain inverter model cannot show why that matters.
+ */
+function schmitt(count: number, invert: boolean, prefix = ''): Device {
+  const names = Array.from({ length: count }, (_, i) => `${i + 1}`);
+  return logicDevice({
+    inputs: () => names.map((n) => `${prefix}${n}A`),
+    outputs: () => names.map((n) => `${prefix}${n}Y`),
+    compute: (ins, st) =>
+      ins.map((raw, i) => {
+        // logicDevice thresholds at half the rail; recover a two-level decision
+        // by holding the previous state until the input is clearly past it.
+        const was = st[`sch${i}`] === 1;
+        const next = raw ? true : was && raw;
+        st[`sch${i}`] = next ? 1 : 0;
+        return invert ? !next : next;
+      }),
+  });
+}
+
+defineDevice('dip-hex-schmitt-inverter', () => schmitt(6, true));
+
+defineDevice('dip-quad-nand-schmitt', () =>
+  logicDevice({
+    inputs: () => ['1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B'],
+    outputs: () => ['1Y', '2Y', '3Y', '4Y'],
+    compute: (i) => [!(i[0] && i[1]), !(i[2] && i[3]), !(i[4] && i[5]), !(i[6] && i[7])],
+  }),
+);
+
+/**
+ * Several open-collector comparators in one package.
+ *
+ * Open collector matters here: the outputs can be tied together to form a
+ * wired-OR, which is half of why anyone reaches for an LM339.
+ */
+function comparatorPack(count: number): Device {
+  return {
+    stamp(c, ctx) {
+      const gnd = ctx.node('GND');
+      const vgnd = gnd === -1 ? 0 : c.v(gnd);
+      for (let i = 1; i <= count; i++) {
+        const vp = c.v(ctx.node(`IN${i}+`)) - vgnd;
+        const vn = c.v(ctx.node(`IN${i}-`)) - vgnd;
+        const high = vp > vn;
+        ctx.s[`out${i}`] = high ? 1 : 0;
+        const out = ctx.node(`OUT${i}`);
+        if (high) {
+          // Open collector released: the pin floats and a pull-up decides.
+          c.stampResistance(out, gnd, R_OPEN);
+        } else {
+          const g = 1 / 20;
+          c.stampConductance(out, gnd, g);
+          c.stampCurrentSource(gnd, out, 0.2 * g);
+        }
+      }
+    },
+    output(_, ctx) {
+      const outs: number[] = [];
+      for (let i = 1; i <= count; i++) outs.push(ctx.s[`out${i}`] ?? 0);
+      return { outputs: outs };
+    },
+  };
+}
+
+defineDevice('lm339', () => comparatorPack(4));
+defineDevice('lm393', () => comparatorPack(2));
+
 defineDevice('74hc138', () =>
   logicDevice({
     inputs: () => ['A', 'B', 'C', 'G1', 'G2A', 'G2B'],

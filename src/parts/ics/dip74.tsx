@@ -108,6 +108,132 @@ export const Ic74HC4051 = dip({
   roles: { ...POWER, VEE: 'gnd' },
 });
 
+// ── Schmitt-trigger inputs ───────────────────────────────────────────────────
+// The hysteresis is the point: a slow RC ramp or a bouncing switch becomes one
+// clean edge instead of a burst of them.
+
+export const Ic74HC14 = dip({
+  id: '74hc14',
+  name: 'Hex Schmitt Inverter [74HC14]',
+  label: '74HC14',
+  sub: 'HEX SCHMITT INV',
+  model: 'dip-hex-schmitt-inverter',
+  keywords: ['74hc14', '7414', 'schmitt', 'trigger', 'hysteresis', 'inverter', 'debounce'],
+  pins: [
+    '1A', '1Y', '2A', '2Y', '3A', '3Y', 'GND',
+    '4Y', '4A', '5Y', '5A', '6Y', '6A', 'VCC',
+  ],
+  roles: POWER,
+});
+
+export const Ic74HC132 = dip({
+  id: '74hc132',
+  name: 'Quad NAND Schmitt [74HC132]',
+  label: '74HC132',
+  sub: 'QUAD NAND SCHMITT',
+  model: 'dip-quad-nand-schmitt',
+  keywords: ['74hc132', '74132', 'schmitt', 'nand', 'hysteresis', 'debounce'],
+  pins: QUAD_PINS,
+  roles: POWER,
+});
+
+// ── Gates with more than two inputs ─────────────────────────────────────────
+
+/** Triple 3-input pinout, shared by the '10 / '11 / '27. */
+const TRIPLE_3_PINS = [
+  '1A', '1B', '2A', '2B', '2C', '2Y', 'GND',
+  '3Y', '3A', '3B', '3C', '1Y', '1C', 'VCC',
+];
+
+/** Dual 4-input pinout, shared by the '20 / '21. */
+const DUAL_4_PINS = [
+  '1A', '1B', 'NC1', '1C', '1D', '1Y', 'GND',
+  '2Y', '2A', '2B', 'NC2', '2C', '2D', 'VCC',
+];
+
+export const Ic74HC10 = dip({
+  id: '74hc10',
+  name: 'Triple 3-Input NAND [74HC10]',
+  label: '74HC10',
+  sub: 'TRIPLE 3-IN NAND',
+  model: 'dip-triple-3in-nand',
+  keywords: ['74hc10', '7410', 'triple', '3 input', 'nand', 'dip'],
+  pins: TRIPLE_3_PINS,
+  roles: POWER,
+});
+
+export const Ic74HC11 = dip({
+  id: '74hc11',
+  name: 'Triple 3-Input AND [74HC11]',
+  label: '74HC11',
+  sub: 'TRIPLE 3-IN AND',
+  model: 'dip-triple-3in-and',
+  keywords: ['74hc11', '7411', 'triple', '3 input', 'and', 'dip'],
+  pins: TRIPLE_3_PINS,
+  roles: POWER,
+});
+
+export const Ic74HC27 = dip({
+  id: '74hc27',
+  name: 'Triple 3-Input NOR [74HC27]',
+  label: '74HC27',
+  sub: 'TRIPLE 3-IN NOR',
+  model: 'dip-triple-3in-nor',
+  keywords: ['74hc27', '7427', 'triple', '3 input', 'nor', 'dip'],
+  pins: TRIPLE_3_PINS,
+  roles: POWER,
+});
+
+export const Ic74HC20 = dip({
+  id: '74hc20',
+  name: 'Dual 4-Input NAND [74HC20]',
+  label: '74HC20',
+  sub: 'DUAL 4-IN NAND',
+  model: 'dip-dual-4in-nand',
+  keywords: ['74hc20', '7420', 'dual', '4 input', 'nand', 'dip'],
+  pins: DUAL_4_PINS,
+  roles: POWER,
+});
+
+export const Ic74HC21 = dip({
+  id: '74hc21',
+  name: 'Dual 4-Input AND [74HC21]',
+  label: '74HC21',
+  sub: 'DUAL 4-IN AND',
+  model: 'dip-dual-4in-and',
+  keywords: ['74hc21', '7421', 'dual', '4 input', 'and', 'dip'],
+  pins: DUAL_4_PINS,
+  roles: POWER,
+});
+
+// ── Comparator packages ─────────────────────────────────────────────────────
+// Open-collector outputs, so several can be tied together as a wired-OR.
+
+export const Lm339 = dip({
+  id: 'lm339',
+  name: 'Quad Comparator [LM339]',
+  label: 'LM339',
+  sub: 'QUAD COMPARATOR',
+  model: 'lm339',
+  keywords: ['lm339', 'comparator', 'quad', 'open collector', 'threshold'],
+  pins: [
+    'OUT2', 'OUT1', 'VCC', 'IN1-', 'IN1+', 'IN2-', 'IN2+',
+    'GND', 'IN3-', 'IN3+', 'IN4-', 'IN4+', 'OUT4', 'OUT3',
+  ],
+  roles: POWER,
+});
+
+export const Lm393 = dip({
+  id: 'lm393',
+  name: 'Dual Comparator [LM393]',
+  label: 'LM393',
+  sub: 'DUAL COMPARATOR',
+  model: 'lm393',
+  keywords: ['lm393', 'comparator', 'dual', 'open collector', 'threshold'],
+  pins: ['OUT1', 'IN1-', 'IN1+', 'GND', 'IN2+', 'IN2-', 'OUT2', 'VCC'],
+  roles: POWER,
+});
+
 export const DIP74 = [
   Ic74HC02,
   Ic74HC04,
@@ -116,4 +242,13 @@ export const DIP74 = [
   Ic74HC86,
   Ic74HC138,
   Ic74HC4051,
+  Ic74HC14,
+  Ic74HC132,
+  Ic74HC10,
+  Ic74HC11,
+  Ic74HC27,
+  Ic74HC20,
+  Ic74HC21,
+  Lm339,
+  Lm393,
 ] as unknown as PartDef<never>[];
