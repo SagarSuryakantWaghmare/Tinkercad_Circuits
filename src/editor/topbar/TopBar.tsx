@@ -20,23 +20,26 @@ export function TopBar() {
     <header className="flex h-12 shrink-0 items-center gap-3 border-b border-neutral-200 bg-white px-3">
       <Logo />
 
+      {/* The name is the one thing here that can afford to shrink. */}
       <input
         value={name}
         onChange={(e) => rename(e.target.value)}
-        className="w-56 rounded border border-transparent px-2 py-1 text-[14px] font-medium text-neutral-900 outline-none hover:border-neutral-200 focus:border-sky-500 focus:bg-white"
+        className="w-32 min-w-0 flex-1 rounded border border-transparent px-2 py-1 text-[14px] font-medium text-neutral-900 outline-none hover:border-neutral-200 focus:border-sky-500 focus:bg-white sm:w-56 sm:flex-none"
       />
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex shrink-0 items-center gap-2">
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('circuitlab:toggle-sim'))}
-          className={`flex h-8 items-center gap-2 rounded-md px-3.5 text-[13px] font-semibold transition ${
+          className={`flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-3.5 text-[13px] font-semibold transition ${
             running
               ? 'bg-neutral-800 text-white hover:bg-neutral-900'
               : 'bg-sky-600 text-white hover:bg-sky-700'
           }`}
         >
           {running ? <IconStop width={13} height={13} /> : <IconPlay width={13} height={13} />}
-          {running ? 'Stop Simulation' : 'Start Simulation'}
+          {/* Below the medium breakpoint there is no room for the noun. */}
+          <span className="hidden md:inline">{running ? 'Stop Simulation' : 'Start Simulation'}</span>
+          <span className="md:hidden">{running ? 'Stop' : 'Start'}</span>
         </button>
 
         <SendToMenu />

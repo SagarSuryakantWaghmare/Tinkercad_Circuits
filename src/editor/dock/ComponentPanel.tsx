@@ -39,7 +39,7 @@ export function ComponentPanel() {
   }, [parts, category, search]);
 
   return (
-    <aside className="flex h-full w-[300px] shrink-0 flex-col border-l border-neutral-200 bg-white">
+    <aside className="flex h-full w-[220px] shrink-0 flex-col border-l border-neutral-200 bg-white lg:w-[300px]">
       <header className="border-b border-neutral-200 px-3 py-2.5">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-[13px] font-semibold text-neutral-800">Components</span>

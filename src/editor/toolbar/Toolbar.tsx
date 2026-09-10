@@ -61,7 +61,7 @@ export function Toolbar() {
   };
 
   return (
-    <div className="flex h-10 shrink-0 items-center gap-1 border-b border-neutral-200 bg-white px-2">
+    <div className="flex h-10 shrink-0 items-center gap-1 overflow-x-auto border-b border-neutral-200 bg-white px-2">
       <TBtn title="Undo (Ctrl+Z)" disabled={past === 0} onClick={undo}>
         <IconUndo />
       </TBtn>
@@ -104,7 +104,9 @@ export function Toolbar() {
 
       <Divider />
 
-      <div className="flex items-center gap-1.5 pl-1">
+      {/* Ten colour swatches are the first thing worth losing on a narrow
+          window; the number keys still set the colour. */}
+      <div className="hidden items-center gap-1.5 pl-1 lg:flex">
         <span className="text-[11px] font-medium text-neutral-500">Wire</span>
         {WIRE_COLORS.map((c) => (
           <button
@@ -128,8 +130,8 @@ export function Toolbar() {
         ))}
       </div>
 
-      <div className="ml-auto flex items-center gap-1">
-        <span className="text-[11px] font-medium text-neutral-500">View</span>
+      <div className="ml-auto flex shrink-0 items-center gap-1">
+        <span className="hidden text-[11px] font-medium text-neutral-500 sm:inline">View</span>
         {(['top', 'wires', 'schematic'] as const).map((v) => (
           <button
             key={v}
