@@ -453,12 +453,19 @@ is weakest.*
 | Bulb, motors, solenoid, piezo/speaker | `src/sim/devices/output.ts`, `extras.ts` | **done** |
 | Warning badge and damage overlay, drawn generically from part bounds | `src/canvas/items/DamageMark.tsx` | **done** |
 | Failure log panel with the remedy, click-to-select | `src/editor/FailurePanel.tsx` | **done** |
-| Extend failure to BJT/MOSFET/Darlington, regulator, relay, optocoupler | `src/sim/devices/semiconductors.ts` | todo |
-| MCU pin over-current — 20 mA warn / 40 mA break / 200 mA total | `src/sim/devices/mcu.ts` | todo |
-| Displays and ICs — supply out of range, pin over-current | `src/sim/devices/output.ts`, `digital.ts` | todo |
-| "Protect components" toggle | `src/state/editorStore.ts`, `src/sim/Simulation.ts` | todo |
+| Extend failure to BJT/Darlington, regulator, optocoupler | `src/sim/devices/semiconductors.ts` | **done** — ratings come from the part, not one constant |
+| MCU pin over-current — 20 mA warn / 40 mA break / 200 mA total | `src/sim/devices/mcu.ts` | **done** — and the port stops driving, where theirs carries on |
+| Displays and ICs — supply out of range, pin over-current | `src/sim/devices/output.ts`, `digital.ts` | todo — the last P1 item |
+| "Protect components" toggle | `src/state/editorStore.ts`, `src/sim/Simulation.ts` | **done** |
 
-**Verified so far.** A 9 V battery straight onto an LED reports *"Current
+**Verified.** Confirmed on screen: the badge on the damaged part, the panel
+naming the fault and its remedy, the Protect switch sparing the same circuit,
+the breadboard resizing between its three sizes, and all 33 starters running
+with no spurious failure. One bug found and fixed in the process — the
+simulator published its failure array by reference, so the panel never
+re-rendered and every earlier failure was invisible.
+
+A 9 V battery straight onto an LED reports *"Current
 through the LED reached 5.73 A, past its absolute maximum of 50 mA"* and
 suggests **390 Ω** — the correct E12 value, computed from the supply the
 circuit contains rather than from the LED's sagged terminal voltage. A 5 V bulb
