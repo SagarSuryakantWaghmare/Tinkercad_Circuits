@@ -20,6 +20,14 @@ export const IconPlay = (p: P) => (
   </svg>
 );
 
+export const IconHistory = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" />
+    <path d="M3.2 4.6v4.2h4.2" />
+    <path d="M12 7.6V12l3 1.8" />
+  </svg>
+);
+
 export const IconKeyboard = (p: P) => (
   <svg {...base(p)}>
     <rect x="2.5" y="6" width="19" height="12" rx="2" />

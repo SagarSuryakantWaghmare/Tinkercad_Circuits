@@ -6,6 +6,7 @@ import { WIRE_COLORS } from '@/lib/tokens';
 import {
   IconEye,
   IconEyeOff,
+  IconHistory,
   IconKeyboard,
   IconMirror,
   IconNote,
@@ -78,6 +79,12 @@ export function Toolbar() {
       </TBtn>
       <TBtn title="Delete (Del)" disabled={!hasSelection} onClick={remove}>
         <IconTrash />
+      </TBtn>
+      <TBtn
+        title="History — jump to any earlier edit"
+        onClick={() => window.dispatchEvent(new CustomEvent('circuitlab:history'))}
+      >
+        <IconHistory />
       </TBtn>
 
       <Divider />

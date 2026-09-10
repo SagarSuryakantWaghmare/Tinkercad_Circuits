@@ -12,6 +12,7 @@ import { CodePanel } from './code/CodePanel';
 import { contentBounds, useHotkeys } from './useHotkeys';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { FailurePanel } from './FailurePanel';
+import { HistoryPanel } from './HistoryPanel';
 import { useSimulation } from '@/sim/useSimulation';
 import { useEditorStore } from '@/state/editorStore';
 import { useDesignStore } from '@/state/designStore';
@@ -29,10 +30,16 @@ export function EditorRoot({ designId }: { designId?: string }) {
   useHotkeys();
 
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   useEffect(() => {
     const open = () => setShortcutsOpen(true);
+    const history = () => setHistoryOpen((v) => !v);
     window.addEventListener('circuitlab:shortcuts', open);
-    return () => window.removeEventListener('circuitlab:shortcuts', open);
+    window.addEventListener('circuitlab:history', history);
+    return () => {
+      window.removeEventListener('circuitlab:shortcuts', open);
+      window.removeEventListener('circuitlab:history', history);
+    };
   }, []);
   const sim = useSimulation();
   const stageRef = useRef<HTMLDivElement>(null);
@@ -156,10 +163,14 @@ export function EditorRoot({ designId }: { designId?: string }) {
             </div>
           )}
 
-          {/* floating inspector */}
-          <div className="pointer-events-none absolute right-3 top-3">
-            <Inspector />
-          </div>
+          {/* floating inspector — the history panel takes the same corner */}
+          {historyOpen ? (
+            <HistoryPanel onClose={() => setHistoryOpen(false)} />
+          ) : (
+            <div className="pointer-events-none absolute right-3 top-3">
+              <Inspector />
+            </div>
+          )}
 
           <ZoomReadout />
           <FailurePanel />

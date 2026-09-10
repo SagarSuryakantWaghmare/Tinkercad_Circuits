@@ -48,6 +48,8 @@ interface DesignStore {
   redo: () => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
+  /** Move `step` entries through history: negative undoes, positive redoes. */
+  jumpTo: (step: number) => void;
 
   /** Replace the document wholesale (load / import / new). Clears history. */
   load: (design: Design) => void;
@@ -161,6 +163,55 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
 
   canUndo: () => get().past.length > 0,
   canRedo: () => get().future.length > 0,
+
+  /**
+   * Jump straight to a point in the history.
+   *
+   * `step` counts from the present: −1 is one undo back, +1 one redo forward.
+   * Every entry already carries the label of the edit that produced it, so a
+   * list of them is a usable history panel — something no comparable editor
+   * offers, and which turns "undo until it looks right" into one click.
+   */
+  jumpTo: (step) => {
+    const s = get();
+    if (s.txDepth > 0 || step === 0) return;
+    if (step < 0) {
+      const n = Math.min(-step, s.past.length);
+      if (!n) return;
+      const target = s.past[s.past.length - n];
+      const movedBack = s.past.slice(s.past.length - n);
+      set({
+        design: target.design,
+        past: s.past.slice(0, s.past.length - n),
+        // The states passed over become redoable, newest first, and the
+        // current design joins them so the jump itself can be undone.
+        future: [
+          ...movedBack.slice(1).map((e, i) => ({ design: e.design, label: movedBack[i].label })),
+          { design: s.design, label: movedBack[movedBack.length - 1].label },
+          ...s.future,
+        ].slice(0, HISTORY_LIMIT),
+        revision: s.revision + 1,
+      });
+      return;
+    }
+    const n = Math.min(step, s.future.length);
+    if (!n) return;
+    const target = s.future[n - 1];
+    const movedForward = s.future.slice(0, n);
+    set({
+      design: target.design,
+      past: [
+        ...s.past,
+        { design: s.design, label: movedForward[0].label },
+        ...movedForward.slice(0, n - 1).map((e, i) => ({
+          design: e.design,
+          label: movedForward[i + 1].label,
+        })),
+      ].slice(-HISTORY_LIMIT),
+      future: s.future.slice(n),
+      revision: s.revision + 1,
+    });
+  },
 
   load: (design) =>
     set((s) => ({
