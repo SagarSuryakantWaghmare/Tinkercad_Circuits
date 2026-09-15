@@ -1,7 +1,7 @@
 import { definePart } from '../registry';
 import type { ArtProps, PartDef, TerminalDef } from '../types';
 import { C } from '@/lib/tokens';
-import { DipBody, Silk } from '../primitives';
+import { Silk } from '../primitives';
 
 const BODY = '#F7F8FA';
 const EDGE = '#5B6068';
@@ -539,45 +539,9 @@ export const LogicSounder = definePart({
   ),
 });
 
-// A DIP-packaged quad gate, for students building from real part numbers.
-export const Quad2InputNand = definePart({
-  id: '74hc00',
-  name: 'Quad NAND [74HC00]',
-  category: 'logic',
-  keywords: ['74hc00', 'quad', 'nand', 'dip', 'ttl'],
-  size: { w: 106, h: 76 },
-  origin: { x: 53, y: 38 },
-  socketable: true,
-  rotationStep: 90,
-  model: 'gate-nand',
-  terminals: ['1A', '1B', '1Y', '2A', '2B', '2Y', 'GND', '3A', '3B', '3Y', '4A', '4B', '4Y', 'VCC'].map(
-    (name, i) => {
-      const bottom = i < 7;
-      const idx = bottom ? i : 13 - i;
-      return {
-        name: name === '1A' ? 'IN1' : name === '1B' ? 'IN2' : name === '1Y' ? 'OUT' : name,
-        type: 'breadboard_male' as const,
-        x: -30 + idx * 10,
-        y: bottom ? 30 : -30,
-        dir: [0, bottom ? 1 : -1] as [number, number],
-        role: name === 'GND' ? ('gnd' as const) : name === 'VCC' ? ('power' as const) : undefined,
-      };
-    },
-  ),
-  props: [],
-  defaults: { inputs: 2 },
-  Art: () => (
-    <g>
-      <DipBody w={90} h={44} pins={14} />
-      <Silk x={0} y={-5} size={8} fill="#C9CED3" weight={600}>
-        74HC00
-      </Silk>
-      <Silk x={0} y={6} size={5.5} fill="#9BA1A7" weight={500}>
-        QUAD NAND
-      </Silk>
-    </g>
-  ),
-});
+// The 74HC00 quad NAND DIP now lives in `ics/dip74.tsx` alongside the rest of
+// the 74xx family — where all four gates on the die are wired to the correct
+// pins via the shared `dip-quad-nand` device.
 
 export const LOGIC: PartDef<never>[] = [
   AndGate, OrGate, NandGate, NorGate, XorGate, XnorGate, NotGate, BufferGate,
@@ -585,5 +549,5 @@ export const LOGIC: PartDef<never>[] = [
   HalfAdder, FullAdder, Adder4Bit,
   Multiplexer, Demultiplexer, Decoder38, Comparator4Bit,
   Counter4Bit, ShiftRegister4Bit,
-  ClockGenerator, LogicToggle, LogicProbe, LogicSounder, Quad2InputNand,
+  ClockGenerator, LogicToggle, LogicProbe, LogicSounder,
 ] as unknown as PartDef<never>[];

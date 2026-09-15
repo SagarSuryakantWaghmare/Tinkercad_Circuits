@@ -23,6 +23,18 @@ const POWER = { VCC: 'power', GND: 'gnd' } as const;
 // looking under either heading finds the part they expect.
 const LOGIC_ALT = ['logic' as const];
 
+export const Ic74HC00 = dip({
+  id: '74hc00',
+  name: 'Quad NAND [74HC00]',
+  label: '74HC00',
+  sub: 'QUAD 2-IN NAND',
+  model: 'dip-quad-nand',
+  keywords: ['74hc00', '7400', 'quad', 'nand', 'dip', 'logic'],
+  altCategories: LOGIC_ALT,
+  pins: QUAD_PINS,
+  roles: POWER,
+});
+
 export const Ic74HC02 = dip({
   id: '74hc02',
   name: 'Quad NOR [74HC02]',
@@ -284,6 +296,7 @@ export const Ic74HC93 = dip({
 });
 
 export const DIP74 = [
+  Ic74HC00,
   Ic74HC02,
   Ic74HC04,
   Ic74HC08,
