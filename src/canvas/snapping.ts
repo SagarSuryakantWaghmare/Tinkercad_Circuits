@@ -125,6 +125,78 @@ export function socketedConnections(
   return out;
 }
 
+/**
+ * Which socketable parts have a leg currently sitting in one of the given
+ * hosts' holes. This is the reverse of {@link socketedConnections} and is
+ * what lets a breadboard drag its passengers along: at drag start we snapshot
+ * which parts are riding each host, then move them by the same delta.
+ */
+export function partsRidingHosts(design: Design, hostIds: Set<string>): Set<string> {
+  const out = new Set<string>();
+  const holes = new Map<string, string>(); // "x|y" → hostId
+
+  for (const id of hostIds) {
+    const inst = design.parts[id];
+    const def = inst && getPartDef(inst.type);
+    if (!def) continue;
+    for (const t of terminalsOf(def, inst.props as never)) {
+      if (t.type !== 'breadboard_female') continue;
+      const p = localToWorld({ x: t.x, y: t.y }, { x: inst.x, y: inst.y }, inst.rotation, inst.mirrored);
+      holes.set(cellKey(p.x, p.y), id);
+    }
+  }
+  if (holes.size === 0) return out;
+
+  for (const partId in design.parts) {
+    if (hostIds.has(partId)) continue;
+    const inst = design.parts[partId];
+    const def = getPartDef(inst.type);
+    if (!def?.socketable) continue;
+    for (const t of terminalsOf(def, inst.props as never)) {
+      if (t.type !== 'breadboard_male') continue;
+      const p = localToWorld({ x: t.x, y: t.y }, { x: inst.x, y: inst.y }, inst.rotation, inst.mirrored);
+      if (holes.has(cellKey(p.x, p.y))) {
+        out.add(partId);
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * For a part being dragged, return the world positions of every host hole
+ * where one of its legs would drop in at the current position. Used to draw
+ * the target-hole highlight so the snap is visible before release.
+ */
+export function targetHoles(
+  design: Design,
+  inst: PartInstance,
+  proposed: Vec2,
+  ignoreIds: Set<string>,
+): Vec2[] {
+  const def = getPartDef(inst.type);
+  if (!def?.socketable) return [];
+  const sockets = collectSockets(design, ignoreIds);
+  if (sockets.length === 0) return [];
+  const legs = terminalsOf(def, inst.props as never).filter((t) => t.type === 'breadboard_male');
+  const out: Vec2[] = [];
+  for (const leg of legs) {
+    const legWorld = localToWorld({ x: leg.x, y: leg.y }, proposed, inst.rotation, inst.mirrored);
+    let best: { s: Vec2; d: number } | null = null;
+    for (const s of sockets) {
+      const d = Math.hypot(s.x - legWorld.x, s.y - legWorld.y);
+      if (d <= SOCKET_RADIUS && (!best || d < best.d)) best = { s, d };
+    }
+    if (best) out.push(best.s);
+  }
+  return out;
+}
+
+function cellKey(x: number, y: number) {
+  return `${Math.round(x)}|${Math.round(y)}`;
+}
+
 /** Rotation step for a part: 90° once it can socket, 30° otherwise. */
 export function rotationStepFor(inst: PartInstance): number {
   const def = getPartDef(inst.type);

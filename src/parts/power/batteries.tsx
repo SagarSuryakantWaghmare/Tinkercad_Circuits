@@ -167,6 +167,14 @@ export const BatteryAAA = cylindricalCell('battery-aaa', '1.5V Battery (AAA)', '
   'power',
 ]);
 
+export const BatteryD = cylindricalCell('battery-d', '1.5V Battery (D)', 'D', 128, 52, [
+  'battery',
+  'd cell',
+  'cell',
+  'power',
+  'torch',
+]);
+
 // ─── Coin cell ───────────────────────────────────────────────────────────────
 
 export const CoinCell = definePart({
@@ -244,6 +252,7 @@ export const BATTERIES: PartDef<never>[] = [
   Battery9V,
   BatteryAA,
   BatteryAAA,
+  BatteryD,
   CoinCell,
   BatteryPack,
 ] as unknown as PartDef<never>[];

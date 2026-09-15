@@ -2,6 +2,7 @@ import { definePart } from '../registry';
 import type { ArtProps, PartDef, TerminalDef } from '../types';
 import { C } from '@/lib/tokens';
 import { BoardShadow, HeaderStrip, Leg, Silk } from '../primitives';
+import { PartToggle } from '../simControls';
 
 // ─── Connectors ──────────────────────────────────────────────────────────────
 
@@ -287,6 +288,161 @@ export const SolarPanel = definePart<SolarProps>({
   },
 });
 
+// ─── Breadboard power module (MB102) ─────────────────────────────────────────
+
+export const BreadboardPower = definePart({
+  id: 'breadboard-power',
+  name: 'Breadboard Power Module',
+  category: 'power',
+  keywords: ['mb102', 'breadboard', 'power', 'module', '3.3v', '5v', 'rails'],
+  size: { w: 150, h: 74 },
+  origin: { x: 75, y: 32 },
+  socketable: true,
+  rotationStep: 90,
+  model: 'breadboard-power',
+  terminals: [
+    { name: 'IN+', type: 'wire', x: -66, y: -8, dir: [-1, 0], role: 'power' },
+    { name: 'GND', type: 'breadboard_male', x: -15, y: 30, dir: [0, 1], role: 'gnd', group: 'gnd' },
+    { name: '3V3', type: 'breadboard_male', x: -5, y: 30, dir: [0, 1], role: 'power' },
+    { name: '5V', type: 'breadboard_male', x: 5, y: 30, dir: [0, 1], role: 'power' },
+    { name: 'GND2', type: 'breadboard_male', x: 15, y: 30, dir: [0, 1], role: 'gnd', group: 'gnd' },
+  ],
+  props: [],
+  defaults: {},
+  Art: ({ state, simulating, interact }: ArtProps) => {
+    const on = Boolean(state?.on);
+    return (
+      <g>
+        <BoardShadow w={138} h={54} rx={3} />
+        <rect x={-69} y={-27} width={138} height={54} rx={3} fill="#1B4D8C" stroke="#123563" />
+        {/* barrel jack on the left */}
+        <rect x={-66} y={-14} width={16} height={22} rx={2} fill="#1F2123" stroke="#0E1011" />
+        <circle cx={-58} cy={-3} r={5.5} fill="#0E0F10" />
+        <circle cx={-58} cy={-3} r={2.4} fill="#3A3E42" />
+        {/* regulator can */}
+        <rect x={-30} y={-14} width={14} height={22} rx={2} fill="#2B2E31" stroke="#17191B" />
+        <Silk x={-23} y={-3} size={4.5} fill="#C9CED3" weight={700}>
+          AMS
+        </Silk>
+        {/* power LED */}
+        <circle cx={0} cy={-8} r={3.4} fill={on ? '#E24B3F' : '#5A2622'} stroke="#8E1616" />
+        {on && <circle cx={0} cy={-8} r={7} fill="#E24B3F" opacity={0.3} />}
+        <Silk x={0} y={4} size={4.6} fill="#DCE8F5" weight={700}>
+          MB102
+        </Silk>
+        <Silk x={0} y={11} size={4} fill="#9FC0E0" weight={500}>
+          3V3 / 5V
+        </Silk>
+        {/* header pins */}
+        {[-15, -5, 5, 15].map((x, i) => (
+          <g key={x}>
+            <rect x={x - 1.4} y={18} width={2.8} height={12} fill={C.solderPad} />
+            <Silk x={x} y={20} size={3.6} fill="#DCE8F5" weight={600}>
+              {['G', '3V', '5V', 'G'][i]}
+            </Silk>
+          </g>
+        ))}
+        {/* on/off switch on the right */}
+        <rect x={40} y={-12} width={22} height={18} rx={2} fill="#2E3236" stroke="#17191B" />
+        <rect x={on ? 47 : 42} y={-10} width={13} height={14} rx={1.5} fill={on ? '#E8EAEC' : '#8E949A'} />
+        <Silk x={51} y={16} size={4.6} fill="#DCE8F5" weight={700}>
+          {on ? 'ON' : 'OFF'}
+        </Silk>
+        {simulating && (
+          <PartToggle
+            x={0}
+            y={-40}
+            on={on}
+            onLabel="ON"
+            offLabel="OFF"
+            onToggle={() => interact?.('toggle')}
+          />
+        )}
+      </g>
+    );
+  },
+});
+
+// ─── Photovoltaic single cell ────────────────────────────────────────────────
+
+interface SolarCellProps extends Record<string, string | number> {
+  voltage: number;
+  current: number;
+}
+
+export const SolarCell = definePart<SolarCellProps>({
+  id: 'solar-cell',
+  name: 'Photovoltaic Cell',
+  category: 'power',
+  keywords: ['solar', 'cell', 'photovoltaic', 'single', '0.5v'],
+  size: { w: 80, h: 76 },
+  origin: { x: 40, y: 36 },
+  model: 'solar-panel',
+  terminals: [
+    { name: '+', type: 'wire', x: -14, y: 36, dir: [0, 1], role: 'power' },
+    { name: '-', type: 'wire', x: 14, y: 36, dir: [0, 1], role: 'gnd' },
+  ],
+  props: [
+    { key: 'voltage', label: 'Open-circuit voltage', kind: 'number', unit: 'V', min: 0.3, max: 1, step: 0.05 },
+    { key: 'current', label: 'Short-circuit current', kind: 'number', unit: 'A', min: 0.005, max: 0.2, step: 0.005 },
+  ],
+  defaults: { voltage: 0.55, current: 0.05 },
+  Art: ({ state, simulating, interact }: ArtProps<SolarCellProps>) => {
+    const illum = Number(state?.illumination ?? 100);
+    return (
+      <g>
+        <BoardShadow w={68} h={58} rx={2} />
+        <rect x={-34} y={-29} width={68} height={58} rx={2} fill="#14264A" stroke="#0B1830" />
+        {/* fine grid lines a monocrystalline cell shows */}
+        {Array.from({ length: 5 }, (_, i) => (
+          <line
+            key={i}
+            x1={-30 + i * 15}
+            y1={-27}
+            x2={-30 + i * 15}
+            y2={27}
+            stroke="#9FB4D8"
+            strokeWidth={0.7}
+            opacity={0.55 + (illum / 100) * 0.35}
+          />
+        ))}
+        <line x1={-32} y1={0} x2={32} y2={0} stroke="#C0CFE8" strokeWidth={1.4} opacity={0.7} />
+        <Leg x1={-14} y1={28} x2={-14} y2={36} w={3} color="#C11F1F" />
+        <Leg x1={14} y1={28} x2={14} y2={36} w={3} color="#171919" />
+        {simulating && (
+          <>
+            <Silk x={0} y={-38} size={7} fill="#4A4F55" weight={700}>
+              {`${Math.round(illum)}% sun`}
+            </Silk>
+            <rect
+              x={-34}
+              y={-29}
+              width={68}
+              height={58}
+              fill="transparent"
+              style={{ cursor: 'ns-resize' }}
+              onPointerDown={(e) => {
+                const start = e.clientY;
+                const move = (ev: PointerEvent) => {
+                  const v = Math.max(0, Math.min(100, illum - (ev.clientY - start) * 0.6));
+                  interact?.('illumination', v);
+                };
+                const up = () => {
+                  window.removeEventListener('pointermove', move);
+                  window.removeEventListener('pointerup', up);
+                };
+                e.stopPropagation();
+                window.addEventListener('pointermove', move);
+                window.addEventListener('pointerup', up);
+              }}
+            />
+          </>
+        )}
+      </g>
+    );
+  },
+});
+
 export const VccSymbol = definePart({
   id: 'vcc-symbol',
   name: 'VCC Supply',
@@ -437,7 +593,7 @@ export const CONNECTORS: PartDef<never>[] = [
 ] as unknown as PartDef<never>[];
 
 export const POWER_EXTRAS: PartDef<never>[] = [
-  SolarPanel, VccSymbol, GndSymbol,
+  BreadboardPower, SolarPanel, SolarCell, VccSymbol, GndSymbol,
 ] as unknown as PartDef<never>[];
 
 export const NETWORKING: PartDef<never>[] = [Esp8266, Hc05, Nrf24] as unknown as PartDef<never>[];

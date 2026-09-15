@@ -80,6 +80,48 @@ export const Gearmotor = makeMotor('gearmotor', 'Hobby Gearmotor', [
   'tt motor',
 ]);
 
+// Hobby motor with a propeller fitted to the shaft. Same electrical model as
+// the plain DC motor; only the art differs, adding a rotor blade that spins
+// with the solved shaft angle.
+function PropMotorArt(p: ArtProps<MotorProps>) {
+  const angle = Number(p.state?.angle ?? 0);
+  const rpm = Number(p.state?.rpm ?? 0);
+  const spinning = Math.abs(rpm) > 50;
+  return (
+    <g>
+      <MotorArt {...p} />
+      {/* Propeller hub sits just past the motor shaft. */}
+      <g transform={`translate(94,0) rotate(${angle})`}>
+        <ellipse cx={0} cy={0} rx={22} ry={3.2} fill="#E8EAEC" stroke="#8E949A" opacity={spinning ? 0.55 : 0.95} />
+        <ellipse cx={0} cy={0} rx={3.2} ry={22} fill="#E8EAEC" stroke="#8E949A" opacity={spinning ? 0.55 : 0.95} />
+        <circle cx={0} cy={0} r={4.5} fill="#8E949A" stroke="#5A6066" />
+      </g>
+      {spinning && (
+        <circle cx={94} cy={0} r={24} fill="none" stroke={C.select} strokeWidth={1.2} opacity={0.35} />
+      )}
+    </g>
+  );
+}
+
+export const HobbyMotorProp = definePart<MotorProps>({
+  id: 'hobby-motor-prop',
+  name: 'Hobby Motor with Propeller',
+  category: 'output',
+  keywords: ['motor', 'propeller', 'fan', 'hobby', 'dc', 'spin'],
+  size: { w: 200, h: 96 },
+  origin: { x: 100, y: 48 },
+  model: 'dc-motor',
+  terminals: [
+    { name: 'terminal1', type: 'wire', x: -70, y: -14, dir: [-1, 0] },
+    { name: 'terminal2', type: 'wire', x: -70, y: 14, dir: [-1, 0] },
+  ],
+  props: [
+    { key: 'ratedVoltage', label: 'Rated voltage', kind: 'number', unit: 'V', min: 1, max: 24 },
+  ],
+  defaults: { ratedVoltage: 6 },
+  Art: PropMotorArt,
+});
+
 // Tinkercad ships a DC motor with a back-of-the-shaft optical encoder. It
 // looks like a regular DC motor but has two extra output pins (A/B channels
 // in quadrature) so a sketch can count rotations. Behaviour is the same
@@ -239,6 +281,74 @@ export const ContinuousServo = makeServo(
   ['servo', 'continuous', '360', 'wheel'],
 );
 
+// ─── Standard servo ──────────────────────────────────────────────────────────
+// Bigger body than the SG90; same electrical model, same three-wire lead.
+
+function StandardServoArt({ props, state }: ArtProps<ServoProps>) {
+  const continuous = String(props.kind) === 'continuous';
+  const angle = Number(state?.angle ?? 90);
+  const speed = Number(state?.speed ?? 0);
+  const hornAngle = continuous ? Number(state?.hornAngle ?? 0) : angle - 90;
+  return (
+    <g>
+      <BoardShadow w={128} h={96} rx={4} />
+      <rect x={-64} y={-36} width={128} height={72} rx={4} fill="#1E4FA0" stroke="#153A78" />
+      <rect x={-64} y={-46} width={128} height={12} rx={3} fill="#2A5FB8" />
+      <circle cx={-54} cy={-40} r={3.6} fill="#12305F" />
+      <circle cx={54} cy={-40} r={3.6} fill="#12305F" />
+      {/* larger gearbox hub */}
+      <circle cx={22} cy={0} r={24} fill="#2A5FB8" stroke="#153A78" />
+      <circle cx={22} cy={0} r={13} fill="#D8DCE1" stroke="#A8AEB5" />
+      <g transform={`rotate(${hornAngle} 22 0)`}>
+        <rect x={17} y={-52} width={10} height={54} rx={4} fill="#F0F2F4" stroke="#C2C7CC" strokeWidth={0.8} />
+        <circle cx={22} cy={-46} r={2.4} fill="#B6BCC2" />
+        <circle cx={22} cy={-38} r={2.4} fill="#B6BCC2" />
+        <circle cx={22} cy={-30} r={2.4} fill="#B6BCC2" />
+      </g>
+      <circle cx={22} cy={0} r={4.4} fill="#8E949A" />
+      <path d="M-64,-10 L-82,-10" stroke="#C11F1F" strokeWidth={4} strokeLinecap="round" />
+      <path d="M-64,0 L-82,0" stroke="#8A5A2B" strokeWidth={4} strokeLinecap="round" />
+      <path d="M-64,10 L-82,10" stroke="#E6C619" strokeWidth={4} strokeLinecap="round" />
+      <Silk x={-22} y={20} size={7} fill="#BBD0EC" weight={600}>
+        MG996R
+      </Silk>
+      {state && (
+        <Silk x={-22} y={-14} size={9} fill="#FFFFFF" weight={700}>
+          {continuous ? `${Math.round(speed)}%` : `${Math.round(angle)}°`}
+        </Silk>
+      )}
+    </g>
+  );
+}
+
+export const StandardServo = definePart<ServoProps>({
+  id: 'standard-servo',
+  name: 'Standard Servo',
+  category: 'output',
+  keywords: ['servo', 'standard', 'mg996r', 'motor', 'positional'],
+  size: { w: 172, h: 116 },
+  origin: { x: 86, y: 58 },
+  model: 'servo',
+  terminals: [
+    { name: 'power', type: 'wire', x: -82, y: -10, dir: [-1, 0], role: 'power' },
+    { name: 'gnd', type: 'wire', x: -82, y: 0, dir: [-1, 0], role: 'gnd' },
+    { name: 'signal', type: 'wire', x: -82, y: 10, dir: [-1, 0], role: 'pwm' },
+  ],
+  props: [
+    {
+      key: 'kind',
+      label: 'Type',
+      kind: 'select',
+      options: [
+        { value: 'positional', label: 'Positional (0–180°)' },
+        { value: 'continuous', label: 'Continuous rotation' },
+      ],
+    },
+  ],
+  defaults: { kind: 'positional' },
+  Art: StandardServoArt,
+});
+
 // ─── Stepper motor ───────────────────────────────────────────────────────────
 
 export const StepperMotor = definePart({
@@ -363,8 +473,10 @@ export const MOTORS: PartDef<never>[] = [
   DcMotor,
   DcMotorEncoder,
   Gearmotor,
+  HobbyMotorProp,
   MicroServo,
   ContinuousServo,
+  StandardServo,
   StepperMotor,
   VibrationMotor,
   Solenoid,

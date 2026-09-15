@@ -21,7 +21,7 @@ import { PlacedPart } from './items/PlacedPart';
 import { DraftWire, WireItem, type ResolvedWire } from './items/WireItem';
 import { NoteItem } from './items/NoteItem';
 import { indexTerminals, pickTerminal, worldTerminals } from './terminals';
-import { rotationStepFor, snapPlacement } from './snapping';
+import { partsRidingHosts, rotationStepFor, snapPlacement, targetHoles } from './snapping';
 import { simBus } from '@/sim/bus';
 import { ContextMenu, type MenuItem } from '@/editor/ContextMenu';
 import { contentBounds, selectionBounds } from '@/editor/useHotkeys';
@@ -123,7 +123,13 @@ export function CanvasRoot() {
   }, []);
 
   // ── pointer state machine ──────────────────────────────────────────────────
-  const downRef = useRef<{ screen: Vec2; world: Vec2; moved: boolean } | null>(null);
+  const downRef = useRef<{
+    screen: Vec2;
+    world: Vec2;
+    moved: boolean;
+    passengers?: string[];
+  } | null>(null);
+  const [snapPreview, setSnapPreview] = useState<Vec2[]>([]);
 
   const onBackgroundDown = (e: React.PointerEvent) => {
     if (
@@ -184,7 +190,14 @@ export function CanvasRoot() {
     }
 
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
-    downRef.current = { screen: screenOf(e), world, moved: false };
+    // Freeze which parts are riding the dragged breadboards so the whole
+    // assembly moves together: dragging a breadboard should carry every
+    // component sitting in its holes, matching the reference product.
+    const selection = ed.selectedParts.includes(partId) ? ed.selectedParts : [partId];
+    const passengers = Array.from(partsRidingHosts(design, new Set(selection))).filter(
+      (id) => !selection.includes(id),
+    );
+    downRef.current = { screen: screenOf(e), world, moved: false, passengers };
     begin('Move');
     ed.setMode({ kind: 'dragParts', origin: world, moved: false });
   };
@@ -248,8 +261,11 @@ export function CanvasRoot() {
       const dx = world.x - mode.origin.x;
       const dy = world.y - mode.origin.y;
       const ids = ed.selectedParts;
-      const moving = new Set(ids);
+      const passengers = d.passengers ?? [];
+      const groupIds = [...ids, ...passengers];
+      const moving = new Set(groupIds);
 
+      let previewHoles: Vec2[] = [];
       transact('Move', (dd) => {
         // Snap using the primary (first) part, then apply the same delta to all
         // so a multi-selection keeps its internal spacing.
@@ -263,13 +279,17 @@ export function CanvasRoot() {
         );
         const adx = snapped.x - lead.x;
         const ady = snapped.y - lead.y;
-        for (const id of ids) {
+        for (const id of groupIds) {
           const p = dd.parts[id];
           if (!p || p.locked) continue;
           p.x += adx;
           p.y += ady;
         }
+        // Sample target holes for the primary at its new position so the
+        // user sees which sockets a leg is about to drop into.
+        previewHoles = targetHoles(dd, lead, { x: lead.x, y: lead.y }, moving);
       });
+      setSnapPreview(previewHoles);
       ed.setMode({ kind: 'dragParts', origin: { x: mode.origin.x + dx, y: mode.origin.y + dy }, moved: true });
     }
   };
@@ -297,6 +317,7 @@ export function CanvasRoot() {
       commit();
       ed.setMode({ kind: 'idle' });
       downRef.current = null;
+      setSnapPreview([]);
       return;
     }
 
@@ -676,6 +697,18 @@ export function CanvasRoot() {
           <g pointerEvents="none" data-export="false">
             {hoverGroup.map((p, i) => (
               <circle key={i} cx={p.x} cy={p.y} r={4.5} fill={C.netHighlight} opacity={0.85} />
+            ))}
+          </g>
+        )}
+
+        {/* 7b — breadboard target-hole preview while dragging a socketable part */}
+        {snapPreview.length > 0 && (
+          <g pointerEvents="none" data-export="false">
+            {snapPreview.map((p, i) => (
+              <g key={i}>
+                <circle cx={p.x} cy={p.y} r={7} fill="#22C55E" opacity={0.22} />
+                <circle cx={p.x} cy={p.y} r={3.8} fill="none" stroke="#16A34A" strokeWidth={1.4} opacity={0.9} />
+              </g>
             ))}
           </g>
         )}

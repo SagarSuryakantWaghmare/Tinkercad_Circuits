@@ -76,6 +76,45 @@ defineDevice('power-supply', (): Device => ({
   },
 }));
 
+// ─── Breadboard power module ─────────────────────────────────────────────────
+//
+// The MB102 rail supply that clips onto a breadboard: an on-board switch feeds
+// two regulated rails (5 V and 3.3 V) referenced to a shared ground. When the
+// switch is off both rails are pulled down to ground through a leakage
+// resistance, matching what happens on a real board when the regulator is
+// disabled.
+
+defineDevice('breadboard-power', (): Device => ({
+  stamp(c, ctx) {
+    const on = ctx.s.on === undefined ? 1 : ctx.s.on;
+    const g = 1 / 0.05;
+    if (on === 1) {
+      c.stampConductance(ctx.node('5V'), ctx.node('GND'), g);
+      c.stampCurrentSource(ctx.node('GND'), ctx.node('5V'), 5 * g);
+      c.stampConductance(ctx.node('3V3'), ctx.node('GND'), g);
+      c.stampCurrentSource(ctx.node('GND'), ctx.node('3V3'), 3.3 * g);
+    } else {
+      c.stampResistance(ctx.node('5V'), ctx.node('GND'), 1e6);
+      c.stampResistance(ctx.node('3V3'), ctx.node('GND'), 1e6);
+    }
+    // IN+ is the barrel/USB input jack; treat as passive with a soft tie to
+    // ground so a floating input never leaves the matrix singular.
+    c.stampResistance(ctx.node('IN+'), ctx.node('GND'), 1e6);
+  },
+  interact(event, value, ctx) {
+    if (event === 'toggle') ctx.s.on = ctx.s.on === 1 ? 0 : 1;
+    if (event === 'set') ctx.s.on = value ? 1 : 0;
+  },
+  output(c, ctx) {
+    const on = ctx.s.on === undefined ? 1 : ctx.s.on;
+    return {
+      on: on === 1,
+      v5: c.v(ctx.node('5V')) - c.v(ctx.node('GND')),
+      v3: c.v(ctx.node('3V3')) - c.v(ctx.node('GND')),
+    };
+  },
+}));
+
 // ─── Solar panel ─────────────────────────────────────────────────────────────
 
 defineDevice('solar-panel', (): Device => ({

@@ -527,6 +527,68 @@ export const Pushbutton12 = definePart({
   },
 });
 
+// Miniature SPDT slide switch: taller and thinner than the standard slide
+// switch, matching the small PCB-mount part Tinkercad ships. Same three-way
+// electrical model (position 0 / OFF / 2) as the full-size slideswitch.
+export const SlideSwitchMini = definePart({
+  id: 'slide-switch-mini',
+  name: 'Slide Switch (Mini SPDT)',
+  category: 'input',
+  keywords: ['slide', 'switch', 'spdt', 'mini', 'small', 'selector'],
+  size: { w: 26, h: 60 },
+  origin: { x: 13, y: 26 },
+  socketable: true,
+  model: 'slideswitch',
+  terminals: [
+    { name: '1', type: 'breadboard_male', x: -8, y: 26, dir: [0, 1] },
+    { name: 'common', type: 'breadboard_male', x: 0, y: 26, dir: [0, 1] },
+    { name: '2', type: 'breadboard_male', x: 8, y: 26, dir: [0, 1] },
+  ],
+  props: [],
+  defaults: {},
+  Art: ({ state, simulating, interact }: ArtProps) => {
+    const pos = Math.max(0, Math.min(2, Number(state?.position ?? 0)));
+    const knobY = pos === 0 ? -9 : pos === 2 ? 7 : -1;
+    const label = pos === 0 ? '1' : pos === 2 ? '2' : 'OFF';
+    return (
+      <g>
+        {[-8, 0, 8].map((x) => (
+          <Leg key={x} x1={x} y1={16} x2={x} y2={26} />
+        ))}
+        <rect x={-10} y={-22} width={20} height={40} rx={2} fill="#B9BEC4" stroke="#8E949A" />
+        <rect x={-6} y={-18} width={12} height={32} rx={1.5} fill="#2B2E30" />
+        <rect
+          x={-5}
+          y={knobY}
+          width={10}
+          height={8}
+          rx={1.2}
+          fill={pos === 1 ? '#F5D033' : '#E8EAEC'}
+          stroke="#A6ACB2"
+          strokeWidth={0.6}
+        />
+        <Silk x={0} y={-26} size={4.2} fill="#5A6068" weight={700}>
+          {label}
+        </Silk>
+        {simulating && (
+          <rect
+            x={-11}
+            y={-24}
+            width={22}
+            height={46}
+            fill="transparent"
+            style={{ cursor: 'pointer' }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              interact?.('toggle');
+            }}
+          />
+        )}
+      </g>
+    );
+  },
+});
+
 // Tinkercad ships fixed-width DIP switch variants alongside the generic bank.
 // The generic DipSwitch already handles 2/4/6/8 ways via a prop; these
 // presets show up in the palette directly so a student searching for "DIP
@@ -628,6 +690,129 @@ export const DipSwitchDpst = definePart<DipProps>({
   },
 });
 
+// ─── Pushbutton, 30 mm dome ──────────────────────────────────────────────────
+
+export const Pushbutton30 = definePart({
+  id: 'pushbutton-30mm',
+  name: 'Pushbutton (30mm)',
+  category: 'input',
+  keywords: ['button', 'arcade', 'dome', '30mm', 'large', 'momentary'],
+  size: { w: 96, h: 108 },
+  origin: { x: 48, y: 54 },
+  socketable: true,
+  model: 'pushbutton',
+  terminals: [
+    { name: '1a', type: 'breadboard_male', x: -34, y: -36, dir: [0, -1], group: 'L' },
+    { name: '2a', type: 'breadboard_male', x: 34, y: -36, dir: [0, -1], group: 'R' },
+    { name: '1b', type: 'breadboard_male', x: -34, y: 36, dir: [0, 1], group: 'L' },
+    { name: '2b', type: 'breadboard_male', x: 34, y: 36, dir: [0, 1], group: 'R' },
+  ],
+  props: [],
+  defaults: {},
+  Art: ({ state, simulating, interact }: ArtProps) => {
+    const pressed = !!state?.pressed;
+    return (
+      <g>
+        {[[-34, -36], [34, -36], [-34, 36], [34, 36]].map(([x, y]) => (
+          <path
+            key={`${x},${y}`}
+            d={`M${x},${y > 0 ? 22 : -22} L${x},${y}`}
+            stroke={C.lead}
+            strokeWidth={3.5}
+            strokeLinecap="round"
+          />
+        ))}
+        <rect x={-32} y={-24} width={64} height={48} rx={4} fill="#2E3133" stroke="#1A1C1D" />
+        {/* skirt around the dome */}
+        <circle cx={0} cy={0} r={26} fill="#3B3F42" stroke="#1A1C1D" strokeWidth={0.8} />
+        <circle cx={0} cy={0} r={22} fill="#C11F1F" stroke="#8E1616" strokeWidth={1} />
+        {/* dome with a soft highlight */}
+        <circle cx={0} cy={0} r={pressed ? 18 : 20} fill={pressed ? '#8E1616' : '#E24B3F'} stroke="#5A0F0F" strokeWidth={0.8} />
+        <ellipse cx={-6} cy={-6} rx={9} ry={5} fill="#F2938C" opacity={0.55} />
+        {simulating && (
+          <circle
+            cx={0}
+            cy={0}
+            r={24}
+            fill="transparent"
+            style={{ cursor: 'pointer' }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              interact?.('press', true);
+            }}
+            onPointerUp={() => interact?.('press', false)}
+            onPointerLeave={() => interact?.('press', false)}
+          />
+        )}
+      </g>
+    );
+  },
+});
+
+// ─── Rocker switch (SPST) ────────────────────────────────────────────────────
+
+export const RockerSwitch = definePart({
+  id: 'rocker-switch',
+  name: 'Rocker Switch',
+  category: 'input',
+  keywords: ['rocker', 'switch', 'spst', 'mains', 'appliance', 'on off'],
+  size: { w: 80, h: 74 },
+  origin: { x: 40, y: 36 },
+  socketable: true,
+  model: 'toggle-switch',
+  terminals: [
+    { name: 'terminal1', type: 'breadboard_male', x: -14, y: 30, dir: [0, 1] },
+    { name: 'terminal2', type: 'breadboard_male', x: 14, y: 30, dir: [0, 1] },
+  ],
+  props: [],
+  defaults: {},
+  Art: ({ state, simulating, interact }: ArtProps) => {
+    const on = !!state?.closed;
+    return (
+      <g>
+        {/* mounting bezel */}
+        <rect x={-30} y={-22} width={60} height={44} rx={3} fill="#2E3133" stroke="#0E1011" strokeWidth={1.2} />
+        <rect x={-27} y={-19} width={54} height={38} rx={2} fill="#1A1C1D" />
+        {/* two-tone rocker: red half glows when on, black half sits raised when off */}
+        <path
+          d="M-24,-16 L2,-16 L4,0 L2,16 L-24,16 Z"
+          fill={on ? '#E24B3F' : '#8E1616'}
+          stroke="#0E1011"
+          strokeWidth={0.8}
+        />
+        <path
+          d="M24,-16 L-2,-16 L-4,0 L-2,16 L24,16 Z"
+          fill={on ? '#1F2123' : '#3B3F42'}
+          stroke="#0E1011"
+          strokeWidth={0.8}
+        />
+        <Silk x={-14} y={0} size={9} fill="#F2E9C6" weight={800}>
+          I
+        </Silk>
+        <Silk x={14} y={0} size={9} fill="#C9CED3" weight={800}>
+          O
+        </Silk>
+        <Leg x1={-14} y1={20} x2={-14} y2={30} />
+        <Leg x1={14} y1={20} x2={14} y2={30} />
+        {simulating && (
+          <rect
+            x={-30}
+            y={-22}
+            width={60}
+            height={44}
+            fill="transparent"
+            style={{ cursor: 'pointer' }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              interact?.('toggle');
+            }}
+          />
+        )}
+      </g>
+    );
+  },
+});
+
 export const CONTROLS: PartDef<never>[] = [
   DipSwitch,
   DipSwitchSpst4,
@@ -640,4 +825,7 @@ export const CONTROLS: PartDef<never>[] = [
   Joystick,
   LimitSwitch,
   Pushbutton12,
+  Pushbutton30,
+  RockerSwitch,
+  SlideSwitchMini,
 ] as unknown as PartDef<never>[];

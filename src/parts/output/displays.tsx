@@ -119,6 +119,18 @@ export const SevenSegment = definePart<SegProps>({
   Art: SevenSegArt,
 });
 
+// Common-anode variant: same silicon and same 10-pin footprint, different
+// polarity convention. The sim device already branches on the `common` prop,
+// so shipping a preset lets the palette carry both variants directly.
+export const SevenSegmentCa = definePart<SegProps>({
+  ...SevenSegment,
+  id: 'seven-segment-ca',
+  name: '7-Segment Display (Common Anode)',
+  keywords: ['seven segment', 'digit', 'display', 'numeric', '7seg', 'anode', 'ca'],
+  basic: false,
+  defaults: { common: 'anode', color: 'red' },
+});
+
 // ─── LED bar graph ───────────────────────────────────────────────────────────
 
 export const BarGraph = definePart({
@@ -571,6 +583,7 @@ export const NeoPixelStrip20 = neoStripPreset(
 
 export const DISPLAYS: PartDef<never>[] = [
   SevenSegment,
+  SevenSegmentCa,
   BarGraph,
   Lcd16x2,
   Lcd20x4,

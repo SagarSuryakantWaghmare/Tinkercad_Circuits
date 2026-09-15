@@ -633,6 +633,64 @@ export const ForceSensor = twoLead({
   },
 });
 
+// Square 1.5" FSR: flat carbon pad with solder tabs off one edge. Shares the
+// force-sensor device so the sim behaves identically to the round version.
+export const ForceSensorSquare = definePart({
+  id: 'force-sensor-square',
+  name: 'Force Sensor (Square 1.5")',
+  category: 'input',
+  keywords: ['force', 'fsr', 'pressure', 'square', 'flat', 'pad', 'touch'],
+  size: { w: 56, h: 74 },
+  origin: { x: 28, y: 37 },
+  socketable: true,
+  model: 'force-sensor',
+  terminals: [
+    { name: 'terminal1', type: 'breadboard_male', x: -5, y: 32, dir: [0, 1] },
+    { name: 'terminal2', type: 'breadboard_male', x: 5, y: 32, dir: [0, 1] },
+  ],
+  props: [],
+  defaults: {},
+  Art: ({ state, simulating, interact }: ArtProps) => {
+    const f = Number(state?.value ?? 0) / 100;
+    return (
+      <g>
+        <Leg x1={-5} y1={20} x2={-5} y2={32} />
+        <Leg x1={5} y1={20} x2={5} y2={32} />
+        {/* Solder tail block above the tabs. */}
+        <rect x={-9} y={14} width={18} height={8} rx={1} fill="#2B2E31" />
+        {/* Flat square pad, ~40 x 40. */}
+        <rect x={-20} y={-24} width={40} height={40} rx={2} fill="#1F2325" stroke="#0F1112" />
+        <rect x={-17} y={-21} width={34} height={34} rx={1.5} fill="#2E3336" />
+        {/* Compression indicator — inner dark region grows with force. */}
+        <rect
+          x={-17 + 17 * (1 - f)}
+          y={-21 + 17 * (1 - f)}
+          width={34 * f}
+          height={34 * f}
+          rx={1}
+          fill="#5A5F64"
+          opacity={0.5 + f * 0.5}
+        />
+        <Silk x={0} y={-4} size={5} fill="#8E949A" weight={600}>
+          FSR
+        </Silk>
+        {simulating && (
+          <PartSlider
+            x={0}
+            y={-38}
+            width={78}
+            value={Number(state?.value ?? 0)}
+            min={0}
+            max={100}
+            label={`${Math.round(Number(state?.value ?? 0))}% force`}
+            onChange={(v) => interact?.('set', v)}
+          />
+        )}
+      </g>
+    );
+  },
+});
+
 export const Thermistor = twoLead({
   id: 'thermistor',
   name: 'Thermistor (NTC)',
@@ -771,6 +829,6 @@ export const SENSORS: PartDef<never>[] = [
   PirSensor, GasSensor, FlameSensor, SoilMoisture, WaterLevel, SoundSensor,
   HallSensor, IrReceiver, IrProximity, AmbientLight, RtcModule,
   Ultrasonic4, Ultrasonic3,
-  FlexSensor, ForceSensor, Thermistor, TiltSensor, VibrationSensor, ReedSwitch,
+  FlexSensor, ForceSensor, ForceSensorSquare, Thermistor, TiltSensor, VibrationSensor, ReedSwitch,
   Phototransistor, Photodiode,
 ] as unknown as PartDef<never>[];

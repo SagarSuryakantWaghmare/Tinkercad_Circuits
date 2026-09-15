@@ -183,4 +183,57 @@ export const RgbLed = definePart<RgbProps>({
   Art: RgbLedArt,
 });
 
-export const LEDS: PartDef<never>[] = [Led, LedLarge, RgbLed] as unknown as PartDef<never>[];
+// Common-anode variant. Mirror art shape, but the long lead now sits on the
+// anode side and the channel pins are labelled R/G/B like real CA parts.
+interface RgbCaProps extends Record<string, string | number | boolean> {
+  commonAnode: boolean;
+}
+
+function RgbLedCaArt({ state }: ArtProps<RgbCaProps>) {
+  const r = clamp01(Number(state?.r ?? 0));
+  const g = clamp01(Number(state?.g ?? 0));
+  const b = clamp01(Number(state?.b ?? 0));
+  const lit = Math.max(r, g, b);
+  const hex = `rgb(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)})`;
+  return (
+    <g>
+      {/* Anode is the long leg (second from the left on a CA part). */}
+      <Leg x1={-15} y1={4} x2={-15} y2={18} />
+      <Leg x1={-5} y1={4} x2={-5} y2={26} />
+      <Leg x1={5} y1={4} x2={5} y2={18} />
+      <Leg x1={15} y1={4} x2={15} y2={18} />
+      {lit > 0.01 && (
+        <>
+          <circle cx={0} cy={-4} r={28} fill={hex} opacity={0.18 * lit} />
+          <circle cx={0} cy={-4} r={18} fill={hex} opacity={0.32 * lit} />
+        </>
+      )}
+      <path d="M-12,2 L12,2 L12,5 L-12,5 Z" fill="#E4E4E4" stroke="rgba(0,0,0,0.2)" strokeWidth={0.5} />
+      <circle cx={0} cy={-4} r={11} fill="#EDEDED" stroke="rgba(0,0,0,0.2)" strokeWidth={0.6} opacity={0.9} />
+      {lit > 0.01 && <circle cx={0} cy={-4} r={7.5} fill={hex} opacity={0.6 + 0.4 * lit} />}
+      <ellipse cx={-3.5} cy={-8} rx={3.6} ry={2.6} fill="#FFFFFF" opacity={0.55} />
+    </g>
+  );
+}
+
+export const RgbLedCa = definePart<RgbCaProps>({
+  id: 'led-rgb-ca',
+  name: 'RGB LED (Common Anode)',
+  category: 'output',
+  keywords: ['rgb', 'colour', 'tricolor', 'anode', 'common anode', 'ca'],
+  size: { w: 46, h: 52 },
+  origin: { x: 23, y: 20 },
+  socketable: true,
+  model: 'led-rgb',
+  terminals: [
+    { name: 'R', type: 'breadboard_male', x: -15, y: 18, dir: [0, 1] },
+    { name: 'anode', type: 'breadboard_male', x: -5, y: 26, dir: [0, 1], role: 'power' },
+    { name: 'G', type: 'breadboard_male', x: 5, y: 18, dir: [0, 1] },
+    { name: 'B', type: 'breadboard_male', x: 15, y: 18, dir: [0, 1] },
+  ],
+  props: [],
+  defaults: { commonAnode: true },
+  Art: RgbLedCaArt,
+});
+
+export const LEDS: PartDef<never>[] = [Led, LedLarge, RgbLed, RgbLedCa] as unknown as PartDef<never>[];

@@ -112,4 +112,47 @@ export const Speaker = definePart({
   },
 });
 
-export const SOUND: PartDef<never>[] = [Piezo, Speaker] as unknown as PartDef<never>[];
+// ─── Passive piezo element ───────────────────────────────────────────────────
+
+export const PiezoPassive = definePart({
+  id: 'piezo-passive',
+  name: 'Piezo (Passive)',
+  category: 'output',
+  keywords: ['piezo', 'passive', 'element', 'tone', 'speaker', 'transducer'],
+  size: { w: 80, h: 90 },
+  origin: { x: 40, y: 38 },
+  socketable: true,
+  model: 'piezo',
+  terminals: [
+    { name: 'terminal1', type: 'breadboard_male', x: -10, y: 42, dir: [0, 1] },
+    { name: 'terminal2', type: 'breadboard_male', x: 10, y: 42, dir: [0, 1] },
+  ],
+  props: [],
+  defaults: {},
+  Art: ({ state }: ArtProps<Record<string, never>>) => {
+    const level = Number(state?.level ?? 0);
+    const freq = Number(state?.frequency ?? 0);
+    return (
+      <g>
+        <Leg x1={-10} y1={26} x2={-10} y2={42} />
+        <Leg x1={10} y1={26} x2={10} y2={42} />
+        {/* wider bare disc, marked "passive" — no internal oscillator */}
+        <circle cx={0} cy={0} r={32} fill="#C9CDD2" stroke="#8E949A" />
+        <circle cx={0} cy={0} r={28} fill="#E4CB6A" stroke="#B08E2E" strokeWidth={0.8} />
+        <circle cx={0} cy={0} r={22} fill="#E8D07A" />
+        <circle cx={0} cy={0} r={4.5} fill="#8E949A" />
+        <Silk x={0} y={16} size={5} fill="#5A4415" weight={700}>
+          PASSIVE
+        </Silk>
+        <SoundWaves level={level} x={30} y={0} />
+        {level > 0.02 && freq > 0 && (
+          <Silk x={0} y={-42} size={8} fill="#4A4F55" weight={600}>
+            {`${Math.round(freq)} Hz`}
+          </Silk>
+        )}
+      </g>
+    );
+  },
+});
+
+export const SOUND: PartDef<never>[] = [Piezo, PiezoPassive, Speaker] as unknown as PartDef<never>[];

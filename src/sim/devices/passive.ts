@@ -230,14 +230,19 @@ function ledCurrent(
   return Math.max(0, p.is * (Math.exp(clamp(vd / (p.n * VT), -60, 60)) - 1));
 }
 
+// The channel terminal names differ between the CC (common cathode) art with
+// `red/green/blue` legs and the CA (common anode) art with short `R/G/B` legs.
+const RGB_CHANNELS = ['red', 'green', 'blue'] as const;
+const RGB_SHORT: Record<typeof RGB_CHANNELS[number], string> = { red: 'R', green: 'G', blue: 'B' };
+
 defineDevice('led-rgb', (): Device => ({
   nonlinear: true,
   stamp(c, ctx) {
-    const common = ctx.node('common');
-    const anodeCommon = String(ctx.props.common) === 'anode';
-    for (const ch of ['red', 'green', 'blue'] as const) {
-      const p = ledParams(ch === 'red' ? 'red' : ch === 'green' ? 'green' : 'blue');
-      const pin = ctx.node(ch);
+    const anodeCommon = isAnodeCommon(ctx);
+    const common = rgbCommonNode(ctx, anodeCommon);
+    for (const ch of RGB_CHANNELS) {
+      const p = ledParams(ch);
+      const pin = rgbChannelNode(ctx, ch);
       const a = anodeCommon ? common : pin;
       const k = anodeCommon ? pin : common;
       // Each channel keeps its own junction-limiting memory.
@@ -245,12 +250,12 @@ defineDevice('led-rgb', (): Device => ({
     }
   },
   output(c, ctx) {
-    const anodeCommon = String(ctx.props.common) === 'anode';
-    const common = ctx.node('common');
+    const anodeCommon = isAnodeCommon(ctx);
+    const common = rgbCommonNode(ctx, anodeCommon);
     const out: Record<string, number> = {};
-    for (const ch of ['red', 'green', 'blue'] as const) {
+    for (const ch of RGB_CHANNELS) {
       const p = ledParams(ch);
-      const pin = ctx.node(ch);
+      const pin = rgbChannelNode(ctx, ch);
       const vd = anodeCommon ? c.v(common) - c.v(pin) : c.v(pin) - c.v(common);
       const i = Math.max(0, p.is * (Math.exp(clamp(vd / (p.n * VT), -60, 60)) - 1));
       out[ch[0]] = clamp(Math.sqrt(i / LED_I_RATED), 0, 1);
@@ -258,6 +263,31 @@ defineDevice('led-rgb', (): Device => ({
     return out;
   },
 }));
+
+// Common-anode is signalled either by the legacy `common: 'anode'` prop or by
+// the newer boolean flag `commonAnode`, so both spellings work.
+function isAnodeCommon(ctx: { props: Record<string, unknown> }): boolean {
+  return ctx.props.commonAnode === true || String(ctx.props.common) === 'anode';
+}
+
+function rgbCommonNode(
+  ctx: { node(name: string): number; props: Record<string, unknown> },
+  anodeCommon: boolean,
+): number {
+  // Look up the shared pin under either name so an `anode`/`R,G,B` art works
+  // just like the original `common`/`red,green,blue` art.
+  const alt = anodeCommon ? 'anode' : 'cathode';
+  const n = ctx.node(alt);
+  return n !== -1 ? n : ctx.node('common');
+}
+
+function rgbChannelNode(
+  ctx: { node(name: string): number },
+  ch: typeof RGB_CHANNELS[number],
+): number {
+  const n = ctx.node(ch);
+  return n !== -1 ? n : ctx.node(RGB_SHORT[ch]);
+}
 
 // ─── Fuse ────────────────────────────────────────────────────────────────────
 
