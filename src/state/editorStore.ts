@@ -67,9 +67,6 @@ interface EditorStore {
 
   // panels & view ───────────────────────────────────────────────────────────
   codeOpen: boolean;
-  /** Stop components being destroyed; report what would have happened instead. */
-  protectComponents: boolean;
-  setProtectComponents: (v: boolean) => void;
   setCodeOpen: (v: boolean) => void;
   panelView: PanelView;
   setPanelView: (v: PanelView) => void;
@@ -88,6 +85,9 @@ interface EditorStore {
   /** Part chosen in the panel, awaiting a click on the canvas. */
   pendingPart: string | null;
   setPendingPart: (id: string | null) => void;
+  /** When true, a left-click on empty canvas pans instead of marquee-selects. */
+  handTool: boolean;
+  setHandTool: (v: boolean) => void;
 
   toast: { text: string; kind: 'info' | 'warn' | 'error' } | null;
   setToast: (t: EditorStore['toast']) => void;
@@ -192,8 +192,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   setMode: (m) => set({ mode: m }),
 
   codeOpen: false,
-  protectComponents: false,
-  setProtectComponents: (protectComponents) => set({ protectComponents }),
   setCodeOpen: (v) => set({ codeOpen: v }),
   panelView: 'basic',
   setPanelView: (v) => set({ panelView: v }),
@@ -210,6 +208,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   setWireColor: (c) => set({ wireColor: c }),
   pendingPart: null,
   setPendingPart: (id) => set({ pendingPart: id }),
+  handTool: false,
+  setHandTool: (handTool) => set({ handTool }),
 
   toast: null,
   setToast: (t) => set({ toast: t }),

@@ -5,6 +5,14 @@ import { useSimStore } from '@/state/simStore';
 
 const BAUDS = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 74880, 115200];
 
+const LINE_ENDINGS = [
+  { key: 'none', label: 'No line ending', suffix: '' },
+  { key: 'nl', label: 'Newline', suffix: '\n' },
+  { key: 'cr', label: 'Carriage return', suffix: '\r' },
+  { key: 'both', label: 'Both NL & CR', suffix: '\r\n' },
+] as const;
+type LineEndingKey = (typeof LINE_ENDINGS)[number]['key'];
+
 export function SerialMonitor({ onSend }: { onSend: (text: string) => void }) {
   const lines = useSimStore((s) => s.snapshot.serial);
   const baud = useSimStore((s) => s.baud);
@@ -13,9 +21,18 @@ export function SerialMonitor({ onSend }: { onSend: (text: string) => void }) {
   const [autoscroll, setAutoscroll] = useState(true);
   const [timestamps, setTimestamps] = useState(false);
   const [cleared, setCleared] = useState(0);
+  const [ending, setEnding] = useState<LineEndingKey>('nl');
+  const [echo, setEcho] = useState(false);
+  // Local echo: capture what the user sent so it shows in the transcript.
+  const [echoLines, setEchoLines] = useState<string[]>([]);
   const boxRef = useRef<HTMLDivElement>(null);
 
-  const visible = useMemo(() => lines.slice(cleared), [lines, cleared]);
+  const visible = useMemo(() => {
+    const trimmed = lines.slice(cleared);
+    return echoLines.length
+      ? [...trimmed, ...echoLines.map((l) => `> ${l}`)]
+      : trimmed;
+  }, [lines, cleared, echoLines]);
 
   useEffect(() => {
     if (autoscroll && boxRef.current) {
@@ -25,7 +42,9 @@ export function SerialMonitor({ onSend }: { onSend: (text: string) => void }) {
 
   const send = () => {
     if (!input) return;
-    onSend(input + '\n');
+    const suffix = LINE_ENDINGS.find((e) => e.key === ending)?.suffix ?? '\n';
+    onSend(input + suffix);
+    if (echo) setEchoLines((rows) => [...rows.slice(-100), input]);
     setInput('');
   };
 
@@ -63,15 +82,40 @@ export function SerialMonitor({ onSend }: { onSend: (text: string) => void }) {
           />
           Timestamp
         </label>
+        <label className="flex items-center gap-1 text-[11px] text-neutral-600">
+          <input
+            type="checkbox"
+            checked={echo}
+            onChange={(e) => setEcho(e.target.checked)}
+            className="accent-sky-600"
+          />
+          Echo
+        </label>
         <button
-          onClick={() => setCleared(lines.length)}
+          onClick={() => {
+            setCleared(lines.length);
+            setEchoLines([]);
+          }}
           className="rounded border border-neutral-300 px-2 py-1 text-[11.5px] text-neutral-700 hover:bg-neutral-50"
         >
           Clear
         </button>
         <select
+          value={ending}
+          onChange={(e) => setEnding(e.target.value as LineEndingKey)}
+          aria-label="Line ending"
+          className="rounded border border-neutral-300 bg-white px-1.5 py-1 text-[11.5px] outline-none"
+        >
+          {LINE_ENDINGS.map((opt) => (
+            <option key={opt.key} value={opt.key}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <select
           value={baud}
           onChange={(e) => setBaud(Number(e.target.value))}
+          aria-label="Baud rate"
           className="rounded border border-neutral-300 bg-white px-1.5 py-1 text-[11.5px] outline-none"
         >
           {BAUDS.map((b) => (

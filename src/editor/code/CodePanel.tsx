@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useDesignStore } from '@/state/designStore';
-import { getPartDef } from '@/parts/registry';
 import { useEditorStore } from '@/state/editorStore';
 import { useSimStore } from '@/state/simStore';
 import type { CodeLanguage, CodeMode } from '@/state/design';
@@ -57,42 +56,17 @@ export function CodePanel({
   const snapshot = useSimStore((s) => s.snapshot);
   const running = useSimStore((s) => s.runState === 'running');
 
-  // Every programmable board on the canvas, and the language each speaks.
+  // Which languages the design can be programmed in, from the boards present.
   const parts = useDesignStore((s) => s.design.parts);
-  const programmable = useMemo(() => {
-    const list: { id: string; label: string; language: CodeLanguage }[] = [];
+  const boards = useMemo(() => {
+    const found = new Set<CodeLanguage>();
     for (const id in parts) {
-      const p = parts[id];
-      const lang: CodeLanguage | null =
-        p.type === 'microbit'
-          ? 'micropython'
-          : p.type === 'uno-r3' || p.type === 'nano' || p.type === 'attiny85'
-            ? 'arduino'
-            : null;
-      if (!lang) continue;
-      list.push({
-        id,
-        label: p.name || getPartDef(p.type)?.name || p.type,
-        language: lang,
-      });
+      const t = parts[id].type;
+      if (t === 'microbit') found.add('micropython');
+      if (t === 'uno-r3' || t === 'nano' || t === 'attiny85') found.add('arduino');
     }
-    return list.sort((a, b) => a.label.localeCompare(b.label));
+    return [...found];
   }, [parts]);
-
-  const boards = useMemo(
-    () => [...new Set(programmable.map((b) => b.language))],
-    [programmable],
-  );
-
-  // Which board the panel is editing. Only meaningful once there are two —
-  // with one board the shared sketch is the sketch, exactly as before.
-  const [boardId, setBoardId] = useState<string | null>(null);
-  const activeBoard =
-    programmable.find((b) => b.id === boardId) ??
-    programmable.find((b) => b.language === code.language) ??
-    programmable[0] ??
-    null;
-  const multiBoard = programmable.length > 1;
 
   // Follow the board on the canvas, but never fight a deliberate choice when
   // both kinds are present.
@@ -102,32 +76,8 @@ export function CodePanel({
     transact('Code language', (d) => void (d.code.language = boards[0]));
   }, [boards, code.language, transact]);
 
-  const language = multiBoard && activeBoard ? activeBoard.language : code.language;
+  const language = code.language;
   const isPython = language === 'micropython';
-
-  /** This board's own sketch, falling back to the design-wide one. */
-  const sourceFor = (board: { id: string } | null) => {
-    const shared = isPython ? code.python : code.text;
-    if (!multiBoard || !board) return shared;
-    return code.boards?.[board.id] ?? shared;
-  };
-
-  /**
-   * Write an edit back where it belongs.
-   *
-   * With one board there is nothing to disambiguate and the shared sketch is
-   * updated as it always was. With several, the edit is that board's alone.
-   */
-  const writeSource = (value: string) => {
-    transact('Edit code', (d) => {
-      if (multiBoard && activeBoard) {
-        d.code.boards[activeBoard.id] = value;
-        return;
-      }
-      if (isPython) d.code.python = value;
-      else d.code.text = value;
-    });
-  };
 
   const [tab, setTab] = useState<Tab>('serial');
   const [drawer, setDrawer] = useState(true);
@@ -165,7 +115,7 @@ export function CodePanel({
     const i = row.indexOf('\u0000');
     return { name: row.slice(0, i), value: row.slice(i + 1) };
   });
-  const source = sourceFor(activeBoard);
+  const source = isPython ? code.python : code.text;
   const copySource = async () => {
     try {
       await navigator.clipboard.writeText(source);
@@ -219,25 +169,19 @@ export function CodePanel({
           />
         </div>
 
-        {multiBoard && (
+        {boards.length > 1 && (
           <select
-            value={activeBoard?.id ?? ''}
-            onChange={(e) => {
-              const id = e.target.value;
-              setBoardId(id);
-              const picked = programmable.find((b) => b.id === id);
-              if (picked && picked.language !== code.language) {
-                transact('Code language', (d) => void (d.code.language = picked.language));
-              }
-            }}
+            value={language}
+            onChange={(e) =>
+              transact('Code language', (d) => {
+                d.code.language = e.target.value as CodeLanguage;
+              })
+            }
             className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-[12px] font-medium text-neutral-700 outline-none hover:border-neutral-400"
-            title="Each board runs its own program"
+            title="This design has more than one programmable board"
           >
-            {programmable.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.label} &middot; {b.language === 'micropython' ? 'Python' : 'C++'}
-              </option>
-            ))}
+            <option value="arduino">Uno &middot; C++</option>
+            <option value="micropython">micro:bit &middot; Python</option>
           </select>
         )}
 
@@ -308,7 +252,11 @@ export function CodePanel({
             {copied ? 'Copied' : 'Copy code'}
           </button>
           <button
-            onClick={() => downloadCode(source, isPython ? 'main.py' : 'sketch.ino')}
+            onClick={() =>
+              isPython
+                ? downloadCode(code.python, 'main.py')
+                : downloadCode(code.text, 'sketch.ino')
+            }
             className="rounded border border-neutral-300 px-2 py-1 text-[11.5px] font-medium text-neutral-700 hover:bg-neutral-50"
           >
             {isPython ? 'Download .py' : 'Download .ino'}
@@ -355,7 +303,7 @@ export function CodePanel({
               </div>
               <div className="min-w-0 flex-1">
                 <TextEditor
-                  value={sourceFor(activeBoard)}
+                  value={isPython ? code.python : code.text}
                   language={language}
                   onChange={() => {}}
                   readOnly
@@ -364,9 +312,14 @@ export function CodePanel({
             </div>
           ) : (
             <TextEditor
-              value={sourceFor(activeBoard)}
+              value={isPython ? code.python : code.text}
               language={language}
-              onChange={writeSource}
+              onChange={(v) =>
+                transact('Edit code', (d) => {
+                  if (isPython) d.code.python = v;
+                  else d.code.text = v;
+                })
+              }
               onBreakpointsChange={(lines) => {
                 transact('Breakpoints', (d) => void (d.code.breakpoints = lines));
                 onSetBreakpoints(lines);

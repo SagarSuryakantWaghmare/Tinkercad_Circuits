@@ -30,6 +30,7 @@ export const Piezo = definePart({
   name: 'Piezo',
   category: 'output',
   keywords: ['buzzer', 'piezo', 'speaker', 'sound', 'tone', 'beep'],
+  basic: true,
   size: { w: 72, h: 84 },
   origin: { x: 36, y: 34 },
   socketable: true,

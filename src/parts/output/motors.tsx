@@ -50,12 +50,13 @@ function MotorArt({ state }: ArtProps<MotorProps>) {
   );
 }
 
-function makeMotor(id: string, name: string, keywords: string[]) {
+function makeMotor(id: string, name: string, keywords: string[], basic = false) {
   return definePart<MotorProps>({
     id,
     name,
     category: 'output',
     keywords,
+    basic,
     size: { w: 152, h: 80 },
     origin: { x: 76, y: 40 },
     model: 'dc-motor',
@@ -71,13 +72,80 @@ function makeMotor(id: string, name: string, keywords: string[]) {
   });
 }
 
-export const DcMotor = makeMotor('dc-motor', 'DC Motor', ['motor', 'dc', 'spin', 'rotate']);
+export const DcMotor = makeMotor('dc-motor', 'DC Motor', ['motor', 'dc', 'spin', 'rotate'], true);
 export const Gearmotor = makeMotor('gearmotor', 'Hobby Gearmotor', [
   'gearmotor',
   'geared',
   'motor',
   'tt motor',
 ]);
+
+// Tinkercad ships a DC motor with a back-of-the-shaft optical encoder. It
+// looks like a regular DC motor but has two extra output pins (A/B channels
+// in quadrature) so a sketch can count rotations. Behaviour is the same
+// motor, so it reuses the dc-motor sim model; the encoder A/B lines are
+// exposed at the back for the sketch to sample.
+function EncoderMotorArt(p: ArtProps<MotorProps>) {
+  const rpm = Number(p.state?.rpm ?? 0);
+  const spinning = Math.abs(rpm) > 1;
+  return (
+    <g>
+      <MotorArt {...p} />
+      {/* Encoder disk on the tail end of the shaft. */}
+      <g transform="translate(76,0)">
+        <circle cx={0} cy={0} r={9} fill="#2B2E31" stroke="#17191B" />
+        <g transform={`rotate(${Number(p.state?.angle ?? 0) * 2} 0 0)`}>
+          {Array.from({ length: 8 }, (_, i) => (
+            <rect
+              key={i}
+              x={-1.4}
+              y={-8}
+              width={2.8}
+              height={4}
+              transform={`rotate(${i * 45} 0 0)`}
+              fill="#E8EAEC"
+            />
+          ))}
+        </g>
+        {spinning && (
+          <circle cx={0} cy={0} r={12} fill="none" stroke={C.select} strokeWidth={1.4} opacity={0.4} />
+        )}
+      </g>
+      {/* Encoder header: A / B / VCC / GND on the far right. */}
+      {['A', 'B', 'VCC', 'GND'].map((label, i) => (
+        <g key={label} transform={`translate(72,${-24 + i * 16})`}>
+          <Leg x1={0} y1={0} x2={12} y2={0} w={3} color={C.metal} />
+          <Silk x={16} y={0} size={5.5} fill="#4A4F55" anchor="start" weight={600}>
+            {label}
+          </Silk>
+        </g>
+      ))}
+    </g>
+  );
+}
+
+export const DcMotorEncoder = definePart<MotorProps>({
+  id: 'dc-motor-encoder',
+  name: 'DC Motor with Encoder',
+  category: 'output',
+  keywords: ['motor', 'dc', 'encoder', 'quadrature', 'rotation', 'feedback'],
+  size: { w: 200, h: 96 },
+  origin: { x: 100, y: 48 },
+  model: 'dc-motor',
+  terminals: [
+    { name: 'terminal1', type: 'wire', x: -70, y: -14, dir: [-1, 0] },
+    { name: 'terminal2', type: 'wire', x: -70, y: 14, dir: [-1, 0] },
+    { name: 'A', type: 'wire', x: 90, y: -24, dir: [1, 0], role: 'digital' },
+    { name: 'B', type: 'wire', x: 90, y: -8, dir: [1, 0], role: 'digital' },
+    { name: 'VCC', type: 'wire', x: 90, y: 8, dir: [1, 0], role: 'power' },
+    { name: 'GND', type: 'wire', x: 90, y: 24, dir: [1, 0], role: 'gnd' },
+  ],
+  props: [
+    { key: 'ratedVoltage', label: 'Rated voltage', kind: 'number', unit: 'V', min: 1, max: 24 },
+  ],
+  defaults: { ratedVoltage: 6 },
+  Art: EncoderMotorArt,
+});
 
 // ─── Servos ──────────────────────────────────────────────────────────────────
 
@@ -126,12 +194,13 @@ function ServoArt({ props, state }: ArtProps<ServoProps>) {
   );
 }
 
-function makeServo(id: string, name: string, kind: string, keywords: string[]) {
+function makeServo(id: string, name: string, kind: string, keywords: string[], basic = false) {
   return definePart<ServoProps>({
     id,
     name,
     category: 'output',
     keywords,
+    basic,
     size: { w: 128, h: 92 },
     origin: { x: 64, y: 46 },
     model: 'servo',
@@ -161,6 +230,7 @@ export const MicroServo = makeServo(
   'Micro Servo',
   'positional',
   ['servo', 'sg90', 'positional', 'motor', 'angle'],
+  true,
 );
 export const ContinuousServo = makeServo(
   'continuous-servo',
@@ -291,6 +361,7 @@ export const Solenoid = definePart({
 
 export const MOTORS: PartDef<never>[] = [
   DcMotor,
+  DcMotorEncoder,
   Gearmotor,
   MicroServo,
   ContinuousServo,

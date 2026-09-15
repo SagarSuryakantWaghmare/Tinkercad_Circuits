@@ -1,7 +1,7 @@
 'use client';
 
 import { del, get, keys, set } from 'idb-keyval';
-import type { Design } from '@/state/design';
+import { migrateDesign, type Design } from '@/state/design';
 
 /**
  * Local-first storage. Designs live in IndexedDB in this browser — there is no
@@ -40,7 +40,10 @@ export async function saveDesign(design: Design, thumbnail?: string) {
 }
 
 export async function loadDesign(id: string): Promise<Design | undefined> {
-  return (await get<Design>(KEY(id))) ?? undefined;
+  const raw = (await get<Design>(KEY(id))) ?? undefined;
+  // Migrate at the storage boundary so every caller (dashboard preview,
+  // editor open, duplicate) sees a shape that matches the current schema.
+  return raw ? migrateDesign(raw) : undefined;
 }
 
 export async function loadIndex(): Promise<DesignSummary[]> {

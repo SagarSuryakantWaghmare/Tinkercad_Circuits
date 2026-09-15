@@ -29,6 +29,8 @@ const GROUPS: { title: string; rows: [string, string][] }[] = [
   {
     title: 'View',
     rows: [
+      ['Select tool', 'V'],
+      ['Hand (pan) tool', 'H'],
       ['Zoom to fit', 'F'],
       ['Zoom to selection', 'Shift F'],
       ['Zoom in / out', 'Ctrl + scroll'],

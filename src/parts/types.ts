@@ -151,26 +151,22 @@ export interface PartDef<P extends Record<string, PropValue> = Record<string, Pr
   id: string;
   name: string;
   category: CategoryId;
+  /**
+   * Additional sections this part should appear in. Tinkercad files each
+   * 74xx chip under Logic; our library keeps a physical-chip copy in the
+   * IC section too. Listing altCategories lets one PartDef show up in every
+   * relevant section without duplicating the entry.
+   */
+  altCategories?: CategoryId[];
   /** Extra search terms beyond the name. */
   keywords?: string[];
-  /**
-   * One line on what this part is and what it is for, for someone who does not
-   * already know. Falls back to the shared table in `descriptions.ts`.
-   */
-  description?: string;
+  /** Appears in the default "Basic" view of the components panel. */
+  basic?: boolean;
 
   /** Bounding size in world units, used for the hit area and marquee. */
-  /**
-   * Bounding size in world units, used for the hit area and the marquee.
-   *
-   * A function where the part's geometry depends on its settings — a
-   * breadboard is three times wider at full size than at mini, and a hit area
-   * sized for the largest case would swallow everything placed near a small
-   * one.
-   */
-  size: { w: number; h: number } | ((props: P) => { w: number; h: number });
-  /** Rotation centre in local coordinates; a function when `size` is one. */
-  origin: Vec2 | ((props: P) => Vec2);
+  size: { w: number; h: number };
+  /** Rotation centre in local coordinates. */
+  origin: Vec2;
 
   /** Static list, or a function of props for parts whose pin count varies. */
   terminals: TerminalDef[] | ((props: P) => TerminalDef[]);
@@ -191,6 +187,25 @@ export interface PartDef<P extends Record<string, PropValue> = Record<string, Pr
 
   /** Identifier used to look up the electrical model in sim/devices. */
   model?: string;
+
+  /**
+   * Short human-readable summary shown in the inspector, one or two lines.
+   * Every part can carry one; the microcontrollers use theirs to give a
+   * gentle intro before students touch code.
+   */
+  summary?: string;
+
+  /**
+   * Structured "learn" copy shown under the inspector. Each section becomes
+   * a labelled block; sections stay concise so the whole thing is glanceable
+   * from the side rail rather than a modal.
+   */
+  learn?: {
+    /** Section heading, e.g. "Pins", "Getting started". */
+    title: string;
+    /** Body text. Line breaks are preserved. */
+    body: string;
+  }[];
 }
 
 export function terminalsOf<P extends Record<string, PropValue>>(
@@ -198,18 +213,4 @@ export function terminalsOf<P extends Record<string, PropValue>>(
   props: P,
 ): TerminalDef[] {
   return typeof def.terminals === 'function' ? def.terminals(props) : def.terminals;
-}
-
-export function sizeOf<P extends Record<string, PropValue>>(
-  def: PartDef<P>,
-  props: P,
-): { w: number; h: number } {
-  return typeof def.size === 'function' ? def.size(props) : def.size;
-}
-
-export function originOf<P extends Record<string, PropValue>>(
-  def: PartDef<P>,
-  props: P,
-): Vec2 {
-  return typeof def.origin === 'function' ? def.origin(props) : def.origin;
 }

@@ -51,7 +51,11 @@ const REMOTE_H = 200;
 export const IrRemote = definePart({
   id: 'ir-remote',
   name: 'IR Remote',
+  // Tinkercad files the remote under Output. It sits in Input here for the
+  // sensor-like feel (it feeds signal into a receiver), so keep the primary
+  // spot and mirror it into Output so it shows up in both places.
   category: 'input',
+  altCategories: ['output'],
   keywords: ['infrared', 'ir', 'remote', 'handset', 'transmitter', 'nec'],
   size: { w: REMOTE_W + 12, h: REMOTE_H + 12 },
   origin: { x: (REMOTE_W + 12) / 2, y: (REMOTE_H + 12) / 2 },

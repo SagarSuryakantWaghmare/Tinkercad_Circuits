@@ -10,21 +10,11 @@ export class DenseMatrix {
   readonly n: number;
   readonly a: Float64Array;
   private readonly perm: Int32Array;
-  /**
-   * Scratch for the factorisation, allocated once.
-   *
-   * This used to be a fresh copy of the matrix on every solve. At a few
-   * hundred unknowns that is over a megabyte per Newton iteration, several
-   * iterations per timestep and a thousand timesteps a second — the allocation
-   * cost more than the arithmetic it was feeding.
-   */
-  private readonly lu: Float64Array;
 
   constructor(n: number) {
     this.n = n;
     this.a = new Float64Array(n * n);
     this.perm = new Int32Array(n);
-    this.lu = new Float64Array(n * n);
   }
 
   clear() {
@@ -51,8 +41,7 @@ export class DenseMatrix {
   solve(b: Float64Array, x: Float64Array): boolean {
     const n = this.n;
     if (n === 0) return true;
-    const lu = this.lu;
-    lu.set(this.a);
+    const lu = Float64Array.from(this.a);
     const perm = this.perm;
     for (let i = 0; i < n; i++) perm[i] = i;
 

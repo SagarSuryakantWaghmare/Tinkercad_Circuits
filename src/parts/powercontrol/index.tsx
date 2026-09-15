@@ -75,12 +75,14 @@ function makeBjt(
   model: 'npn' | 'pnp',
   label: string,
   keywords: string[],
+  basic = false,
 ) {
   return definePart<BjtProps>({
     id,
     name,
     category: 'powercontrol',
     keywords,
+    basic,
     size: { w: 42, h: 54 },
     origin: { x: 21, y: 18 },
     socketable: true,
@@ -90,10 +92,7 @@ function makeBjt(
     props: [
       { key: 'beta', label: 'Current gain (hFE)', kind: 'number', min: 10, max: 1000, step: 10 },
     ],
-    // Datasheet absolute maximums for a 2N3904-class small-signal part. The
-    // simulator reads these to decide when the part has been destroyed, so a
-    // Darlington is not judged against a signal transistor's limits.
-    defaults: { beta: 100, is: 1e-14, icMax: 0.2, ibMax: 0.05, pMax: 0.625 },
+    defaults: { beta: 100, is: 1e-14 },
     Art: () => <To92 label={label} sub={model.toUpperCase()} />,
   });
 }
@@ -104,6 +103,7 @@ export const NpnTransistor = makeBjt(
   'npn',
   '2N3904',
   ['transistor', 'npn', 'bjt', 'switch', 'amplifier', '2n2222'],
+  true,
 );
 export const PnpTransistor = makeBjt(
   'pnp-transistor',
@@ -124,8 +124,7 @@ export const DarlingtonNpn = definePart<BjtProps>({
   model: 'npn',
   terminals: threeLegs(['base', 'collector', 'emitter'], 36),
   props: [{ key: 'beta', label: 'Current gain (hFE)', kind: 'number', min: 100, max: 10000, step: 100 }],
-  // A TIP120 is a power part: 5 A continuous, 65 W with a heatsink.
-  defaults: { beta: 1000, is: 1e-14, icMax: 5, ibMax: 0.12, pMax: 65 },
+  defaults: { beta: 1000, is: 1e-14 },
   Art: ({ state }: ArtProps<BjtProps>) => (
     <To220 label="TIP120" hot={Math.abs(Number(state?.ic ?? 0)) > 0.5} />
   ),
@@ -142,7 +141,7 @@ export const DarlingtonPnp = definePart<BjtProps>({
   model: 'pnp',
   terminals: threeLegs(['base', 'collector', 'emitter'], 36),
   props: [{ key: 'beta', label: 'Current gain (hFE)', kind: 'number', min: 100, max: 10000, step: 100 }],
-  defaults: { beta: 1000, is: 1e-14, icMax: 5, ibMax: 0.12, pMax: 65 },
+  defaults: { beta: 1000, is: 1e-14 },
   Art: () => <To220 label="TIP125" />,
 });
 
@@ -294,6 +293,37 @@ interface RegProps extends Record<string, string | number> {
   output: number;
 }
 
+// Tinkercad ships a dedicated 3.3V Regulator part in addition to the generic
+// LM7805-family regulator. Users looking for 3.3V by name find this one
+// directly instead of picking the generic and switching the output prop.
+export const Regulator33 = definePart<RegProps>({
+  id: 'regulator-33v',
+  name: '3.3V Voltage Regulator',
+  category: 'powercontrol',
+  keywords: ['regulator', 'ld1117', 'ldo', '3.3v', '3v3', 'ams1117'],
+  size: { w: 46, h: 78 },
+  origin: { x: 23, y: 34 },
+  socketable: true,
+  model: 'regulator',
+  terminals: [
+    { name: 'input', type: 'breadboard_male', x: -10, y: 36, dir: [0, 1] },
+    { name: 'gnd', type: 'breadboard_male', x: 0, y: 36, dir: [0, 1], role: 'gnd' },
+    { name: 'output', type: 'breadboard_male', x: 10, y: 36, dir: [0, 1] },
+  ],
+  props: [],
+  defaults: { output: 3.3 },
+  Art: ({ state }: ArtProps<RegProps>) => (
+    <g>
+      <To220 label="LD1117" />
+      {state?.dropout ? (
+        <Silk x={0} y={-40} size={6} fill="#C11F1F" weight={700}>
+          LOW Vin
+        </Silk>
+      ) : null}
+    </g>
+  ),
+});
+
 export const Regulator = definePart<RegProps>({
   id: 'regulator',
   name: 'Voltage Regulator',
@@ -380,6 +410,9 @@ export const Optocoupler = definePart<OptoProps>({
   id: 'optocoupler',
   name: 'Optocoupler [4N35]',
   category: 'powercontrol',
+  // Tinkercad files the 4N35 under Integrated Circuits; mirror it there so
+  // students who look in either section find it.
+  altCategories: ['ics'],
   keywords: ['optocoupler', 'opto', 'isolator', '4n35', 'isolation'],
   size: { w: 70, h: 70 },
   origin: { x: 35, y: 35 },
@@ -421,6 +454,7 @@ export const POWER_CONTROL: PartDef<never>[] = [
   RelaySpdt,
   RelayDpdt,
   Regulator,
+  Regulator33,
   MotorDriver,
   Optocoupler,
 ] as unknown as PartDef<never>[];

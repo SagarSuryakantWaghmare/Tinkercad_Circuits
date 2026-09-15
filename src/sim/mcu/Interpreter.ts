@@ -667,7 +667,10 @@ export class Interpreter {
     refs?: (Ref | null)[],
   ): Generator<Wait, Value, void> {
     if (++this.callDepth > 200) {
-      this.callDepth = 0;
+      // Don't zero the depth here — the unwinding stack still runs each
+      // callUser's finally { callDepth--; } (about 200 times). Zeroing here
+      // leaves callDepth at -200 afterwards and permanently disables the
+      // guard for the rest of the run.
       throw new RuntimeError('Too much recursion', fn.line);
     }
     const scope = new Scope(this.globals);

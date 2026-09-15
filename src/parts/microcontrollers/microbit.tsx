@@ -229,6 +229,7 @@ export const Microbit = definePart({
   name: 'micro:bit',
   category: 'microcontrollers',
   keywords: ['microbit', 'micro:bit', 'bbc', 'education', 'board', 'nrf52'],
+  basic: true,
   size: { w: W + 20, h: H + 40 },
   origin: { x: (W + 20) / 2, y: (H + 40) / 2 - 10 },
   substrate: true,
@@ -238,6 +239,25 @@ export const Microbit = definePart({
   props: [],
   defaults: {},
   Art: MicrobitArt,
+  summary:
+    'A tiny board with a 5×5 LED display, two buttons, a compass and an accelerometer. Programmed with MicroPython or MakeCode blocks.',
+  learn: [
+    {
+      title: 'Pins',
+      body:
+        '0, 1, 2 — big pads that alligator clips grab.\n3V, GND — power for external parts.\nThe edge pins are digital/analog; some do PWM and I2C.',
+    },
+    {
+      title: 'Built-in features',
+      body:
+        '5×5 LED display · Button A and Button B · Accelerometer · Compass · Temperature sensor · Radio to talk to other micro:bits.',
+    },
+    {
+      title: 'First program',
+      body:
+        'from microbit import *\n\nwhile True:\n    display.show(Image.HEART)\n    sleep(500)\n    display.clear()\n    sleep(500)\n\nPress Start Simulation to run.',
+    },
+  ],
 });
 
 // ─── Nano-form-factor board ──────────────────────────────────────────────────
@@ -309,4 +329,42 @@ export const NanoBoard = definePart({
   ),
 });
 
-export const MICROBIT_PARTS: PartDef<never>[] = [Microbit, NanoBoard] as unknown as PartDef<never>[];
+// Tinkercad ships a "micro:bit with Breakout" preset — the same board on a
+// carrier PCB that turns each edge-pad into a standard header pin. Simulation
+// behaviour is identical, so we reuse the micro:bit model and just add a
+// breakout header strip to the art.
+function MicrobitBreakoutArt(p: ArtProps) {
+  return (
+    <g>
+      {/* Green carrier PCB behind the micro:bit. */}
+      <rect x={-W / 2 - 10} y={-H / 2 - 10} width={W + 20} height={H + 90} rx={6} fill="#1E5FA8" />
+      <HeaderStrip x={-W / 2 + 20} y={H / 2 + 30} count={21} pitch={22} male />
+      <Silk x={0} y={H / 2 + 60} size={10} fill="#DCE8F5" weight={700}>
+        micro:bit BREAKOUT
+      </Silk>
+      <MicrobitArt {...p} />
+    </g>
+  );
+}
+
+export const MicrobitBreakout = definePart({
+  id: 'microbit-breakout',
+  name: 'micro:bit with Breakout',
+  category: 'microcontrollers',
+  keywords: ['microbit', 'breakout', 'edge connector', 'carrier', 'board'],
+  size: { w: W + 40, h: H + 100 },
+  origin: { x: (W + 40) / 2, y: (H + 100) / 2 - 20 },
+  substrate: true,
+  rotationStep: 90,
+  model: 'microbit',
+  terminals: buildTerminals(),
+  props: [],
+  defaults: {},
+  Art: MicrobitBreakoutArt,
+});
+
+export const MICROBIT_PARTS: PartDef<never>[] = [
+  Microbit,
+  MicrobitBreakout,
+  NanoBoard,
+] as unknown as PartDef<never>[];

@@ -1,5 +1,4 @@
 import type { CategoryId, PartDef, PropValue } from './types';
-import { PART_DESCRIPTIONS } from './descriptions';
 
 const registry = new Map<string, PartDef<never>>();
 
@@ -27,82 +26,18 @@ export function allParts(): PartDef<never>[] {
 }
 
 export function partsInCategory(cat: CategoryId): PartDef<never>[] {
-  return allParts().filter((p) => p.category === cat);
+  return allParts().filter(
+    (p) => p.category === cat || p.altCategories?.includes(cat),
+  );
 }
 
-/**
- * What a beginner sees before opening "All components", in the order shown.
- *
- * Kept as one list rather than a flag on each part because "is this a starting
- * component?" is a judgement about the whole palette, not about any single
- * part, and it was previously spread over a dozen files — which is how ours
- * ended up offering a 555 timer and a shift register but no motor, no servo
- * and one breadboard.
- *
- * Deliberately discrete parts and boards only: no timers, no logic, no shift
- * registers. Everything else is one dropdown away.
- */
-export const BASIC_PART_IDS: readonly string[] = [
-  'resistor',
-  'led',
-  'pushbutton',
-  'potentiometer',
-  'capacitor',
-  'slideswitch',
-  'battery-9v',
-  'battery-coin',
-  'battery-aa',
-  'breadboard',
-  'microbit',
-  'uno-r3',
-  'vibration-motor',
-  'dc-motor',
-  'micro-servo',
-  'gearmotor',
-  'npn-transistor',
-  'led-rgb',
-  'diode',
-  'photoresistor',
-  'soil-moisture',
-  'ultrasonic-4pin',
-  'pir-sensor',
-  'piezo',
-  'temperature-sensor',
-  'multimeter',
-];
+/** Every category a part should appear under, primary first. */
+export function categoriesOf(p: PartDef<never>): CategoryId[] {
+  return [p.category, ...(p.altCategories ?? [])];
+}
 
 export function basicParts(): PartDef<never>[] {
-  const out: PartDef<never>[] = [];
-  for (const id of BASIC_PART_IDS) {
-    const def = registry.get(id);
-    if (def) out.push(def);
-  }
-  return out;
-}
-
-/** Ids in BASIC_PART_IDS that no part actually defines. Empty is the goal. */
-export function missingBasicParts(): string[] {
-  return BASIC_PART_IDS.filter((id) => !registry.has(id));
-}
-
-/**
- * Parts naming an electrical model that nothing implements.
- *
- * Such a part is placeable and wireable and does absolutely nothing: the
- * netlist lists it, `makeDevice` returns null, and the simulator drops it
- * without a word. Two shipped that way — an ADC and an EEPROM — and neither
- * was noticed until the catalogue was audited part by part.
- */
-export function partsWithoutDeviceModel(hasModel: (model: string) => boolean): string[] {
-  return allParts()
-    .filter((p) => p.model && !hasModel(p.model))
-    .map((p) => `${p.id} (model: ${p.model})`);
-}
-
-/** What this part is, for the panel and the inspector. Empty when unknown. */
-export function describePart(def: PartDef<never> | undefined): string {
-  if (!def) return '';
-  return def.description ?? PART_DESCRIPTIONS[def.id] ?? '';
+  return allParts().filter((p) => p.basic);
 }
 
 /** Substring search over name + keywords + category, ranked by match position. */

@@ -29,8 +29,6 @@ function WireItemInner({
   onPointerDown,
   onPointerEnter,
   onPointerLeave,
-  onWaypointDown,
-  onAddWaypoint,
 }: {
   wire: ResolvedWire;
   selected: boolean;
@@ -38,10 +36,6 @@ function WireItemInner({
   onPointerDown: (e: React.PointerEvent, id: string) => void;
   onPointerEnter: (id: string) => void;
   onPointerLeave: () => void;
-  /** Grab an existing bend point. */
-  onWaypointDown?: (e: React.PointerEvent, id: string, index: number) => void;
-  /** Double-click on the wire itself to put a new bend point there. */
-  onAddWaypoint?: (e: React.MouseEvent, id: string) => void;
 }) {
   const d = useMemo(() => {
     if (wire.kind === 'jumper') {
@@ -84,30 +78,9 @@ function WireItemInner({
         strokeLinecap="round"
         style={{ cursor: 'pointer' }}
         onPointerDown={(e) => onPointerDown(e, wire.id)}
-        onDoubleClick={(e) => onAddWaypoint?.(e, wire.id)}
         onPointerEnter={() => onPointerEnter(wire.id)}
         onPointerLeave={onPointerLeave}
       />
-
-      {/*
-        Bend points, shown only on the selected wire so the canvas is not
-        peppered with handles. Dragging one reshapes the route; double-clicking
-        the wire adds another.
-      */}
-      {selected &&
-        wire.waypoints.map((p, i) => (
-          <circle
-            key={i}
-            cx={p.x}
-            cy={p.y}
-            r={4.5}
-            fill="#FFFFFF"
-            stroke={C.select}
-            strokeWidth={2}
-            style={{ cursor: 'grab' }}
-            onPointerDown={(e) => onWaypointDown?.(e, wire.id, i)}
-          />
-        ))}
     </g>
   );
 }
@@ -155,7 +128,35 @@ export function DraftWire({
         strokeLinejoin="round"
       />
       {snapped && (
-        <circle cx={snapped.pos.x} cy={snapped.pos.y} r={5} fill={C.netHighlight} opacity={0.9} />
+        <g>
+          {/* Halo that pulses outward from the landing pad so a compatible
+              terminal reads as a green "will connect" affordance the
+              instant the pointer approaches it. */}
+          <circle
+            cx={snapped.pos.x}
+            cy={snapped.pos.y}
+            r={10}
+            fill={C.netHighlight}
+            opacity={0.18}
+          />
+          <circle
+            cx={snapped.pos.x}
+            cy={snapped.pos.y}
+            r={6.5}
+            fill="none"
+            stroke={C.netHighlight}
+            strokeWidth={1.6}
+            opacity={0.9}
+          />
+          <circle
+            cx={snapped.pos.x}
+            cy={snapped.pos.y}
+            r={4}
+            fill="#FFFFFF"
+            stroke={C.netHighlight}
+            strokeWidth={1.6}
+          />
+        </g>
       )}
     </g>
   );

@@ -11,16 +11,13 @@ import { Inspector } from './inspector/Inspector';
 import { CodePanel } from './code/CodePanel';
 import { contentBounds, useHotkeys } from './useHotkeys';
 import { ShortcutsDialog } from './ShortcutsDialog';
-import { FailurePanel } from './FailurePanel';
-import { HistoryPanel } from './HistoryPanel';
 import { useSimulation } from '@/sim/useSimulation';
 import { useEditorStore } from '@/state/editorStore';
 import { useDesignStore } from '@/state/designStore';
-import { allParts, getPartDef, partsWithoutDeviceModel } from '@/parts/registry';
+import { allParts, getPartDef } from '@/parts/registry';
 import { snapPlacement } from '@/canvas/snapping';
 import { useSimStore } from '@/state/simStore';
 import { buildNetlist } from '@/sim/net/buildNetlist';
-import { makeDevice } from '@/sim/devices/types';
 import { useAutosave } from '@/persist/useAutosave';
 import { loadDesign, saveDesign } from '@/persist/store';
 import { emptyDesign } from '@/state/design';
@@ -31,16 +28,10 @@ export function EditorRoot({ designId }: { designId?: string }) {
   useHotkeys();
 
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
   useEffect(() => {
     const open = () => setShortcutsOpen(true);
-    const history = () => setHistoryOpen((v) => !v);
     window.addEventListener('circuitlab:shortcuts', open);
-    window.addEventListener('circuitlab:history', history);
-    return () => {
-      window.removeEventListener('circuitlab:shortcuts', open);
-      window.removeEventListener('circuitlab:history', history);
-    };
+    return () => window.removeEventListener('circuitlab:shortcuts', open);
   }, []);
   const sim = useSimulation();
   const stageRef = useRef<HTMLDivElement>(null);
@@ -71,22 +62,11 @@ export function EditorRoot({ designId }: { designId?: string }) {
   // or a headless browser without going through pointer events.
   useEffect(() => {
     if (process.env.NODE_ENV === 'production') return;
-    // A part whose model no device implements is dropped from every
-    // simulation in silence — you can place it, wire it, and nothing happens.
-    // Two shipped in that state before anyone noticed, so say so at startup
-    // rather than relying on someone thinking to check.
-    const inert = partsWithoutDeviceModel((m) => makeDevice(m) !== null);
-    if (inert.length) {
-      console.error(
-        `${inert.length} part(s) will be silently dropped from simulations:`,
-        inert,
-      );
-    }
     (window as unknown as Record<string, unknown>).__cl = {
       design: useDesignStore,
       editor: useEditorStore,
       sim: useSimStore,
-      parts: { allParts, getPartDef, partsWithoutDeviceModel },
+      parts: { allParts, getPartDef },
       starters: STARTERS,
       buildNetlist,
       snapPlacement,
@@ -142,9 +122,10 @@ export function EditorRoot({ designId }: { designId?: string }) {
       <Toolbar />
 
       <div className="flex min-h-0 flex-1">
-        <div
+        <main
           ref={stageRef}
           className="relative min-w-0 flex-1"
+          aria-label="Circuit canvas"
           onDragOver={(e) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'copy';
@@ -153,19 +134,21 @@ export function EditorRoot({ designId }: { designId?: string }) {
         >
           <CanvasRoot />
 
-          {/* zoom rail */}
-          <div className="pointer-events-auto absolute left-3 top-3 flex flex-col gap-1 rounded-lg border border-neutral-200 bg-white/95 p-1 shadow-sm backdrop-blur">
+          {/* Zoom rail, docked bottom-right the way Tinkercad does. */}
+          <div className="pointer-events-auto absolute bottom-3 right-3 flex items-center gap-0.5 rounded-full border border-neutral-200 bg-white/95 p-0.5 shadow-sm backdrop-blur">
+            <ZoomBtn title="Zoom out" onClick={() => useEditorStore.getState().zoomBy(0.8)}>
+              <IconMinus width={16} height={16} />
+            </ZoomBtn>
+            <ZoomReadoutPill />
+            <ZoomBtn title="Zoom in" onClick={() => useEditorStore.getState().zoomBy(1.25)}>
+              <IconPlus width={16} height={16} />
+            </ZoomBtn>
+            <span className="mx-0.5 h-4 w-px bg-neutral-200" />
             <ZoomBtn
               title="Zoom to fit (F)"
               onClick={() => useEditorStore.getState().fitTo(contentBounds())}
             >
               <IconFit width={16} height={16} />
-            </ZoomBtn>
-            <ZoomBtn title="Zoom in" onClick={() => useEditorStore.getState().zoomBy(1.25)}>
-              <IconPlus width={16} height={16} />
-            </ZoomBtn>
-            <ZoomBtn title="Zoom out" onClick={() => useEditorStore.getState().zoomBy(0.8)}>
-              <IconMinus width={16} height={16} />
             </ZoomBtn>
           </div>
 
@@ -175,20 +158,15 @@ export function EditorRoot({ designId }: { designId?: string }) {
             </div>
           )}
 
-          {/* floating inspector — the history panel takes the same corner */}
-          {historyOpen ? (
-            <HistoryPanel onClose={() => setHistoryOpen(false)} />
-          ) : (
-            <div className="pointer-events-none absolute right-3 top-3">
-              <Inspector />
-            </div>
-          )}
+          {/* floating inspector */}
+          <div className="pointer-events-none absolute right-3 top-3">
+            <Inspector />
+          </div>
 
           <ZoomReadout />
-          <FailurePanel />
           <Toast />
           {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
-        </div>
+        </main>
 
         <ComponentPanel />
       </div>
@@ -216,10 +194,20 @@ function ZoomBtn({
     <button
       title={title}
       onClick={onClick}
-      className="rounded-md p-1.5 text-neutral-600 transition hover:bg-neutral-100 hover:text-neutral-900"
+      className="rounded-full p-1.5 text-neutral-600 transition hover:bg-neutral-100 hover:text-neutral-900"
     >
       {children}
     </button>
+  );
+}
+
+/** Inline zoom percent between the − and + buttons, as the reference product shows. */
+function ZoomReadoutPill() {
+  const zoom = useEditorStore((s) => s.zoom);
+  return (
+    <span className="min-w-[42px] text-center text-[11.5px] font-semibold tabular-nums text-neutral-600">
+      {Math.round(zoom * 100)}%
+    </span>
   );
 }
 
@@ -244,6 +232,7 @@ function Toast() {
       className={`pointer-events-auto absolute bottom-4 left-1/2 z-20 max-w-md -translate-x-1/2 rounded-lg px-3.5 py-2 text-[12.5px] font-medium text-white shadow-lg ${tone}`}
       onClick={() => setToast(null)}
       role="status"
+      aria-live="polite"
     >
       {toast.text}
     </div>
@@ -251,14 +240,15 @@ function Toast() {
 }
 
 function ZoomReadout() {
-  const zoom = useEditorStore((s) => s.zoom);
+  // Bottom-left status bar: no longer carries the zoom % (that moved into the
+  // zoom rail), but still shows the piece counts and, while running, the
+  // simulated clock — which is where Tinkercad keeps its status too.
   const parts = useDesignStore((s) => Object.keys(s.design.parts).length);
   const wires = useDesignStore((s) => Object.keys(s.design.wires).length);
   const running = useSimStore((s) => s.runState !== 'idle');
   const elapsed = useSimStore((s) => s.elapsed);
   return (
     <div className="pointer-events-none absolute bottom-3 left-3 flex gap-3 rounded-md bg-white/85 px-2.5 py-1 text-[11px] font-medium text-neutral-500 shadow-sm backdrop-blur">
-      <span>{Math.round(zoom * 100)}%</span>
       <span>
         {parts} component{parts === 1 ? '' : 's'}
       </span>

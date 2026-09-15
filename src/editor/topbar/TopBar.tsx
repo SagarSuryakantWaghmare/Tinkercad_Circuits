@@ -20,30 +20,15 @@ export function TopBar() {
     <header className="flex h-12 shrink-0 items-center gap-3 border-b border-neutral-200 bg-white px-3">
       <Logo />
 
-      {/* The name is the one thing here that can afford to shrink. */}
       <input
         value={name}
         onChange={(e) => rename(e.target.value)}
-        className="w-32 min-w-0 flex-1 rounded border border-transparent px-2 py-1 text-[14px] font-medium text-neutral-900 outline-none hover:border-neutral-200 focus:border-sky-500 focus:bg-white sm:w-56 sm:flex-none"
+        aria-label="Design name"
+        placeholder="Untitled Design"
+        className="w-56 rounded border border-transparent px-2 py-1 text-[14px] font-medium text-neutral-900 outline-none hover:border-neutral-200 focus:border-sky-500 focus:bg-white"
       />
 
-      <div className="ml-auto flex shrink-0 items-center gap-2">
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent('circuitlab:toggle-sim'))}
-          className={`flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-3.5 text-[13px] font-semibold transition ${
-            running
-              ? 'bg-neutral-800 text-white hover:bg-neutral-900'
-              : 'bg-sky-600 text-white hover:bg-sky-700'
-          }`}
-        >
-          {running ? <IconStop width={13} height={13} /> : <IconPlay width={13} height={13} />}
-          {/* Below the medium breakpoint there is no room for the noun. */}
-          <span className="hidden md:inline">{running ? 'Stop Simulation' : 'Start Simulation'}</span>
-          <span className="md:hidden">{running ? 'Stop' : 'Start'}</span>
-        </button>
-
-        <SendToMenu />
-
+      <div className="ml-auto flex items-center gap-2">
         <button
           onClick={() => setCodeOpen(!codeOpen)}
           className={`flex h-8 items-center gap-1.5 rounded-md border px-3 text-[13px] font-medium transition ${
@@ -55,28 +40,48 @@ export function TopBar() {
           <IconCode width={15} height={15} />
           Code
         </button>
+
+        <SendToMenu />
+
+        {/* Simulation button: green Start / red Stop matches the reference
+            product and the universal "green = go" convention. */}
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('circuitlab:toggle-sim'))}
+          aria-label={running ? 'Stop simulation' : 'Start simulation'}
+          className={`flex h-8 items-center gap-2 rounded-md px-4 text-[13px] font-semibold text-white shadow-sm transition ${
+            running
+              ? 'bg-red-500 hover:bg-red-600'
+              : 'bg-emerald-500 hover:bg-emerald-600'
+          }`}
+        >
+          {running ? <IconStop width={13} height={13} /> : <IconPlay width={13} height={13} />}
+          {running ? 'Stop Simulation' : 'Start Simulation'}
+        </button>
       </div>
     </header>
   );
 }
 
 function Logo() {
-  const cells = ['#E23B3B', '#E3A93B', '#3FBF4F', '#2E8BD6', '#7B3FB5', '#E3C93B'];
+  // A Tinkercad-family mark: a bold rounded square in the reference product's
+  // orange, with a simple resistor glyph so the tool it opens is unambiguous.
   return (
-    <Link href="/" className="flex items-center gap-2" title="All designs">
-      <svg width="26" height="26" viewBox="0 0 30 30" className="shrink-0">
-        <rect width="30" height="30" rx="5" fill="#1F2937" />
-        {cells.map((c, i) => (
-          <rect
-            key={i}
-            x={5 + (i % 3) * 7}
-            y={6 + Math.floor(i / 3) * 9}
-            width="6"
-            height="7.5"
-            rx="1.2"
-            fill={c}
-          />
-        ))}
+    <Link
+      href="/"
+      className="flex items-center gap-2"
+      aria-label="Back to designs"
+      title="All designs"
+    >
+      <svg width="28" height="28" viewBox="0 0 30 30" className="shrink-0">
+        <rect width="30" height="30" rx="7" fill="#F04E23" />
+        <path
+          d="M4.5 15 h4.5 l1.5 -5 l3 10 l3 -10 l3 10 l1.5 -5 h4.5"
+          fill="none"
+          stroke="#FFFFFF"
+          strokeWidth={1.8}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
       <span className="text-[14px] font-bold tracking-tight text-neutral-900">CircuitLab</span>
     </Link>

@@ -8,6 +8,8 @@ import { newDesignId } from '@/lib/ids';
 import { deleteDesign, loadDesign, loadIndex, saveDesign, type DesignSummary } from '@/persist/store';
 import { STARTERS } from '@/starters';
 import { importDesignJson } from '@/persist/exporters';
+import { useActiveUsers } from '@/lib/presence';
+import { IconLightbulb, IconUsers } from '@/editor/icons';
 
 /**
  * Landing page: the designs saved in this browser, plus a way to start from
@@ -19,10 +21,28 @@ export function Dashboard() {
   const router = useRouter();
   const [designs, setDesigns] = useState<DesignSummary[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const activeUsers = useActiveUsers();
+  const [tipsDismissed, setTipsDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return localStorage.getItem('circuitlab:tipsDismissed') === '1';
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     loadIndex().then(setDesigns).catch(() => setDesigns([]));
   }, []);
+
+  const dismissTips = () => {
+    setTipsDismissed(true);
+    try {
+      localStorage.setItem('circuitlab:tipsDismissed', '1');
+    } catch {
+      /* nothing meaningful to do */
+    }
+  };
 
   const createBlank = async () => {
     setBusy(true);
@@ -75,6 +95,19 @@ export function Dashboard() {
             </p>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <span
+              className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11.5px] font-semibold text-emerald-700"
+              title={`${activeUsers} tab${activeUsers === 1 ? '' : 's'} of CircuitLab open on this device right now.`}
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-70" />
+                <span className="relative inline-block h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              <IconUsers width={12} height={12} />
+              <span>
+                {activeUsers} active {activeUsers === 1 ? 'learner' : 'learners'}
+              </span>
+            </span>
             <label className="cursor-pointer rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-700 transition hover:bg-neutral-50">
               Import
               <input
@@ -108,6 +141,7 @@ export function Dashboard() {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-6">
+        {!tipsDismissed && <TipsForNewStudents onDismiss={dismissTips} />}
         <section>
           <h2 className="mb-3 text-[13px] font-semibold text-neutral-800">Your designs</h2>
           {designs === null ? (
@@ -204,6 +238,55 @@ export function Dashboard() {
   );
 }
 
+/**
+ * First-visit tour. Sits above the design list and stays until dismissed,
+ * so a student loading the dashboard for the first time sees what the app
+ * expects them to do next. The dismissal is remembered per-browser in
+ * localStorage — new students on shared machines still see it.
+ */
+function TipsForNewStudents({ onDismiss }: { onDismiss: () => void }) {
+  const tips: [string, string][] = [
+    ['1. Open a starter', 'Pick one below (LED blink, servo sweep, temperature read). Every starter has working code you can simulate immediately.'],
+    ['2. Drop parts on the canvas', 'Click a part in the left panel, then click on the canvas to place it. Press R to rotate, H for the hand tool to pan around.'],
+    ['3. Wire it up', 'Click a pin, drag to another pin, click to drop. Red = 5 V. Black = GND. Every device needs both.'],
+    ['4. Write code and run', 'Press C to open the code panel — pick Blocks or Text. Press S (or the play button) to start the simulation.'],
+    ['5. Debug with breakpoints', 'Click a line number to pause the sketch there. The Variables tab shows every value in scope.'],
+  ];
+  return (
+    <section className="mb-6 rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 to-white p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 rounded-full bg-sky-100 p-1.5 text-sky-600">
+          <IconLightbulb width={16} height={16} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-[13.5px] font-semibold text-neutral-900">
+              New to CircuitLab? Start here.
+            </h2>
+            <button
+              onClick={onDismiss}
+              className="ml-auto rounded px-2 py-0.5 text-[11px] font-medium text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
+            >
+              Got it, hide
+            </button>
+          </div>
+          <ol className="mt-2 grid grid-cols-1 gap-2 text-[12.5px] text-neutral-700 sm:grid-cols-2 lg:grid-cols-3">
+            {tips.map(([label, body]) => (
+              <li
+                key={label}
+                className="rounded-lg border border-neutral-200 bg-white p-2.5 leading-snug"
+              >
+                <div className="font-semibold text-sky-700">{label}</div>
+                <div className="mt-0.5 text-neutral-600">{body}</div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function MiniButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
     <button
@@ -225,21 +308,18 @@ function relative(ts: number) {
 }
 
 function Logo() {
-  const cells = ['#E23B3B', '#E3A93B', '#3FBF4F', '#2E8BD6', '#7B3FB5', '#E3C93B'];
+  // Same mark as the editor topbar so the identity is coherent across pages.
   return (
-    <svg width="34" height="34" viewBox="0 0 30 30" className="shrink-0">
-      <rect width="30" height="30" rx="6" fill="#1F2937" />
-      {cells.map((c, i) => (
-        <rect
-          key={i}
-          x={5 + (i % 3) * 7}
-          y={6 + Math.floor(i / 3) * 9}
-          width="6"
-          height="7.5"
-          rx="1.2"
-          fill={c}
-        />
-      ))}
+    <svg width="36" height="36" viewBox="0 0 30 30" className="shrink-0">
+      <rect width="30" height="30" rx="7" fill="#F04E23" />
+      <path
+        d="M4.5 15 h4.5 l1.5 -5 l3 10 l3 -10 l3 10 l1.5 -5 h4.5"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

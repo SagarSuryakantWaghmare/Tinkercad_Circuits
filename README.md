@@ -34,16 +34,3 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-## If the editor fails to load a chunk
-
-A `ChunkLoadError` naming a `_next/static/chunks/...` file means the browser is
-holding chunk names from an earlier build — usually after the dev server was
-restarted with a page still open. It is a stale cache, not a code fault.
-
-```bash
-npm run dev:clean
-```
-
-That clears `.next` and starts the dev server again. `npm run clean` clears
-both `.next` and `out` without starting anything.

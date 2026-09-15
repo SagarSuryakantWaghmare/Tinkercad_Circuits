@@ -3,17 +3,13 @@ import type { ArtProps, PartDef } from '../types';
 import { C } from '@/lib/tokens';
 import { Leg, Silk } from '../primitives';
 import { beginValueDrag } from '../interact';
-import { ColdIcon, HotIcon, MoonIcon, PartSlider, SunIcon } from '../simControls';
+import { ColdIcon, HotIcon, MoonIcon, PartButton, PartSlider, SunIcon } from '../simControls';
 
 // ─── Pushbutton ──────────────────────────────────────────────────────────────
 // Four legs; the two on each side are permanently tied, and pressing bridges
 // left to right. Terminal names match the product's 1a/1b/2a/2b convention.
 
-interface ButtonProps extends Record<string, string | number> {
-  action: string;
-}
-
-function PushbuttonArt({ state, simulating, interact }: ArtProps<ButtonProps>) {
+function PushbuttonArt({ state, simulating, interact }: ArtProps<Record<string, never>>) {
   const pressed = !!state?.pressed;
   return (
     <g>
@@ -62,11 +58,12 @@ function PushbuttonArt({ state, simulating, interact }: ArtProps<ButtonProps>) {
   );
 }
 
-export const Pushbutton = definePart<ButtonProps>({
+export const Pushbutton = definePart({
   id: 'pushbutton',
   name: 'Pushbutton',
   category: 'input',
   keywords: ['button', 'switch', 'tactile', 'momentary', 'press'],
+  basic: true,
   size: { w: 40, h: 62 },
   origin: { x: 20, y: 31 },
   socketable: true,
@@ -77,19 +74,8 @@ export const Pushbutton = definePart<ButtonProps>({
     { name: '1b', type: 'breadboard_male', x: -15, y: 25, dir: [0, 1], group: 'L' },
     { name: '2b', type: 'breadboard_male', x: 15, y: 25, dir: [0, 1], group: 'R' },
   ],
-  props: [
-    {
-      key: 'action',
-      label: 'Contacts',
-      kind: 'select',
-      options: [
-        { value: 'no', label: 'Normally open — closes when pressed' },
-        { value: 'nc', label: 'Normally closed — opens when pressed' },
-      ],
-      help: 'A normally-closed button is how an end-stop or a door switch is wired.',
-    },
-  ],
-  defaults: { action: 'no' },
+  props: [],
+  defaults: {},
   Art: PushbuttonArt,
 });
 
@@ -137,6 +123,7 @@ export const Slideswitch = definePart({
   name: 'Slideswitch',
   category: 'input',
   keywords: ['switch', 'spdt', 'toggle', 'slide', 'selector'],
+  basic: true,
   size: { w: 42, h: 40 },
   origin: { x: 21, y: 18 },
   socketable: true,
@@ -179,16 +166,50 @@ function PotArt({ state, simulating, interact }: ArtProps<PotProps>) {
         strokeDasharray="1.5 3"
       />
       {simulating && (
-        <circle
-          cx={0}
-          cy={-2}
-          r={16}
-          fill="transparent"
-          style={{ cursor: 'ew-resize' }}
-          onPointerDown={(e) =>
-            beginValueDrag(e, (dx, dy) => interact?.('delta', (dx - dy) * 0.004))
-          }
-        />
+        <>
+          <circle
+            cx={0}
+            cy={-2}
+            r={16}
+            fill="transparent"
+            style={{ cursor: 'ew-resize' }}
+            onPointerDown={(e) =>
+              beginValueDrag(e, (dx, dy) => interact?.('delta', (dx - dy) * 0.012))
+            }
+          />
+          {/* Voltage-divider regulator slider: precise wiper control (0–100 %). */}
+          <PartSlider
+            x={0}
+            y={-38}
+            width={78}
+            value={frac}
+            min={0}
+            max={1}
+            color="#3C6EA5"
+            label={`${Math.round(frac * 100)} %`}
+            onChange={(v) => interact?.('set', v)}
+          />
+          {/* Step buttons for one-percent nudges — the reference product's
+              behaviour is that a click on the knob edge fine-tunes the value. */}
+          <PartButton
+            x={-30}
+            y={-16}
+            width={14}
+            height={12}
+            label="−"
+            active={false}
+            onPress={() => interact?.('delta', -0.01)}
+          />
+          <PartButton
+            x={30}
+            y={-16}
+            width={14}
+            height={12}
+            label="+"
+            active={false}
+            onPress={() => interact?.('delta', 0.01)}
+          />
+        </>
       )}
     </g>
   );
@@ -201,6 +222,7 @@ export const Potentiometer = definePart<PotProps>({
   name: 'Rotary Potentiometer',
   category: 'input',
   keywords: ['pot', 'knob', 'variable resistor', 'dial', 'analog'],
+  basic: true,
   size: { w: 44, h: 46 },
   origin: { x: 22, y: 20 },
   socketable: true,
@@ -264,16 +286,29 @@ export const TrimPot = definePart<PotProps>({
           <rect x={-1.2} y={-8} width={2.4} height={14} rx={0.6} fill="#31363B" />
         </g>
         {simulating && (
-          <circle
-            cx={0}
-            cy={-1}
-            r={10}
-            fill="transparent"
-            style={{ cursor: 'ew-resize' }}
-            onPointerDown={(e) =>
-              beginValueDrag(e, (dx, dy) => interact?.('delta', (dx - dy) * 0.004))
-            }
-          />
+          <>
+            <circle
+              cx={0}
+              cy={-1}
+              r={10}
+              fill="transparent"
+              style={{ cursor: 'ew-resize' }}
+              onPointerDown={(e) =>
+                beginValueDrag(e, (dx, dy) => interact?.('delta', (dx - dy) * 0.012))
+              }
+            />
+            <PartSlider
+              x={0}
+              y={-30}
+              width={62}
+              value={frac}
+              min={0}
+              max={1}
+              color="#2E5FA8"
+              label={`${Math.round(frac * 100)} %`}
+              onChange={(v) => interact?.('set', v)}
+            />
+          </>
         )}
       </g>
     );
@@ -332,6 +367,7 @@ export const Photoresistor = definePart({
   name: 'Photoresistor',
   category: 'input',
   keywords: ['ldr', 'light', 'sensor', 'cds', 'light dependent resistor'],
+  basic: true,
   size: { w: 30, h: 44 },
   origin: { x: 15, y: 16 },
   socketable: true,
@@ -352,6 +388,7 @@ export const TemperatureSensor = definePart({
   name: 'Temperature Sensor [TMP36]',
   category: 'input',
   keywords: ['tmp36', 'temp', 'thermometer', 'celsius', 'analog sensor'],
+  basic: true,
   size: { w: 34, h: 44 },
   origin: { x: 17, y: 16 },
   socketable: true,

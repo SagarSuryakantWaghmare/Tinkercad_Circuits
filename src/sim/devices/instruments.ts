@@ -70,6 +70,36 @@ defineDevice('multimeter', (): Device => ({
 
 // ─── Function generator ──────────────────────────────────────────────────────
 
+/**
+ * Sample a periodic waveform at a given phase in [0,1). A square wave gets
+ * a tiny slew at each edge so that the fixed-step solver samples a
+ * transitioning voltage instead of a discontinuity, which is what causes
+ * the ringing/glitches on the scope trace.
+ */
+function fgSample(shape: string, phase: number, edge: number): number {
+  switch (shape) {
+    case 'square': {
+      // Ramp across `edge` (in phase units) at each transition.
+      const e = Math.max(1e-3, Math.min(0.05, edge));
+      if (phase < e) return -1 + (phase / e) * 2;
+      if (phase < 0.5 - e) return 1;
+      if (phase < 0.5 + e) return 1 - ((phase - (0.5 - e)) / (2 * e)) * 2;
+      if (phase < 1 - e) return -1;
+      return -1 + ((phase - (1 - e)) / e) * 2;
+    }
+    case 'triangle':
+      return phase < 0.5 ? 4 * phase - 1 : 3 - 4 * phase;
+    case 'sawtooth': {
+      // A tiny drop at the wrap keeps the wave continuous for the solver.
+      const e = Math.max(1e-3, Math.min(0.05, edge));
+      if (phase < 1 - e) return 2 * phase - 1;
+      return 1 - ((phase - (1 - e)) / e) * 2;
+    }
+    default:
+      return Math.sin(phase * Math.PI * 2);
+  }
+}
+
 defineDevice('function-generator', (): Device => ({
   needsFineStep: true,
   stamp(c, ctx) {
@@ -79,21 +109,10 @@ defineDevice('function-generator', (): Device => ({
     const offset = num(ctx.props.offset, 0);
 
     const phase = ((ctx.t * freq) % 1 + 1) % 1;
-    let s: number;
-    switch (shape) {
-      case 'square':
-        s = phase < 0.5 ? 1 : -1;
-        break;
-      case 'triangle':
-        s = phase < 0.5 ? 4 * phase - 1 : 3 - 4 * phase;
-        break;
-      case 'sawtooth':
-        s = 2 * phase - 1;
-        break;
-      default:
-        s = Math.sin(phase * Math.PI * 2);
-    }
-    const v = offset + amp * s;
+    // Slew the discontinuity across a few solver steps so the scope trace
+    // draws clean edges instead of aliased spikes.
+    const edge = Math.min(0.05, ctx.dt * freq * 2);
+    const v = offset + amp * fgSample(shape, phase, edge);
 
     // 50 Ω output impedance, like a bench generator.
     const g = 1 / 50;
@@ -110,12 +129,16 @@ defineDevice('function-generator', (): Device => ({
 
 /** Samples per trace shown on screen. */
 const SCOPE_POINTS = 400;
+/** Deep ring so a slow time-base still has enough history to draw the full
+ *  display window without wrapping into stale data. */
+const SCOPE_CAP = 8192;
 
 defineDevice('oscilloscope', (): Device => {
-  const ch1 = new Float32Array(SCOPE_POINTS);
-  const ch2 = new Float32Array(SCOPE_POINTS);
+  const ch1 = new Float32Array(SCOPE_CAP);
+  const ch2 = new Float32Array(SCOPE_CAP);
+  const ts = new Float32Array(SCOPE_CAP);
   let head = 0;
-  let acc = 0;
+  let count = 0;
 
   return {
     needsFineStep: true,
@@ -125,33 +148,72 @@ defineDevice('oscilloscope', (): Device => {
       c.stampResistance(ctx.node('CH2+'), ctx.node('CH2-'), 1e7);
     },
     commit(c, ctx) {
-      // One sample per (timePerDiv × 10 ÷ points) of simulated time.
-      const span = num(ctx.props.timePerDiv, 0.001) * 10;
-      const interval = span / SCOPE_POINTS;
-      acc += ctx.dt;
-      if (acc < interval) return;
-      acc = 0;
+      // Every solver step is a sample. Storing time along with the sample
+      // means the display can lay the trace out on real elapsed time
+      // rather than assuming a uniform interval that never matches the
+      // solver's actual step size.
       ch1[head] = c.v(ctx.node('CH1+')) - c.v(ctx.node('CH1-'));
       ch2[head] = c.v(ctx.node('CH2+')) - c.v(ctx.node('CH2-'));
-      head = (head + 1) % SCOPE_POINTS;
-      ctx.s.head = head;
+      ts[head] = ctx.t;
+      head = (head + 1) % SCOPE_CAP;
+      if (count < SCOPE_CAP) count++;
     },
     output(_, ctx) {
-      // Unroll the ring so the oldest sample is first.
-      const h = head;
-      const a: number[] = [];
-      const b: number[] = [];
-      for (let i = 0; i < SCOPE_POINTS; i++) {
-        const j = (h + i) % SCOPE_POINTS;
-        a.push(ch1[j]);
-        b.push(ch2[j]);
+      if (count < 2) {
+        return {
+          ch1: [] as number[],
+          ch2: [] as number[],
+          vpp1: 0,
+          vpp2: 0,
+          timePerDiv: num(ctx.props.timePerDiv, 0.001),
+          voltsPerDiv: num(ctx.props.voltsPerDiv, 1),
+        };
       }
-      const peak = (arr: number[]) => Math.max(...arr) - Math.min(...arr);
+      const span = num(ctx.props.timePerDiv, 0.001) * 10;
+      const newest = (head - 1 + SCOPE_CAP) % SCOPE_CAP;
+      const tNow = ts[newest];
+      const tStart = tNow - span;
+
+      // Resample the ring onto SCOPE_POINTS evenly spaced along the display
+      // window. Target time sweeps left-to-right; the previous implementation
+      // only walked cursor backwards, so once cursor crossed the target it
+      // never advanced and every column right of that collapsed to the same
+      // pair of samples. Walk cursor forward each iteration until ts[cursor]
+      // straddles target, giving the true nearest-sample-after semantic.
+      const a: number[] = new Array(SCOPE_POINTS);
+      const b: number[] = new Array(SCOPE_POINTS);
+      const oldestNeeded = (head - count + SCOPE_CAP) % SCOPE_CAP;
+      let cursor = oldestNeeded;
+      for (let i = 0; i < SCOPE_POINTS; i++) {
+        const target = tStart + (i / (SCOPE_POINTS - 1)) * span;
+        // Advance cursor while the next-newer sample is still ≤ target.
+        while (cursor !== newest) {
+          const next = (cursor + 1) % SCOPE_CAP;
+          if (ts[next] > target) break;
+          cursor = next;
+        }
+        // Interpolate between cursor (t0) and cursor+1 (t1) for a smoother trace.
+        const nextIdx = cursor === newest ? cursor : (cursor + 1) % SCOPE_CAP;
+        const t0 = ts[cursor];
+        const t1 = ts[nextIdx];
+        const dt = t1 - t0 || 1;
+        const f = Math.max(0, Math.min(1, (target - t0) / dt));
+        a[i] = ch1[cursor] + (ch1[nextIdx] - ch1[cursor]) * f;
+        b[i] = ch2[cursor] + (ch2[nextIdx] - ch2[cursor]) * f;
+      }
+
+      let a1 = -Infinity, b1 = Infinity, a2 = -Infinity, b2 = Infinity;
+      for (let i = 0; i < SCOPE_POINTS; i++) {
+        if (a[i] > a1) a1 = a[i];
+        if (a[i] < b1) b1 = a[i];
+        if (b[i] > a2) a2 = b[i];
+        if (b[i] < b2) b2 = b[i];
+      }
       return {
         ch1: a,
         ch2: b,
-        vpp1: peak(a),
-        vpp2: peak(b),
+        vpp1: Math.max(0, a1 - b1),
+        vpp2: Math.max(0, a2 - b2),
         timePerDiv: num(ctx.props.timePerDiv, 0.001),
         voltsPerDiv: num(ctx.props.voltsPerDiv, 1),
       };

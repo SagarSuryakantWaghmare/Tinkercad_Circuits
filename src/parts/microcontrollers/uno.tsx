@@ -322,6 +322,7 @@ export const UnoR3 = definePart({
   name: 'Uno R3',
   category: 'microcontrollers',
   keywords: ['arduino', 'uno', 'atmega328', 'microcontroller', 'board', 'mcu'],
+  basic: true,
   size: { w: W + 22, h: H },
   origin: { x: W / 2 + 11, y: H / 2 },
   substrate: true,
@@ -331,6 +332,35 @@ export const UnoR3 = definePart({
   props: [],
   defaults: {},
   Art: UnoArt,
+  summary:
+    'A programmable board with 14 digital pins, 6 analog inputs and a 16 MHz ATmega328P. Wire parts to its pins and write code that reads or drives them.',
+  learn: [
+    {
+      title: 'Power',
+      body:
+        '5V — regulated output for logic and small sensors.\n3.3V — a smaller regulated output.\nGND — the reference all voltages are measured against; every device must share it.\nVIN — external supply input, typically 7–12 V.',
+    },
+    {
+      title: 'Digital pins (D0 – D13)',
+      body:
+        'Each can be an INPUT you read with digitalRead, or an OUTPUT you drive HIGH/LOW with digitalWrite. Pins with a ~ (D3, 5, 6, 9, 10, 11) also do PWM via analogWrite for LED dimming or motor speed.',
+    },
+    {
+      title: 'Analog pins (A0 – A5)',
+      body:
+        'Read a voltage from 0–5 V with analogRead — it returns 0…1023. Use these for potentiometers, light sensors, and other analog inputs. A4/A5 double as the I2C bus (SDA/SCL).',
+    },
+    {
+      title: 'Your first sketch',
+      body:
+        'void setup() {\n  pinMode(13, OUTPUT);\n}\nvoid loop() {\n  digitalWrite(13, HIGH);\n  delay(500);\n  digitalWrite(13, LOW);\n  delay(500);\n}\n\nThis blinks the LED on pin 13. Press Start Simulation to run it.',
+    },
+    {
+      title: 'Tips',
+      body:
+        '• Open the Code panel (C key) to switch between Blocks and Text.\n• Red = 5V, black = GND. Every device needs both.\n• Add a resistor in series with every LED (220 Ω works).\n• Click a line number to set a breakpoint and inspect variables.',
+    },
+  ],
 });
 
 // ─── ATtiny85 ────────────────────────────────────────────────────────────────

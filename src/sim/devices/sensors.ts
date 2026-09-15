@@ -219,6 +219,18 @@ defineDevice('hall-sensor', () =>
   ),
 );
 
+// A typical reflective IR proximity module: OUT is active-low, pulling to
+// ground when an object is close enough to reflect the LED back onto the
+// receiver. Same digital shape as the Hall sensor: on-part toggle, no analog
+// sweep, active-low.
+defineDevice('ir-proximity', () =>
+  moduleSensor(
+    { key: 'near', min: 0, max: 1, initial: 0 },
+    (n, supply) => (n > 0.5 ? 0.2 : supply),
+    { digital: true },
+  ),
+);
+
 /**
  * A demodulating receiver idles high and pulls low while a carrier is present.
  * Either the on-part toggle or an IR handset elsewhere in the design can
@@ -290,6 +302,31 @@ defineDevice('dip-switch', (): Device => ({
   },
   interact(event, value, ctx) {
     // The art sends the switch index as the value.
+    if (event === 'toggle' && typeof value === 'number') {
+      const k = `s${value}`;
+      ctx.s[k] = ctx.s[k] === 1 ? 0 : 1;
+    }
+  },
+  output(_, ctx) {
+    const n = Math.max(1, num(ctx.props.ways, 4));
+    return { states: Array.from({ length: n }, (_, i) => ctx.s[`s${i + 1}`] ?? 0) };
+  },
+}));
+
+// Double-pole variant: each actuator bridges TWO independent pole pairs, so
+// one flip drives two circuits. Terminal groups: A{i} ↔ A{i}b (pole A) and
+// B{i} ↔ B{i}b (pole B). Toggle and state reporting mirror the SPST.
+defineDevice('dip-switch-dpst', (): Device => ({
+  stamp(c, ctx) {
+    const n = Math.max(1, num(ctx.props.ways, 4));
+    for (let i = 1; i <= n; i++) {
+      const on = ctx.s[`s${i}`] === 1;
+      const r = on ? R_CLOSED : R_OPEN;
+      c.stampResistance(ctx.node(`A${i}`), ctx.node(`A${i}b`), r);
+      c.stampResistance(ctx.node(`B${i}`), ctx.node(`B${i}b`), r);
+    }
+  },
+  interact(event, value, ctx) {
     if (event === 'toggle' && typeof value === 'number') {
       const k = `s${value}`;
       ctx.s[k] = ctx.s[k] === 1 ? 0 : 1;

@@ -65,11 +65,26 @@ class AudioEngine {
   stop(id: string) {
     const v = this.voices.get(id);
     if (!v || !this.ctx) return;
+    // Fade to silence, then actually tear the voice down. Without the
+    // teardown a long piezo melody (or a debug/replay loop) stacks hundreds
+    // of orphan OscillatorNode + GainNode pairs for the rest of the tab.
     v.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.01);
+    this.voices.delete(id);
+    const { osc, gain } = v;
+    window.setTimeout(() => {
+      try {
+        osc.stop();
+      } catch {
+        // already stopped
+      }
+      osc.disconnect();
+      gain.disconnect();
+    }, 60);
   }
 
   stopAll() {
-    for (const id of this.voices.keys()) this.stop(id);
+    // Snapshot keys because stop() mutates the map.
+    for (const id of Array.from(this.voices.keys())) this.stop(id);
   }
 
   dispose() {
@@ -90,3 +105,14 @@ class AudioEngine {
 }
 
 export const audio = new AudioEngine();
+
+// Silence every voice whenever the tab is backgrounded. A piezo playing a
+// melody while the tab is hidden is disorientating and — on iOS — will keep
+// running even after the tab closes.
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) audio.stopAll();
+  });
+  // A hard nav or a tab close should never leave a voice ringing either.
+  window.addEventListener('pagehide', () => audio.stopAll());
+}

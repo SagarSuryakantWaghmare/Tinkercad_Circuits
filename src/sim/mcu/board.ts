@@ -43,6 +43,12 @@ export class Board {
   serialRx: number[] = [];
   serialBaud = 9600;
   serialOpen = false;
+  /**
+   * Monotonic count of lines the sketch has produced. `serialTx` is trimmed to
+   * cap memory; consumers use this + serialTx.length to reconstruct which
+   * slice is new since their last read, even after a splice.
+   */
+  serialWritten = 0;
 
   /** pin → commanded angle in degrees (positional) or speed (continuous). */
   servos = new Map<number, { angle: number; attached: boolean; min: number; max: number }>();
@@ -50,19 +56,6 @@ export class Board {
 
   /** Names for the parts a shield-style library drives, keyed by object id. */
   peripherals = new Map<string, unknown>();
-
-  /**
-   * Chips that answer a bus transaction, so a sketch talking to a real part
-   * gets a real answer.
-   *
-   * Without these, SPI.transfer() echoes its argument and Wire.read() returns
-   * zero — which is why an ADC or an EEPROM on the canvas did nothing at all.
-   * A device model registers itself each solver step; the runtime routes to
-   * whichever chip the sketch has selected.
-   */
-  spiTargets = new Map<string, { csPin: number; transfer(byte: number): number }>();
-  /** Keyed by 7-bit I2C address. */
-  i2cTargets = new Map<number, { write(bytes: number[]): void; read(n: number): number[] }>();
 
   reset() {
     this.modes.fill('input');
@@ -74,11 +67,10 @@ export class Board {
     this.txPartial = '';
     this.serialRx = [];
     this.serialOpen = false;
+    this.serialWritten = 0;
     this.servos.clear();
     this.tone = null;
     this.peripherals.clear();
-    this.spiTargets.clear();
-    this.i2cTargets.clear();
   }
 
   // ── digital / analog I/O ───────────────────────────────────────────────────
@@ -150,6 +142,7 @@ export class Board {
     let nl = this.txPartial.indexOf('\n');
     while (nl >= 0) {
       this.serialTx.push(this.txPartial.slice(0, nl).replace(/\r$/, ''));
+      this.serialWritten++;
       this.txPartial = this.txPartial.slice(nl + 1);
       nl = this.txPartial.indexOf('\n');
     }

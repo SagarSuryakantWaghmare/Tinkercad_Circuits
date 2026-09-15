@@ -69,15 +69,6 @@ export interface CodeState {
   /** micro:bit MicroPython program. */
   python: string;
   libraries: string[];
-  /**
-   * Sketches belonging to one specific board, keyed by part id.
-   *
-   * A design with a single board keeps using `text` / `python` and never
-   * touches this. The moment there are two, each needs its own program — two
-   * Arduinos talking to each other over serial is a normal exercise and was
-   * impossible while every board was handed the same source.
-   */
-  boards: Record<string, string>;
   breakpoints: number[];
   /** Once blocks have been abandoned for text the conversion is one-way. */
   blocksAbandoned: boolean;
@@ -120,49 +111,11 @@ void loop()
  * Designs saved before the micro:bit engine existed have no Python program or
  * language field, and must not lose their Arduino sketch when opened.
  */
-/**
- * Parts that used to be separate entries and are now one part with a setting.
- *
- * Dropping the old ids outright would make those components vanish from any
- * design already saved with them — silently, since an unresolved type is
- * simply skipped. Mapping them forward costs a few lines and keeps every
- * existing design openable.
- */
-const RENAMED_PARTS: Record<string, { type: string; props: Record<string, PropValue> }> = {
-  'breadboard-mini': { type: 'breadboard', props: { size: 'mini' } },
-  'breadboard-small': { type: 'breadboard', props: { size: 'small' } },
-};
-
-function migrateParts(parts: Record<string, PartInstance>): Record<string, PartInstance> {
-  let changed = false;
-  const out: Record<string, PartInstance> = {};
-  for (const id in parts) {
-    const inst = parts[id];
-    // `breadboard` used to mean the full-size board specifically. An instance
-    // saved without a size predates the setting, so it must stay full-size
-    // rather than picking up today's default and quietly shrinking.
-    if (inst.type === 'breadboard' && inst.props?.size === undefined) {
-      changed = true;
-      out[id] = { ...inst, props: { ...inst.props, size: 'full' } };
-      continue;
-    }
-
-    const to = RENAMED_PARTS[inst.type];
-    if (!to) {
-      out[id] = inst;
-      continue;
-    }
-    changed = true;
-    out[id] = { ...inst, type: to.type, props: { ...to.props, ...inst.props } };
-  }
-  return changed ? out : parts;
-}
-
 export function migrateDesign(raw: Design): Design {
   const code = (raw.code ?? {}) as Partial<CodeState>;
   return {
     ...raw,
-    parts: migrateParts(raw.parts ?? {}),
+    parts: raw.parts ?? {},
     wires: raw.wires ?? {},
     notes: raw.notes ?? {},
     code: {
@@ -173,7 +126,6 @@ export function migrateDesign(raw: Design): Design {
       microbitBlocksXml: code.microbitBlocksXml ?? '',
       python: code.python ?? DEFAULT_PYTHON,
       libraries: code.libraries ?? [],
-      boards: code.boards ?? {},
       breakpoints: code.breakpoints ?? [],
       blocksAbandoned: code.blocksAbandoned ?? false,
     },
@@ -196,7 +148,6 @@ export function emptyDesign(id: string, name = 'Untitled Circuit'): Design {
       microbitBlocksXml: '',
       python: DEFAULT_PYTHON,
       libraries: [],
-      boards: {},
       breakpoints: [],
       blocksAbandoned: false,
     },

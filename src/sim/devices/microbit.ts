@@ -61,7 +61,9 @@ defineDevice('microbit', (): Device => {
         const name = mbPinTerminal(pin);
         if (!name) continue;
         const node = ctx.node(name);
-        if (node === -1 && gnd === -1) continue;
+        // Only register pins with an actual net; otherwise -1 → pin pollutes
+        // the map.
+        if (node === -1) continue;
         netToPin.set(node, pin);
 
         const d = board.drive(pin);

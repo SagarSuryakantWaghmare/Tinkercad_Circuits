@@ -3,17 +3,12 @@ import type { DeviceOut, PropValue } from '@/parts/types';
 import type { Design } from '@/state/design';
 import { Circuit } from './mna/Circuit';
 import { buildNetlist, type Netlist } from './net/buildNetlist';
-import {
-  makeDevice,
-  SUPPLY_PREFIX,
-  type Device,
-  type DeviceCtx,
-  type FailureReport,
-} from './devices/types';
+import { makeDevice, type Device, type DeviceCtx } from './devices/types';
 import { simBus } from './bus';
 import type { SimSnapshot } from '@/state/simStore';
 import { MCU_KEY, type McuHandle } from './devices/mcu';
 import { MICROBIT_KEY, type MicrobitHandle } from './devices/microbit';
+import { audio } from './audio';
 
 import './devices/passive';
 import './devices/sources';
@@ -23,7 +18,6 @@ import './devices/semiconductors';
 import './devices/digital';
 import './devices/sensors';
 import './devices/extras';
-import './devices/ics';
 import './devices/instruments';
 import './devices/microbit';
 
@@ -65,12 +59,8 @@ export class Simulation {
   private warnings: { partId?: string; message: string }[] = [];
   private convergenceFailures = 0;
   private gminBoost = 0;
-  private failures: FailureReport[] = [];
-  private failureKeys = new Set<string>();
   private breakpointLines: number[] = [];
   private breakpointsPending = false;
-  /** When on, parts report what would have destroyed them and survive it. */
-  private protect = false;
   private running = false;
   private serialCursor = 0;
 
@@ -88,10 +78,6 @@ export class Simulation {
   }
 
   start() {
-    // Damage does not survive a restart: a run begins with undamaged parts and
-    // an empty log, which is what makes "try it again" a useful instruction.
-    this.failures = [];
-    this.failureKeys.clear();
     this.build();
     this.running = true;
     this.lastWall = performance.now();
@@ -108,6 +94,9 @@ export class Simulation {
     this.running = false;
     if (this.raf) cancelAnimationFrame(this.raf);
     this.raf = 0;
+    // Silence any sounder that was mid-tone: a piezo melody or a running
+    // Play Melody block would otherwise keep sounding after Stop.
+    audio.stopAll();
   }
 
   /**
@@ -127,12 +116,6 @@ export class Simulation {
     const next: Bound[] = [];
     this.warnings = [];
 
-    // Sources re-publish their voltage on every stamp, so drop the old entries
-    // rather than leaving a deleted battery's rating behind to be read.
-    for (const key of [...this.shared.keys()]) {
-      if (key.startsWith(SUPPLY_PREFIX)) this.shared.delete(key);
-    }
-
     let branchCursor = 0;
     for (const d of this.netlist.devices) {
       const inst = this.design.parts[d.partId];
@@ -141,17 +124,7 @@ export class Simulation {
       const key = `${d.partId}:${d.model}`;
       const previous = carry?.get(key);
       const device = previous?.device ?? makeDevice(d.model);
-      if (!device) {
-        // A part naming a model nothing implements is placeable, wireable and
-        // completely inert. Saying so beats dropping it without a word, which
-        // is how two such parts went unnoticed in the catalogue for months.
-        const name = getPartDef(inst.type)?.name ?? inst.type;
-        this.warnings.push({
-          partId: d.partId,
-          message: `${name} is not simulated yet — it will sit in the circuit doing nothing.`,
-        });
-        continue;
-      }
+      if (!device) continue;
 
       const branch0 = branchCursor;
       branchCursor += device.branches ?? 0;
@@ -159,13 +132,12 @@ export class Simulation {
       const nodeCache = new Map<string, number>();
       const ctx: DeviceCtx = {
         partId: d.partId,
-        props: this.propsFor(d.partId, inst.type, inst.props),
+        props: this.propsFor(inst.type, inst.props),
         s: previous?.ctx.s ?? {},
         shared: this.shared,
         branch0,
         dt: this.dt,
         t: this.t,
-        report: (r) => this.noteFailureReport(d.partId, r),
         node: (terminal: string) => {
           let n = nodeCache.get(terminal);
           if (n === undefined) {
@@ -182,29 +154,20 @@ export class Simulation {
     this.circuit = new Circuit(this.netlist.netCount, branchCursor);
     this.dt = this.bound.some((b) => b.device.needsFineStep) ? DT_FINE : DT_COARSE;
 
-    // Faults that are visible in the wiring alone, before anything is solved.
-    for (const b of this.bound) b.device.check?.(b.ctx);
-
     // Breakpoints live in the document, so a design reopened with them still
     // stops where its author left the marks — not only when the gutter is
     // clicked in this session.
     this.setBreakpoints(this.design.code.breakpoints);
   }
 
-  /**
-   * Device-visible props, with this board's own program folded in.
-   *
-   * A board without an entry of its own falls back to the shared sketch, so a
-   * single-board design behaves exactly as it always did.
-   */
-  private propsFor(partId: string, type: string, props: Record<string, PropValue>) {
+  /** Device-visible props, with the program folded in for whichever board. */
+  private propsFor(type: string, props: Record<string, PropValue>) {
     const def = getPartDef(type);
-    const own = this.design.code.boards?.[partId];
     if (def?.model?.startsWith('mcu-')) {
-      return { ...props, __source: own ?? this.design.code.text };
+      return { ...props, __source: this.design.code.text };
     }
     if (def?.model === 'microbit') {
-      return { ...props, __python: own ?? this.design.code.python };
+      return { ...props, __python: this.design.code.python };
     }
     return props;
   }
@@ -252,17 +215,6 @@ export class Simulation {
     this.microbit()?.interp.resume();
   }
 
-  /**
-   * Turn component protection on or off, including mid-run.
-   *
-   * Parts already destroyed stay destroyed — protection stops the next
-   * failure, it does not undo the last one.
-   */
-  setProtect(on: boolean) {
-    this.protect = on;
-    for (const b of this.bound) b.ctx.protect = on;
-  }
-
   /** Advance a paused sketch by one statement. */
   stepOver() {
     this.mcu()?.interp.step();
@@ -284,7 +236,6 @@ export class Simulation {
     for (const b of this.bound) {
       b.ctx.dt = dt;
       b.ctx.t = this.t;
-      b.ctx.protect = this.protect;
     }
 
     const nonlinear = this.bound.some((b) => b.device.nonlinear);
@@ -347,21 +298,6 @@ export class Simulation {
     if (++this.convergenceFailures === 20) this.warnings.push({ message });
   }
 
-  /**
-   * Record a part failing. A model calls this on every timestep the fault
-   * persists, so the same event is folded into one entry — otherwise a shorted
-   * LED would file a thousand identical reports a second.
-   */
-  private noteFailureReport(partId: string, r: Omit<FailureReport, 'partId' | 't'>) {
-    const key = `${partId}|${r.severity}|${r.title}`;
-    if (this.failureKeys.has(key)) return;
-    this.failureKeys.add(key);
-    this.failures.push({ ...r, partId, t: this.t });
-    // A run that destroys a hundred parts has one underlying cause; keep the
-    // first of them, which is the one that explains the rest.
-    if (this.failures.length > 50) this.failures.length = 50;
-  }
-
   private publish() {
     const parts: Record<string, DeviceOut> = {};
     for (const b of this.bound) {
@@ -388,11 +324,6 @@ export class Simulation {
       terminalNet,
       serial: h ? h.board.serialTx : [],
       warnings: this.warnings.slice(-4),
-      // A copy, not the live array. The snapshot is meant to be an immutable
-      // frame, and a subscriber selecting `snapshot.failures` would otherwise
-      // never see a change: the reference stays identical while the contents
-      // grow, so the failure panel simply never re-rendered.
-      failures: [...this.failures],
     });
   }
 
@@ -404,12 +335,22 @@ export class Simulation {
     );
   }
 
-  /** How much serial output is new since the last call. */
+  /**
+   * How much serial output is new since the last call.
+   *
+   * `serialCursor` tracks a monotonic count of lines the sketch has ever
+   * produced, not a position in the (trimmable) serialTx buffer — otherwise
+   * once the buffer is trimmed past 2000 lines the cursor stays past the
+   * length and every subsequent read returns `[]`.
+   */
   drainSerial(): string[] {
     const h = this.mcu();
     if (!h) return [];
-    const lines = h.board.serialTx.slice(this.serialCursor);
-    this.serialCursor = h.board.serialTx.length;
+    const written = h.board.serialWritten;
+    const dropped = written - h.board.serialTx.length;
+    const startIdx = Math.max(0, this.serialCursor - dropped);
+    const lines = h.board.serialTx.slice(startIdx);
+    this.serialCursor = written;
     return lines;
   }
 

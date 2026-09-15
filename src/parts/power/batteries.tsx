@@ -4,41 +4,12 @@ import { Silk } from '../primitives';
 
 // ─── 9 V battery ─────────────────────────────────────────────────────────────
 
-/**
- * Settings every cell shares.
- *
- * Internal resistance is the interesting one: it decides how far the terminals
- * sag under load and how much current a short can draw, so it is the
- * difference between a coin cell and a car battery. The reference product
- * fixes both of these and lets you change neither.
- */
-const BATTERY_PROPS = [
-  {
-    key: 'voltage',
-    label: 'Voltage',
-    kind: 'number' as const,
-    min: 0.1,
-    max: 60,
-    step: 0.1,
-    unit: 'V',
-  },
-  {
-    key: 'internalResistance',
-    label: 'Internal resistance',
-    kind: 'number' as const,
-    min: 0.01,
-    max: 100,
-    step: 0.1,
-    unit: '\u03a9',
-    help: 'How much the terminals sag under load, and how hard it can be shorted.',
-  },
-];
-
 export const Battery9V = definePart({
   id: 'battery-9v',
   name: '9V Battery',
   category: 'power',
   keywords: ['battery', 'power', 'pp3', 'supply', '9 volt'],
+  basic: true,
   size: { w: 96, h: 128 },
   origin: { x: 48, y: 64 },
   model: 'battery',
@@ -46,8 +17,8 @@ export const Battery9V = definePart({
     { name: '+', type: 'wire', x: -20, y: -62, dir: [0, -1], role: 'power' },
     { name: '-', type: 'wire', x: 20, y: -62, dir: [0, -1], role: 'gnd' },
   ],
-  props: BATTERY_PROPS,
-  defaults: { voltage: 9, internalResistance: 1.2 },
+  props: [],
+  defaults: { voltage: 9 },
   Art: () => (
     <g>
       <rect x={-42} y={-52} width={84} height={108} rx={6} fill="#2A2C2F" stroke="#151719" />
@@ -98,6 +69,7 @@ function cylindricalCell(
     name,
     category: 'power',
     keywords,
+    basic: id === 'battery-aa',
     // Sized for the largest pack so the hit area never lags the art; the
     // terminals themselves follow the actual count.
     size: { w: bodyW * MAX_CELLS + 30, h: bodyH + 20 },
@@ -202,6 +174,7 @@ export const CoinCell = definePart({
   name: '3V Coin Cell Battery',
   category: 'power',
   keywords: ['coin', 'cr2032', 'button cell', '3v', 'battery'],
+  basic: true,
   size: { w: 84, h: 72 },
   origin: { x: 42, y: 36 },
   model: 'battery',
@@ -209,8 +182,8 @@ export const CoinCell = definePart({
     { name: '+', type: 'wire', x: 0, y: -32, dir: [0, -1], role: 'power' },
     { name: '-', type: 'wire', x: 0, y: 32, dir: [0, 1], role: 'gnd' },
   ],
-  props: BATTERY_PROPS,
-  defaults: { voltage: 3, internalResistance: 10 },
+  props: [],
+  defaults: { voltage: 3 },
   Art: () => (
     <g>
       <circle cx={0} cy={0} r={30} fill="#C4C9CE" stroke="#9AA0A6" strokeWidth={1.2} />
@@ -245,8 +218,8 @@ export const BatteryPack = definePart({
     { name: '+', type: 'wire', x: -20, y: -60, dir: [0, -1], role: 'power' },
     { name: '-', type: 'wire', x: 20, y: -60, dir: [0, -1], role: 'gnd' },
   ],
-  props: BATTERY_PROPS,
-  defaults: { voltage: 6, internalResistance: 1.2 },
+  props: [],
+  defaults: { voltage: 6 },
   Art: () => (
     <g>
       <rect x={-62} y={-52} width={124} height={104} rx={5} fill="#2B2E31" stroke="#17191B" />
@@ -267,88 +240,10 @@ export const BatteryPack = definePart({
   ),
 });
 
-// ─── Produce cells ───────────────────────────────────────────────────────────
-
-/**
- * A galvanic cell made from fruit or a vegetable, with two dissimilar
- * electrodes pushed into it.
- *
- * These are in the catalogue because the physics lesson is the point: about a
- * volt from the electrode pair, and an internal resistance so high that the
- * cell collapses under any real load. Wire an LED straight across one and it
- * stays dark — which is exactly the thing worth discovering, and something the
- * fixed ideal sources in the reference product cannot teach.
- */
-function produceCell(
-  id: string,
-  name: string,
-  keywords: string[],
-  body: React.ReactNode,
-  w: number,
-  h: number,
-) {
-  return definePart({
-    id,
-    name,
-    category: 'power',
-    keywords: [...keywords, 'battery', 'cell', 'galvanic', 'experiment'],
-    size: { w: w + 30, h: h + 20 },
-    origin: { x: (w + 30) / 2, y: (h + 20) / 2 },
-    model: 'battery',
-    terminals: [
-      { name: '+', type: 'wire', x: w / 2 - 6, y: -h / 2 - 4, dir: [0, -1], role: 'power' },
-      { name: '-', type: 'wire', x: -w / 2 + 6, y: -h / 2 - 4, dir: [0, -1], role: 'gnd' },
-    ],
-    props: BATTERY_PROPS,
-    // Roughly what a real one measures: about a volt, and hundreds of ohms of
-    // internal resistance, so it can source only a fraction of a milliamp.
-    defaults: { voltage: 0.9, internalResistance: 800 },
-    Art: () => (
-      <g>
-        {/* copper and zinc electrodes */}
-        <rect x={w / 2 - 9} y={-h / 2 - 4} width={6} height={16} rx={1.5} fill="#B8763A" />
-        <rect x={-w / 2 + 3} y={-h / 2 - 4} width={6} height={16} rx={1.5} fill="#C9CDD2" />
-        {body}
-        <Silk x={0} y={h / 2 + 10} size={7} fill="#4A4F55" weight={600}>
-          {name}
-        </Silk>
-      </g>
-    ),
-  });
-}
-
-export const PotatoBattery = produceCell(
-  'battery-potato',
-  'Potato Battery',
-  ['potato', 'vegetable'],
-  <>
-    <ellipse cx={0} cy={4} rx={34} ry={22} fill="#C8A268" stroke="#9A7A46" strokeWidth={1.4} />
-    <ellipse cx={-10} cy={-2} rx={5} ry={3} fill="#B08F5C" opacity={0.7} />
-    <ellipse cx={9} cy={9} rx={4} ry={2.5} fill="#B08F5C" opacity={0.7} />
-  </>,
-  68,
-  44,
-);
-
-export const LemonBattery = produceCell(
-  'battery-lemon',
-  'Lemon Battery',
-  ['lemon', 'fruit', 'citrus'],
-  <>
-    <ellipse cx={0} cy={4} rx={34} ry={21} fill="#E8D14A" stroke="#BFA92F" strokeWidth={1.4} />
-    <path d="M-34,4 q6,-7 10,0 q6,-7 10,0" fill="none" stroke="#BFA92F" strokeWidth={1} opacity={0.5} />
-    <ellipse cx={0} cy={-2} rx={26} ry={11} fill="#F2E278" opacity={0.55} />
-  </>,
-  68,
-  42,
-);
-
 export const BATTERIES: PartDef<never>[] = [
   Battery9V,
   BatteryAA,
   BatteryAAA,
   CoinCell,
   BatteryPack,
-  PotatoBattery,
-  LemonBattery,
 ] as unknown as PartDef<never>[];

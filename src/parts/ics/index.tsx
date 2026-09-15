@@ -1,5 +1,5 @@
 import { definePart } from '../registry';
-import type { ArtProps, PartDef, TerminalDef } from '../types';
+import type { ArtProps, CategoryId, PartDef, TerminalDef } from '../types';
 import { DipBody, Silk } from '../primitives';
 
 /**
@@ -17,6 +17,13 @@ export function dip(opts: {
   keywords: string[];
   roles?: Record<string, 'power' | 'gnd'>;
   groups?: Record<string, string>;
+  basic?: boolean;
+  /**
+   * Extra sections this chip should appear in. Tinkercad files 74xx chips
+   * under Logic; passing `altCategories: ['logic']` lets our IC part also
+   * show up in the Logic section without duplicating the definition.
+   */
+  altCategories?: CategoryId[];
   Art?: (p: ArtProps) => React.ReactElement;
 }) {
   const half = opts.pins.length / 2;
@@ -41,7 +48,9 @@ export function dip(opts: {
     id: opts.id,
     name: opts.name,
     category: 'ics',
+    altCategories: opts.altCategories,
     keywords: opts.keywords,
+    basic: opts.basic,
     size: { w: bodyW + 16, h: 76 },
     origin: { x: (bodyW + 16) / 2, y: 38 },
     socketable: true,
@@ -75,9 +84,28 @@ export const Timer555 = dip({
   name: '555 Timer',
   label: 'NE555',
   sub: 'TIMER',
+  basic: true,
   model: 'timer-555',
   keywords: ['555', 'timer', 'astable', 'monostable', 'oscillator', 'ne555'],
   pins: ['GND', 'TRIG', 'OUT', 'RESET', 'CTRL', 'THR', 'DIS', 'VCC'],
+  roles: { GND: 'gnd', VCC: 'power' },
+});
+
+// Tinkercad ships the 556 dual timer alongside the 555, so we match — two 555
+// cores in one 14-pin package. Both cores share VCC/GND on pins 14/7. We reuse
+// the single-555 model per core so behaviour lines up with what students see
+// from a 555, just twice.
+export const Timer556 = dip({
+  id: 'timer-556',
+  name: '556 Dual Timer',
+  label: 'NE556',
+  sub: 'DUAL TIMER',
+  model: 'timer-556',
+  keywords: ['556', 'dual timer', 'ne556', 'astable', 'monostable', 'oscillator'],
+  pins: [
+    '1DIS', '1THR', '1CTRL', '1RESET', '1OUT', '1TRIG', 'GND',
+    '2TRIG', '2OUT', '2RESET', '2CTRL', '2THR', '2DIS', 'VCC',
+  ],
   roles: { GND: 'gnd', VCC: 'power' },
 });
 
@@ -112,8 +140,10 @@ export const ShiftRegister595 = dip({
   name: 'Shift Register [74HC595]',
   label: '74HC595',
   sub: 'SIPO',
+  basic: true,
   model: '74hc595',
   keywords: ['shift register', '74hc595', 'sipo', 'expander', 'serial'],
+  altCategories: ['logic'],
   pins: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'GND', 'Q7S', 'OE', 'STCP', 'SHCP', 'MR', 'DS', 'Q0', 'VCC'],
   roles: { GND: 'gnd', VCC: 'power' },
 });
@@ -125,7 +155,41 @@ export const ShiftRegister165 = dip({
   sub: 'PISO',
   model: 'shift-register-4bit',
   keywords: ['shift register', '74hc165', 'piso', 'parallel in', 'input expander'],
+  altCategories: ['logic'],
   pins: ['PL', 'CLK', 'D4', 'D5', 'D6', 'D7', 'Q7_', 'GND', 'Q7', 'DS', 'D0', 'D1', 'D2', 'D3', 'CE', 'VCC'],
+  roles: { GND: 'gnd', VCC: 'power' },
+});
+
+// 74HC164: 8-bit serial-in parallel-out shift register — the simpler cousin
+// of the 595 (no output latch, so Q outputs update on every clock rather
+// than only when STCP fires). 14-pin package. Reuses the '595 sim device,
+// which correctly handles the case where LE / OE are permanently enabled.
+export const ShiftRegister164 = dip({
+  id: '74hc164',
+  name: 'Shift Register [74HC164]',
+  label: '74HC164',
+  sub: 'SIPO',
+  model: '74hc164',
+  keywords: ['shift register', '74hc164', 'sipo', 'serial in', '8 bit'],
+  altCategories: ['logic'],
+  pins: ['A', 'B', 'Q0', 'Q1', 'Q2', 'Q3', 'GND', 'CLK', 'CLR', 'Q4', 'Q5', 'Q6', 'Q7', 'VCC'],
+  roles: { GND: 'gnd', VCC: 'power' },
+});
+
+// 74HC75: quad transparent D-latch. Pairs of latches share a common enable
+// (E12 for latches 1-2, E34 for 3-4); each pair works as a 2-bit latch.
+export const Ic74HC75 = dip({
+  id: '74hc75',
+  name: '4-Bit D-Latch [74HC75]',
+  label: '74HC75',
+  sub: 'QUAD D LATCH',
+  model: 'quad-d-latch',
+  keywords: ['latch', '74hc75', 'd latch', 'quad', 'transparent', '4 bit'],
+  altCategories: ['logic'],
+  pins: [
+    '1Q_', '1D', '2D', 'E34', 'VCC', '3D', '4D', '4Q_',
+    '4Q', '3Q', 'E12', 'GND', '2Q', '1Q',
+  ],
   roles: { GND: 'gnd', VCC: 'power' },
 });
 
@@ -136,6 +200,7 @@ export const Cd4017 = dip({
   sub: 'DECADE',
   model: 'cd4017',
   keywords: ['counter', 'cd4017', 'decade', 'johnson', 'sequencer'],
+  altCategories: ['logic'],
   pins: ['Q5', 'Q1', 'Q0', 'Q2', 'Q6', 'Q7', 'Q3', 'GND', 'Q8', 'Q4', 'CO', 'Q9', 'CLK', 'INH', 'MR', 'VCC'],
   roles: { GND: 'gnd', VCC: 'power' },
 });
@@ -147,6 +212,7 @@ export const Cd4511 = dip({
   sub: 'BCD→7SEG',
   model: 'cd4511',
   keywords: ['cd4511', 'bcd', 'seven segment', 'decoder', 'driver'],
+  altCategories: ['logic'],
   pins: ['B', 'C', 'LT', 'BL', 'LE', 'D', 'A', 'GND', 'Qe', 'Qd', 'Qc', 'Qb', 'Qa', 'Qg', 'Qf', 'VCC'],
   roles: { GND: 'gnd', VCC: 'power' },
 });
@@ -185,15 +251,77 @@ export const Eeprom = dip({
   roles: { VSS: 'gnd', VCC: 'power' },
 });
 
+// Tinkercad ships a standalone 4-bit latch as a Logic-section chip. Ours is
+// modelled on the 74HC373 octal transparent latch's pinout, exposed with a
+// single-latch simulation model.
+export const Ic74HC373 = dip({
+  id: '74hc373',
+  name: '8-Bit Latch [74HC373]',
+  label: '74HC373',
+  sub: 'OCTAL LATCH',
+  model: 'octal-latch',
+  keywords: ['latch', '74hc373', 'octal', 'transparent', 'register', 'd latch'],
+  altCategories: ['logic'],
+  // Pin 1 is OE, then Q0/D0 pairs run down each side to a GND at pin 10,
+  // returning via D5..D7/Q5..Q7 back up to LE and VCC on 11 and 20.
+  pins: [
+    'OE',  'Q0', 'D0', 'D1', 'Q1', 'Q2', 'D2', 'D3', 'Q3', 'GND',
+    'LE',  'Q4', 'D4', 'D5', 'Q5', 'Q6', 'D6', 'D7', 'Q7', 'VCC',
+  ],
+  roles: { GND: 'gnd', VCC: 'power' },
+});
+
+// 8-bit I²C GPIO expander. Tinkercad calls this the "8-port I²C expander";
+// in the wild it is normally a PCF8574 in a 16-pin DIP.
+export const Pcf8574 = dip({
+  id: 'pcf8574',
+  name: 'I²C GPIO Expander [PCF8574]',
+  label: 'PCF8574',
+  sub: 'I²C GPIO',
+  model: 'pcf8574',
+  keywords: ['pcf8574', 'i2c', 'gpio', 'expander', 'port expander', '8 bit'],
+  altCategories: ['logic'],
+  pins: [
+    'A0', 'A1', 'A2', 'P0', 'P1', 'P2', 'P3', 'VSS',
+    'SDA', 'SCL', 'INT', 'P7', 'P6', 'P5', 'P4', 'VDD',
+  ],
+  roles: { VSS: 'gnd', VDD: 'power' },
+});
+
+// The Microchip alternative — same idea (8-bit I²C GPIO expander) but with
+// register-based I²C, interrupt-on-change and configurable pull-ups. 18-pin
+// DIP. Reuses the PCF8574 stub model since the pin functions are equivalent
+// at this level of abstraction.
+export const Mcp23008 = dip({
+  id: 'mcp23008',
+  name: 'I²C GPIO Expander [MCP23008]',
+  label: 'MCP23008',
+  sub: 'I²C GPIO 8-BIT',
+  model: 'pcf8574',
+  keywords: ['mcp23008', 'i2c', 'gpio', 'expander', 'port expander', 'microchip'],
+  altCategories: ['logic'],
+  pins: [
+    'SCL', 'SDA', 'A0', 'A1', 'A2', 'RESET', 'NC', 'INT', 'VSS',
+    'GP0', 'GP1', 'GP2', 'GP3', 'GP4', 'GP5', 'GP6', 'GP7', 'VDD',
+  ],
+  roles: { VSS: 'gnd', VDD: 'power' },
+});
+
 export const ICS: PartDef<never>[] = [
   Timer555,
+  Timer556,
   OpAmp,
   Comparator,
   ShiftRegister595,
+  ShiftRegister164,
   ShiftRegister165,
   Cd4017,
   Cd4511,
   Uln2003,
   Mcp3008,
   Eeprom,
+  Ic74HC373,
+  Ic74HC75,
+  Pcf8574,
+  Mcp23008,
 ] as unknown as PartDef<never>[];

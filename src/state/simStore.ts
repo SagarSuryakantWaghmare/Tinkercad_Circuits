@@ -2,7 +2,6 @@
 
 import { create } from 'zustand';
 import type { DeviceOut } from '@/parts/types';
-import type { FailureReport } from '@/sim/devices/types';
 
 /**
  * An immutable frame of simulation output. Built off the React render path by
@@ -20,8 +19,6 @@ export interface SimSnapshot {
   serial: string[];
   /** Non-fatal issues raised this frame (over-current, no convergence…). */
   warnings: { partId?: string; message: string }[];
-  /** Parts stressed or destroyed this run, oldest first. */
-  failures: FailureReport[];
 }
 
 export const EMPTY_SNAPSHOT: SimSnapshot = {
@@ -31,7 +28,6 @@ export const EMPTY_SNAPSHOT: SimSnapshot = {
   terminalNet: {},
   serial: [],
   warnings: [],
-  failures: [],
 };
 
 export type RunState = 'idle' | 'starting' | 'running' | 'paused' | 'error';

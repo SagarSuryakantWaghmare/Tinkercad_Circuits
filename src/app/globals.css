@@ -43,6 +43,19 @@ body {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* Every numeric readout that changes (zoom %, elapsed clock, count) should
+     hold its width so it doesn't jitter as digits swap. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* Every input/button aggressively strips its default outline for a custom
+   focus ring, but that leaves keyboard users with no visible focus state.
+   Restore one universally via :focus-visible; individual components can
+   still override with a heavier ring where they need to. */
+:focus-visible {
+  outline: 2px solid #3b8ed7;
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
 /* The canvas owns its own pointer semantics; never let text selection leak in. */

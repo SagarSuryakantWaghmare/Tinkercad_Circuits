@@ -5,7 +5,6 @@ import { useDesignStore } from '@/state/designStore';
 import { useEditorStore } from '@/state/editorStore';
 import { transformedBounds, unionRect, type Rect } from '@/lib/geometry';
 import { getPartDef } from '@/parts/registry';
-import { originOf, sizeOf } from '@/parts/types';
 import { WIRE_COLORS } from '@/lib/tokens';
 import { rotationStepFor } from '@/canvas/snapping';
 
@@ -19,13 +18,7 @@ export function contentBounds(): Rect | null {
     if (!def) continue;
     box = unionRect(
       box,
-      transformedBounds(
-        sizeOf(def, inst.props as never),
-        originOf(def, inst.props as never),
-        { x: inst.x, y: inst.y },
-        inst.rotation,
-        inst.mirrored,
-      ),
+      transformedBounds(def.size, def.origin, { x: inst.x, y: inst.y }, inst.rotation, inst.mirrored),
     );
   }
   return box;
@@ -42,13 +35,7 @@ export function selectionBounds(): Rect | null {
     if (!def) continue;
     box = unionRect(
       box,
-      transformedBounds(
-        sizeOf(def, inst.props as never),
-        originOf(def, inst.props as never),
-        { x: inst.x, y: inst.y },
-        inst.rotation,
-        inst.mirrored,
-      ),
+      transformedBounds(def.size, def.origin, { x: inst.x, y: inst.y }, inst.rotation, inst.mirrored),
     );
   }
   return box;
@@ -215,6 +202,18 @@ export function useHotkeys() {
       if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent('circuitlab:shortcuts'));
+        return;
+      }
+
+      // ── select vs hand tool ──
+      if (e.key.toLowerCase() === 'h' && !mod) {
+        e.preventDefault();
+        ed.setHandTool(!ed.handTool);
+        return;
+      }
+      if (e.key.toLowerCase() === 'v' && !mod && !e.shiftKey) {
+        e.preventDefault();
+        ed.setHandTool(false);
         return;
       }
 

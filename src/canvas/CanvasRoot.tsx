@@ -7,9 +7,8 @@ import type { PartInstance, WireEnd } from '@/state/design';
 import { useEditorStore, type WireAnchor } from '@/state/editorStore';
 import { useSimStore } from '@/state/simStore';
 import { getPartDef } from '@/parts/registry';
-import { originOf, sizeOf, terminalsOf, type PropValue } from '@/parts/types';
+import { terminalsOf, type PropValue } from '@/parts/types';
 import {
-  distToSegment,
   rectFromPoints,
   rectsIntersect,
   transformedBounds,
@@ -17,8 +16,7 @@ import {
   type Vec2,
 } from '@/lib/geometry';
 import { C } from '@/lib/tokens';
-import { formatSI } from '@/sim/devices/types';
-import { GRID_VISIBLE_ZOOM, PITCH, snap, TERMINAL_HIT_R } from '@/lib/units';
+import { GRID_VISIBLE_ZOOM, PITCH, TERMINAL_HIT_R } from '@/lib/units';
 import { PlacedPart } from './items/PlacedPart';
 import { DraftWire, WireItem, type ResolvedWire } from './items/WireItem';
 import { NoteItem } from './items/NoteItem';
@@ -39,9 +37,6 @@ export function CanvasRoot() {
 
   const ed = useEditorStore();
   const running = useSimStore((s) => s.runState === 'running' || s.runState === 'paused');
-  // Solved node voltages, so hovering a pin can read out what is on it.
-  const liveNetV = useSimStore((s) => s.snapshot.netV);
-  const liveTerminalNet = useSimStore((s) => s.snapshot.terminalNet);
 
   // ── geometry index, rebuilt only when the document actually changes ────────
   const terminalIndex = useMemo(() => indexTerminals(design), [design]);
@@ -131,7 +126,13 @@ export function CanvasRoot() {
   const downRef = useRef<{ screen: Vec2; world: Vec2; moved: boolean } | null>(null);
 
   const onBackgroundDown = (e: React.PointerEvent) => {
-    if (e.button === 1 || e.button === 2 || e.altKey || spaceDown.current) {
+    if (
+      e.button === 1 ||
+      e.button === 2 ||
+      e.altKey ||
+      spaceDown.current ||
+      (e.button === 0 && ed.handTool)
+    ) {
       ed.setMode({ kind: 'pan', last: screenOf(e) });
       (e.currentTarget as Element).setPointerCapture(e.pointerId);
       return;
@@ -236,16 +237,6 @@ export function CanvasRoot() {
       return;
     }
 
-    if (mode.kind === 'dragWaypoint') {
-      const world = worldOf(e);
-      transact('Reshape wire', (dd) => {
-        const w = dd.wires[mode.wireId];
-        if (!w || !w.waypoints[mode.index]) return;
-        w.waypoints[mode.index] = { x: snap(world.x), y: snap(world.y) };
-      });
-      return;
-    }
-
     if (mode.kind === 'dragParts') {
       const d = downRef.current;
       if (!d) return;
@@ -299,12 +290,6 @@ export function CanvasRoot() {
       }
       ed.setMode({ kind: 'idle' });
       downRef.current = null;
-      return;
-    }
-
-    if (mode.kind === 'dragWaypoint') {
-      commit();
-      ed.setMode({ kind: 'idle' });
       return;
     }
 
@@ -367,42 +352,11 @@ export function CanvasRoot() {
     });
   }
 
-  /**
-   * Put a new bend point on a wire, at the position double-clicked.
-   *
-   * Inserted at the segment nearest the click rather than appended, so a bend
-   * added in the middle of a long wire stays in the middle instead of sending
-   * the route back on itself.
-   */
-  function addWaypoint(wireId: string, at: Vec2) {
-    const w = design.wires[wireId];
-    if (!w) return;
-    const ends = wires.find((r) => r.id === wireId);
-    if (!ends) return;
-
-    const path = [ends.a.pos, ...w.waypoints, ends.b.pos];
-    let bestIndex = 0;
-    let bestDist = Infinity;
-    for (let i = 0; i < path.length - 1; i++) {
-      const d = distToSegment(at, path[i], path[i + 1]);
-      if (d < bestDist) {
-        bestDist = d;
-        bestIndex = i;
-      }
-    }
-    transact('Add bend point', (dd) => {
-      const wire = dd.wires[wireId];
-      if (!wire) return;
-      wire.waypoints.splice(bestIndex, 0, { x: snap(at.x), y: snap(at.y) });
-    });
-    ed.select({ wires: [wireId] });
-  }
-
   function boundsOf(inst: (typeof design.parts)[string]): Rect {
     const def = getPartDef(inst.type)!;
     return transformedBounds(
-      sizeOf(def, inst.props as never),
-      originOf(def, inst.props as never),
+      def.size,
+      def.origin,
       { x: inst.x, y: inst.y },
       inst.rotation,
       inst.mirrored,
@@ -630,7 +584,10 @@ export function CanvasRoot() {
     <svg
       ref={svgRef}
       className="circuitlab-canvas absolute inset-0 h-full w-full touch-none select-none"
-      style={{ background: C.canvasBg, cursor: cursorFor(ed.mode.kind, !!ed.pendingPart) }}
+      style={{
+        background: C.canvasBg,
+        cursor: cursorFor(ed.mode.kind, !!ed.pendingPart, ed.handTool),
+      }}
       onPointerDown={onBackgroundDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -708,15 +665,6 @@ export function CanvasRoot() {
                 e.stopPropagation();
                 ed.select({ wires: [id], additive: e.shiftKey });
               }}
-              onWaypointDown={(e, id, index) => {
-                e.stopPropagation();
-                begin('Reshape wire');
-                ed.setMode({ kind: 'dragWaypoint', wireId: id, index });
-              }}
-              onAddWaypoint={(e, id) => {
-                e.stopPropagation();
-                addWaypoint(id, ed.toWorld(screenOf(e)));
-              }}
               onPointerEnter={() => {}}
               onPointerLeave={() => {}}
             />
@@ -733,12 +681,7 @@ export function CanvasRoot() {
         )}
 
         {/* 8 — hovered terminal */}
-        <TerminalHover
-          design={design}
-          hover={ed.hoverTerminal}
-          index={terminalIndex}
-          live={running ? { netV: liveNetV, terminalNet: liveTerminalNet } : null}
-        />
+        <TerminalHover design={design} hover={ed.hoverTerminal} index={terminalIndex} />
 
         {/* 9 — selection */}
         <g pointerEvents="none" data-export="false">
@@ -824,42 +767,20 @@ function MarqueeRect({ from, to }: { from: Vec2; to: Vec2 }) {
   );
 }
 
-/**
- * Terminal name on hover, and — while the simulation runs — the voltage there.
- *
- * The reference product makes you wire up a multimeter to answer "what is on
- * this pin?". The solver already knows, so hovering is enough; the meter stays
- * for readings you want pinned to the canvas next to the circuit.
- */
 function TerminalHover({
   design,
   hover,
   index,
-  live,
 }: {
   design: ReturnType<typeof useDesignStore.getState>['design'];
   hover: { partId: string; terminal: string } | null;
   index: Map<string, ReturnType<typeof worldTerminals>[number]>;
-  live: { netV: Float64Array; terminalNet: Record<string, number> } | null;
 }) {
   if (!hover) return null;
-  const key = `${hover.partId}:${hover.terminal}`;
-  const t = index.get(key);
+  const t = index.get(`${hover.partId}:${hover.terminal}`);
   if (!t) return null;
   const inst = design.parts[hover.partId];
-  const name = inst?.name ? `${inst.name} · ${t.def.name}` : t.def.name;
-
-  let label = name;
-  if (live) {
-    const net = live.terminalNet[key];
-    // −1 is the ground datum and reads as exactly zero; an unconnected
-    // terminal has no net at all and has nothing to report.
-    if (net === -1) label = `${name}  0 V`;
-    else if (net !== undefined && net < live.netV.length) {
-      label = `${name}  ${formatSI(live.netV[net], 'V')}`;
-    }
-  }
-
+  const label = inst?.name ? `${inst.name} · ${t.def.name}` : t.def.name;
   return (
     <g pointerEvents="none">
       <circle cx={t.pos.x} cy={t.pos.y} r={5.5} fill={C.netHighlight} opacity={0.35} />
@@ -909,7 +830,7 @@ function useHoverGroupTerminals(
   }, [design, hover]);
 }
 
-function cursorFor(kind: string, placing: boolean) {
+function cursorFor(kind: string, placing: boolean, hand: boolean) {
   if (placing) return 'copy';
   switch (kind) {
     case 'pan':
@@ -919,6 +840,6 @@ function cursorFor(kind: string, placing: boolean) {
     case 'marquee':
       return 'crosshair';
     default:
-      return 'default';
+      return hand ? 'grab' : 'default';
   }
 }

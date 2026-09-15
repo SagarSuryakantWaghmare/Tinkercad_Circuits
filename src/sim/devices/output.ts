@@ -2,29 +2,7 @@ import { audio } from '../audio';
 import type { LcdState, NeoState } from '../mcu/runtime';
 import { diodeStamp, ledParams, LED_I_RATED } from './passive';
 import { findPeripheral, mcuHandle, mcuPinOf } from './resolve';
-import {
-  checkRating,
-  clamp,
-  damageOf,
-  defineDevice,
-  formatSI,
-  isBroken,
-  num,
-  R_OPEN,
-  type Device,
-  type DeviceCtx,
-} from './types';
-
-/**
- * Coils and drivers fail on sustained over-voltage rather than on a spike.
- *
- * A motor or a servo run from too high a rail cooks its winding over seconds,
- * not milliseconds, and the inrush as it starts is entirely normal — so every
- * one of these ratings carries a hold time long enough not to punish it.
- */
-function ratedVoltage(ctx: DeviceCtx, fallback: number) {
-  return Math.max(num(ctx.props.voltage, fallback), 0.5);
-}
+import { clamp, defineDevice, num, R_OPEN, type Device, type DeviceCtx } from './types';
 import type { Circuit } from '../mna/Circuit';
 
 const brightnessOf = (i: number) => clamp(Math.sqrt(Math.max(0, i) / LED_I_RATED), 0, 1);
@@ -113,12 +91,6 @@ defineDevice('dc-motor', (): Device => ({
   stamp(c, ctx) {
     const a = ctx.node('terminal1');
     const b = ctx.node('terminal2');
-    if (isBroken(ctx)) {
-      // A burnt-out winding is an open circuit and the rotor is dead weight.
-      c.stampResistance(a, b, R_OPEN);
-      ctx.s.rpm = 0;
-      return;
-    }
     const ra = 8;
     const g = 1 / ra;
     // Winding resistance in series with the back-EMF of the spinning rotor.
@@ -128,38 +100,41 @@ defineDevice('dc-motor', (): Device => ({
     c.stampCurrentSource(b, a, emf * g);
   },
   commit(c, ctx) {
-    const v = c.v(ctx.node('terminal1')) - c.v(ctx.node('terminal2'));
     const ke = keOf(ctx);
     const ra = 8;
     const rpm = ctx.s.rpm ?? 0;
+    const v = c.v(ctx.node('terminal1')) - c.v(ctx.node('terminal2'));
     const current = (v - ke * rpm) / ra;
-    // First-order mechanical lag: torque accelerates, friction opposes.
-    const target = v / ke;
-    const tau = 0.12;
-    const next = rpm + ((target - rpm) * ctx.dt) / tau;
-    ctx.s.rpm = Math.abs(next) < 1 ? 0 : next;
-    ctx.s.current = current;
-    ctx.s.angle = ((ctx.s.angle ?? 0) + (ctx.s.rpm * 360 * ctx.dt) / 60) % 360;
 
-    const rated = ratedVoltage(ctx, 6);
-    checkRating(ctx, v, {
-      label: 'Motor',
-      quantity: 'voltage',
-      warn: rated * 1.5,
-      max: rated * 2.5,
-      hold: 1,
-      suggest: () =>
-        `This motor is rated for about ${formatSI(rated, 'V')}. Drive it from a ` +
-        'lower supply, or through a driver that can limit the voltage.',
-    });
+    // A rotor needs a driving current to hold its speed. When the switch is
+    // opened the winding sees no external path, so the terminal current is
+    // effectively zero and the rotor must coast down — otherwise the internal
+    // emf/winding loop wedges at target = rpm and the motor spins forever.
+    const drive = Math.abs(current) > 1e-4;
+
+    // Accel time constant when driven, coast-down time constant when idle.
+    const tauDrive = 0.12;
+    const tauCoast = 0.35;
+
+    let next: number;
+    if (drive) {
+      const target = v / ke;
+      next = rpm + ((target - rpm) * ctx.dt) / tauDrive;
+    } else {
+      // Frictional decay: no motor is truly frictionless, so an open circuit
+      // brings the rotor to rest in a bit over one second.
+      next = rpm * Math.exp(-ctx.dt / tauCoast);
+    }
+
+    ctx.s.rpm = Math.abs(next) < 1 ? 0 : next;
+    ctx.s.current = drive ? current : 0;
+    ctx.s.angle = ((ctx.s.angle ?? 0) + (ctx.s.rpm * 360 * ctx.dt) / 60) % 360;
   },
   output(_, ctx) {
-    const dead = isBroken(ctx);
     return {
-      rpm: dead ? 0 : ctx.s.rpm ?? 0,
+      rpm: ctx.s.rpm ?? 0,
       angle: ctx.s.angle ?? 0,
-      current: dead ? 0 : ctx.s.current ?? 0,
-      damage: damageOf(ctx),
+      current: ctx.s.current ?? 0,
     };
   },
 }));
@@ -191,14 +166,14 @@ defineDevice('servo', (): Device => ({
 
     if (commanded?.attached) {
       target = commanded.angle;
-    } else if (pin !== null && h) {
-      // Driven by analogWrite rather than the Servo library: a 1–2 ms pulse at
-      // 50 Hz is 5–10 % duty, which is 13–26 counts of the 0–255 range.
-      const duty = h.board.duty[pin];
-      if (h.board.modes[pin] === 'output') {
-        target = clamp(((duty - 12.75) / 12.75) * 180, 0, 180);
-      }
     }
+    // Without Servo.attach the previous fallback tried to derive angle from
+    // raw analogWrite duty (assuming a 490 Hz PWM = ~2 ms pulse). But most
+    // sketches that call analogWrite(pin, 128) mean 50 % duty for LED
+    // brightness, not a servo pulse; the fallback caused a servo wired to
+    // any PWM pin to slam to 180° the moment the pin was written. Do
+    // nothing here — the servo simply stays at its last commanded angle
+    // (or the 90° default) until the sketch attaches a Servo.
 
     ctx.s.target = target;
     // Servos slew at roughly 0.12 s per 60°.
@@ -250,41 +225,18 @@ defineDevice('stepper', (): Device => ({
 
 // ─── Solenoid ────────────────────────────────────────────────────────────────
 
-const SOLENOID_OHMS = 20;
-
 defineDevice('solenoid', (): Device => ({
   stamp(c, ctx) {
-    c.stampResistance(
-      ctx.node('terminal1'),
-      ctx.node('terminal2'),
-      isBroken(ctx) ? R_OPEN : SOLENOID_OHMS,
-    );
+    c.stampResistance(ctx.node('terminal1'), ctx.node('terminal2'), 20);
   },
   commit(c, ctx) {
     const v = Math.abs(c.v(ctx.node('terminal1')) - c.v(ctx.node('terminal2')));
-    if (isBroken(ctx)) {
-      ctx.s.engaged = 0;
-      return;
-    }
     const want = v > 3 ? 1 : 0;
     const cur = ctx.s.engaged ?? 0;
     ctx.s.engaged = cur + (want - cur) * Math.min(1, ctx.dt * 25);
-
-    // A solenoid coil is rated for a duty cycle, not for sitting energised —
-    // what kills one is being left on, so this is deliberately power-based.
-    checkRating(ctx, (v * v) / SOLENOID_OHMS, {
-      label: 'Solenoid',
-      quantity: 'power',
-      warn: 3,
-      max: 6,
-      hold: 4,
-      suggest: () =>
-        'Drive the solenoid in short pulses, or from a lower voltage — its ' +
-        'coil is not rated to stay energised at this power.',
-    });
   },
   output(_, ctx) {
-    return { engaged: ctx.s.engaged ?? 0, damage: damageOf(ctx) };
+    return { engaged: ctx.s.engaged ?? 0 };
   },
 }));
 
@@ -296,28 +248,14 @@ defineDevice('solenoid', (): Device => ({
  * otherwise it is measured from the square wave the sketch is toggling, so a
  * hand-written `digitalWrite` loop makes a noise too.
  */
-function sounder(impedance: number, wave: OscillatorType, maxVolts: number): Device {
+function sounder(impedance: number, wave: OscillatorType): Device {
   return {
     needsFineStep: true,
     stamp(c, ctx) {
-      c.stampResistance(
-        ctx.node('terminal1'),
-        ctx.node('terminal2'),
-        isBroken(ctx) ? R_OPEN : impedance,
-      );
+      c.stampResistance(ctx.node('terminal1'), ctx.node('terminal2'), impedance);
     },
     commit(c, ctx) {
       const v = c.v(ctx.node('terminal1')) - c.v(ctx.node('terminal2'));
-      checkRating(ctx, v, {
-        label: wave === 'square' ? 'Piezo' : 'Speaker',
-        quantity: 'voltage',
-        warn: maxVolts,
-        max: maxVolts * 1.5,
-        hold: 0.5,
-        suggest: () =>
-          `Keep the drive below about ${formatSI(maxVolts, 'V')} — through a ` +
-          'series resistor if it is being driven straight from a supply.',
-      });
       const high = v > 1.5;
       const wasHigh = ctx.s.high === 1;
 
@@ -366,16 +304,21 @@ function sounder(impedance: number, wave: OscillatorType, maxVolts: number): Dev
   };
 }
 
-// A piezo disc is happy on logic levels; an 8 Ω speaker is not.
-defineDevice('piezo', () => sounder(1200, 'square', 12));
-defineDevice('speaker', () => sounder(8, 'triangle', 5));
+defineDevice('piezo', () => sounder(1200, 'square'));
+defineDevice('speaker', () => sounder(8, 'triangle'));
 
 // ─── Character LCD ───────────────────────────────────────────────────────────
 
 function lcd(dataTerminals: string[]): Device {
   return {
     stamp(c, ctx) {
-      c.stampResistance(ctx.node('VDD') >= -1 ? ctx.node('VDD') : ctx.node('VCC'), ctx.node('VSS') >= -1 ? ctx.node('VSS') : ctx.node('GND'), 220);
+      // ctx.node() returns -1 for an unconnected terminal, so the previous
+      // `>= -1` guard was always true and the fallback to VCC/GND was dead.
+      // Use the VDD/VSS pair when present, otherwise the VCC/GND names some
+      // LCD footprints use.
+      const supply = ctx.node('VDD') !== -1 ? ctx.node('VDD') : ctx.node('VCC');
+      const ground = ctx.node('VSS') !== -1 ? ctx.node('VSS') : ctx.node('GND');
+      c.stampResistance(supply, ground, 220);
       for (const t of dataTerminals) c.stampResistance(ctx.node(t), -1, R_OPEN);
     },
     output(_, ctx) {

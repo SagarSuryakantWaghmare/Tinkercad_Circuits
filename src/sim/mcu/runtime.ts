@@ -115,7 +115,11 @@ export function installRuntime(interp: Interpreter, board: Board) {
   let seed = 1;
   const rnd = () => {
     seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-    return seed / 0x7fffffff;
+    // Divide by (max + 1) so the result is always < 1. Using 0x7fffffff as
+    // the divisor lets seed = 0x7fffffff evaluate to 1.0 exactly, and
+    // Math.floor(1.0 * hi) returns hi — one past Arduino's contract of
+    // 0..hi-1.
+    return seed / 0x80000000;
   };
   N.set('randomSeed', (a) => {
     seed = Math.trunc(n(a[0])) || 1;
@@ -196,16 +200,23 @@ export function installRuntime(interp: Interpreter, board: Board) {
     yield* interp.sleepCycles(CPU_HZ / 1000);
     return typeof reply === 'number' ? reply : 0;
   });
-  N.set('shiftOut', (a) => {
+  N.set('shiftOut', function* (a): Generator<Wait, Value, void> {
     const dataPin = n(a[0]);
     const clockPin = n(a[1]);
     const order = n(a[2]);
     const value = Math.trunc(n(a[3])) & 0xff;
+    // Yield between each clock edge so the solver commits a step and the
+    // shift register sees eight distinct rising edges — otherwise every bit
+    // collapses onto the last one in the same JS tick.
+    const perEdge = Math.max(1, Math.round(CPU_HZ * 1e-6));
     for (let i = 0; i < 8; i++) {
       const bit = order === 1 ? (value >> (7 - i)) & 1 : (value >> i) & 1;
       board.digitalWrite(dataPin, bit === 1);
+      yield* interp.sleepCycles(perEdge);
       board.digitalWrite(clockPin, true);
+      yield* interp.sleepCycles(perEdge);
       board.digitalWrite(clockPin, false);
+      yield* interp.sleepCycles(perEdge);
     }
     return 0;
   });
@@ -522,37 +533,16 @@ function installNeoPixel(interp: Interpreter, board: Board) {
 function installWireSpiEeprom(interp: Interpreter, board: Board) {
   const eeprom = new Uint8Array(1024);
 
-  // I2C transaction state, mirroring how the Wire library batches bytes.
-  let txAddr = 0;
-  let txBuf: number[] = [];
-  let rxBuf: number[] = [];
-
   interp.constants.set(
     'Wire',
     new ObjectValue('TwoWire', {
       begin: () => 0,
-      beginTransmission: (a) => {
-        txAddr = toNum(a[0]) & 0x7f;
-        txBuf = [];
-        return 0;
-      },
-      write: (a) => {
-        txBuf.push(toNum(a[0]) & 0xff);
-        return 1;
-      },
-      endTransmission: () => {
-        board.i2cTargets.get(txAddr)?.write(txBuf);
-        txBuf = [];
-        return 0;
-      },
-      requestFrom: (a) => {
-        const addr = toNum(a[0]) & 0x7f;
-        const n = Math.max(0, toNum(a[1]));
-        rxBuf = board.i2cTargets.get(addr)?.read(n) ?? new Array(n).fill(0);
-        return rxBuf.length;
-      },
-      available: () => rxBuf.length,
-      read: () => (rxBuf.length ? (rxBuf.shift() as number) : -1),
+      beginTransmission: () => 0,
+      write: () => 1,
+      endTransmission: () => 0,
+      requestFrom: () => 0,
+      available: () => 0,
+      read: () => 0,
       setClock: () => 0,
     }) as unknown as Value,
   );
@@ -562,17 +552,7 @@ function installWireSpiEeprom(interp: Interpreter, board: Board) {
     new ObjectValue('SPIClass', {
       begin: () => 0,
       end: () => 0,
-      transfer: (a) => {
-        const byte = toNum(a[0]) & 0xff;
-        // Chip select is active low, so the selected chip is the one whose CS
-        // the sketch is currently holding down.
-        for (const t of board.spiTargets.values()) {
-          const d = board.drive(t.csPin);
-          if (d && d.v < 2.5) return t.transfer(byte) & 0xff;
-        }
-        // Nothing selected: an idle bus reads back what was sent.
-        return byte;
-      },
+      transfer: (a) => toNum(a[0]),
       setBitOrder: () => 0,
       setDataMode: () => 0,
       setClockDivider: () => 0,

@@ -38,12 +38,15 @@ export const Multimeter = definePart<MeterProps>({
   name: 'Multimeter',
   category: 'instruments',
   keywords: ['multimeter', 'dmm', 'voltmeter', 'ammeter', 'ohmmeter', 'measure', 'probe'],
+  basic: true,
   size: { w: 200, h: 260 },
   origin: { x: 100, y: 118 },
   model: 'multimeter',
   terminals: [
-    { name: 'positive', type: 'probe', x: -34, y: 126, dir: [0, 1], role: 'analog' },
-    { name: 'negative', type: 'probe', x: 34, y: 126, dir: [0, 1], role: 'analog' },
+    // Align the electrical terminal with the visible probe jack so a probe
+    // wire lands on the socket instead of hovering below it.
+    { name: 'positive', type: 'probe', x: -34, y: 92, dir: [0, 1], role: 'analog' },
+    { name: 'negative', type: 'probe', x: 34, y: 92, dir: [0, 1], role: 'analog' },
   ],
   props: [
     {
@@ -146,12 +149,13 @@ export const PowerSupply = definePart<PsuProps>({
   name: 'Power Supply',
   category: 'instruments',
   keywords: ['power supply', 'psu', 'bench', 'variable', 'dc source', 'lab'],
+  basic: true,
   size: { w: 260, h: 160 },
   origin: { x: 130, y: 76 },
   model: 'power-supply',
   terminals: [
-    { name: '+', type: 'probe', x: 66, y: 84, dir: [0, 1], role: 'power' },
-    { name: '-', type: 'probe', x: 106, y: 84, dir: [0, 1], role: 'gnd' },
+    { name: '+', type: 'probe', x: 66, y: 46, dir: [0, 1], role: 'power' },
+    { name: '-', type: 'probe', x: 106, y: 46, dir: [0, 1], role: 'gnd' },
   ],
   props: [
     { key: 'voltage', label: 'Voltage', kind: 'number', unit: 'V', min: 0, max: 30, step: 0.1 },
@@ -256,8 +260,8 @@ export const FunctionGenerator = definePart<FgProps>({
   origin: { x: 130, y: 80 },
   model: 'function-generator',
   terminals: [
-    { name: 'positive', type: 'probe', x: 70, y: 90, dir: [0, 1] },
-    { name: 'negative', type: 'probe', x: 106, y: 90, dir: [0, 1], role: 'gnd' },
+    { name: 'positive', type: 'probe', x: 70, y: 52, dir: [0, 1] },
+    { name: 'negative', type: 'probe', x: 106, y: 52, dir: [0, 1], role: 'gnd' },
   ],
   props: [
     {
@@ -372,14 +376,15 @@ export const Oscilloscope = definePart<ScopeProps>({
   name: 'Oscilloscope',
   category: 'instruments',
   keywords: ['oscilloscope', 'scope', 'waveform', 'trace', 'measure', 'signal'],
+  basic: true,
   size: { w: 340, h: 260 },
   origin: { x: 170, y: 120 },
   model: 'oscilloscope',
   terminals: [
-    { name: 'CH1+', type: 'probe', x: -80, y: 132, dir: [0, 1] },
-    { name: 'CH1-', type: 'probe', x: -44, y: 132, dir: [0, 1], role: 'gnd' },
-    { name: 'CH2+', type: 'probe', x: 44, y: 132, dir: [0, 1] },
-    { name: 'CH2-', type: 'probe', x: 80, y: 132, dir: [0, 1], role: 'gnd' },
+    { name: 'CH1+', type: 'probe', x: -80, y: 92, dir: [0, 1] },
+    { name: 'CH1-', type: 'probe', x: -44, y: 92, dir: [0, 1], role: 'gnd' },
+    { name: 'CH2+', type: 'probe', x: 44, y: 92, dir: [0, 1] },
+    { name: 'CH2-', type: 'probe', x: 80, y: 92, dir: [0, 1], role: 'gnd' },
   ],
   props: [
     {
@@ -405,13 +410,22 @@ export const Oscilloscope = definePart<ScopeProps>({
 
     const trace = (samples: number[]) => {
       if (samples.length < 2) return '';
-      return samples
-        .map((v, i) => {
-          const x = -W / 2 + (i / (samples.length - 1)) * W;
-          const y = clamp(-(v / vdiv) * (H / 8), -H / 2, H / 2);
-          return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
-        })
-        .join(' ');
+      const parts: string[] = [];
+      let pen = false;
+      for (let i = 0; i < samples.length; i++) {
+        const v = samples[i];
+        if (!Number.isFinite(v)) {
+          // Lift the pen across gaps so a floating probe doesn't stripe the
+          // grid with junk lines through zero.
+          pen = false;
+          continue;
+        }
+        const x = -W / 2 + (i / (samples.length - 1)) * W;
+        const y = clamp(-(v / vdiv) * (H / 8), -H / 2, H / 2);
+        parts.push(`${pen ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`);
+        pen = true;
+      }
+      return parts.join(' ');
     };
 
     return (

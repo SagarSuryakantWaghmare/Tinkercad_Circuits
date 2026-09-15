@@ -2,10 +2,11 @@
 
 import { useEditorStore } from '@/state/editorStore';
 import { useDesignStore } from '@/state/designStore';
-import { describePart, getPartDef } from '@/parts/registry';
+import { getPartDef } from '@/parts/registry';
 import type { PropSchema, PropValue } from '@/parts/types';
 import { WIRE_COLORS } from '@/lib/tokens';
-import { IconMirror, IconRotate, IconTrash } from '../icons';
+import { useState } from 'react';
+import { IconChevronDown, IconInfo, IconMirror, IconRotate, IconTrash } from '../icons';
 
 const PREFIX: Record<string, number> = {
   p: 1e-12,
@@ -57,9 +58,7 @@ export function Inspector() {
   return (
     <div className="pointer-events-auto w-[236px] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-[0_8px_28px_rgba(15,23,42,0.14)]">
       <header className="flex items-center justify-between border-b border-neutral-100 px-3 py-2">
-        <span className="truncate text-[12.5px] font-semibold text-neutral-800" title={def.name}>
-          {def.name}
-        </span>
+        <span className="truncate text-[12.5px] font-semibold text-neutral-800">{def.name}</span>
         <div className="flex items-center gap-0.5 text-neutral-500">
           <IconBtn
             title="Rotate (R)"
@@ -105,12 +104,6 @@ export function Inspector() {
         </div>
       </header>
 
-      {describePart(def) && (
-        <p className="border-b border-neutral-100 px-3 py-2 text-[11.5px] leading-snug text-neutral-500">
-          {describePart(def)}
-        </p>
-      )}
-
       <div className="space-y-2.5 px-3 py-2.5">
         <Field label="Name">
           <input
@@ -137,8 +130,60 @@ export function Inspector() {
             />
           );
         })}
+
+        {(def.summary || def.learn?.length) && (
+          <LearnPanel summary={def.summary} learn={def.learn} />
+        )}
       </div>
     </div>
+  );
+}
+
+/**
+ * "About this part" block shown beneath the properties. Collapsed by default
+ * so a familiar user doesn't have to scroll past it, expanded for anyone who
+ * needs the introduction. Rendering here keeps the sidebar single-column so
+ * the inspector stays a coherent side rail rather than a modal.
+ */
+function LearnPanel({
+  summary,
+  learn,
+}: {
+  summary?: string;
+  learn?: { title: string; body: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="rounded-lg border border-neutral-200 bg-neutral-50">
+      <button
+        className="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-left text-[11.5px] font-semibold text-neutral-700 hover:bg-neutral-100"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        <IconInfo width={13} height={13} className="text-sky-600" />
+        <span>About this part</span>
+        <IconChevronDown
+          width={12}
+          height={12}
+          className={`ml-auto text-neutral-500 transition ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {open && (
+        <div className="space-y-2 border-t border-neutral-200 px-2.5 py-2 text-[11.5px] leading-snug text-neutral-700">
+          {summary && <p>{summary}</p>}
+          {learn?.map((s) => (
+            <div key={s.title}>
+              <h4 className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+                {s.title}
+              </h4>
+              <pre className="mt-0.5 whitespace-pre-wrap font-sans text-[11.5px] text-neutral-700">
+                {s.body}
+              </pre>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

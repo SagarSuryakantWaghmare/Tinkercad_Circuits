@@ -147,6 +147,56 @@ export const SevenSegment4 = definePart<Seg4Props>({
   Art: SevenSeg4Art,
 });
 
+// The Tinkercad "Clock Display" variant: same 4-digit module with the colon
+// permanently lit so it reads as a clock. A separate part means the palette
+// carries a ready-to-use HH:MM display alongside the plain 4-digit module.
+function SevenSegClockArt(p: ArtProps<Seg4Props>) {
+  const colour = LED_COLORS[String(p.props.color)] ?? LED_COLORS.red;
+  return (
+    <g>
+      <SevenSeg4Art {...p} />
+      {[-8, 6].map((y) => (
+        <circle key={y} cx={-17.5} cy={y} r={2.2} fill={colour.glow} opacity={0.9} />
+      ))}
+    </g>
+  );
+}
+
+export const SevenSegmentClock = definePart<Seg4Props>({
+  id: 'seven-segment-clock',
+  name: '7-Segment Clock Display',
+  category: 'output',
+  keywords: ['seven segment', 'clock', 'display', 'colon', 'time', 'hh mm'],
+  size: { w: SEG4_W + 10, h: SEG4_H + 34 },
+  origin: { x: (SEG4_W + 10) / 2, y: (SEG4_H + 34) / 2 },
+  socketable: true,
+  rotationStep: 90,
+  model: 'seven-segment-4',
+  terminals: seg4Terminals(),
+  props: [
+    {
+      key: 'common',
+      label: 'Digit pins are',
+      kind: 'select',
+      options: [
+        { value: 'anode', label: 'Common anode (+)' },
+        { value: 'cathode', label: 'Common cathode (−)' },
+      ],
+    },
+    {
+      key: 'color',
+      label: 'Colour',
+      kind: 'color',
+      options: ['red', 'green', 'blue', 'yellow', 'white'].map((v) => ({
+        value: v,
+        label: v[0].toUpperCase() + v.slice(1),
+      })),
+    },
+  ],
+  defaults: { common: 'anode', color: 'red' },
+  Art: SevenSegClockArt,
+});
+
 // ─── Incandescent lamp ───────────────────────────────────────────────────────
 
 interface BulbProps extends Record<string, string | number> {
@@ -297,6 +347,7 @@ export const IrLed = definePart({
 
 export const OUTPUT_EXTRAS: PartDef<never>[] = [
   SevenSegment4,
+  SevenSegmentClock,
   LightBulb,
   BicolorLed,
   IrLed,

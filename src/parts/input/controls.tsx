@@ -527,8 +527,112 @@ export const Pushbutton12 = definePart({
   },
 });
 
+// Tinkercad ships fixed-width DIP switch variants alongside the generic bank.
+// The generic DipSwitch already handles 2/4/6/8 ways via a prop; these
+// presets show up in the palette directly so a student searching for "DIP
+// switch SPST 4" finds it without having to place the generic and change a
+// setting.
+function DipSwitchPreset(id: string, name: string, ways: number) {
+  return definePart<DipProps>({
+    ...DipSwitch,
+    id,
+    name,
+    defaults: { ways },
+  });
+}
+
+export const DipSwitchSpst4 = DipSwitchPreset(
+  'dip-switch-spst-4',
+  'DIP Switch SPST × 4',
+  4,
+);
+export const DipSwitchSpst6 = DipSwitchPreset(
+  'dip-switch-spst-6',
+  'DIP Switch SPST × 6',
+  6,
+);
+
+// Double-pole DIP switch: each actuator bridges two independent pole pairs
+// so it can drive two circuits from one flip. Tinkercad ships this as a
+// distinct part alongside the SPST bank. Behaviour reuses the dip-switch
+// device with paired terminal groups A1/A1b + B1/B1b per position.
+export const DipSwitchDpst = definePart<DipProps>({
+  id: 'dip-switch-dpst',
+  name: 'DIP Switch DPST',
+  category: 'input',
+  keywords: ['dip', 'switch', 'dpst', 'double pole', 'bank'],
+  size: { w: 160, h: 92 },
+  origin: { x: 80, y: 46 },
+  socketable: true,
+  model: 'dip-switch-dpst',
+  terminals: (props) => {
+    const n = Math.max(2, Math.min(8, Number(props.ways) || 4));
+    const t: TerminalDef[] = [];
+    for (let i = 1; i <= n; i++) {
+      const x = -((n - 1) * 10) / 2 + (i - 1) * 10;
+      // Pole A along the top, pole B along the bottom. Same actuator name
+      // groups both pairs so the sim toggles them together.
+      t.push({ name: `A${i}`, type: 'breadboard_male', x, y: -35, dir: [0, -1] });
+      t.push({ name: `A${i}b`, type: 'breadboard_male', x, y: -15, dir: [0, -1] });
+      t.push({ name: `B${i}`, type: 'breadboard_male', x, y: 15, dir: [0, 1] });
+      t.push({ name: `B${i}b`, type: 'breadboard_male', x, y: 35, dir: [0, 1] });
+    }
+    return t;
+  },
+  props: [
+    {
+      key: 'ways',
+      label: 'Switches',
+      kind: 'select',
+      options: [2, 4, 6].map((v) => ({ value: String(v), label: `${v}-way` })),
+    },
+  ],
+  defaults: { ways: 4 },
+  Art: ({ props, state, simulating, interact }: ArtProps<DipProps>) => {
+    const n = Math.max(2, Math.min(8, Number(props.ways) || 4));
+    const states = (state?.states as number[] | undefined) ?? [];
+    const w = n * 10 + 12;
+    return (
+      <g>
+        <BoardShadow w={w} h={64} rx={2} />
+        <rect x={-w / 2} y={-32} width={w} height={64} rx={2} fill="#C11F1F" stroke="#8E1616" />
+        {Array.from({ length: n }, (_, i) => {
+          const x = -((n - 1) * 10) / 2 + i * 10;
+          const on = states[i] === 1;
+          return (
+            <g key={i}>
+              <rect x={x - 3.5} y={-27} width={7} height={54} rx={1} fill="#F2F2F2" />
+              <rect x={x - 3} y={on ? -26 : 2} width={6} height={24} rx={1} fill="#2B2E31" />
+              <Silk x={x} y={on ? 40 : -40} size={5} fill="#8E1616" weight={700}>
+                {i + 1}
+              </Silk>
+              {simulating && (
+                <rect
+                  x={x - 5}
+                  y={-32}
+                  width={10}
+                  height={64}
+                  fill="transparent"
+                  style={{ cursor: 'pointer' }}
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    interact?.('toggle', i + 1);
+                  }}
+                />
+              )}
+            </g>
+          );
+        })}
+      </g>
+    );
+  },
+});
+
 export const CONTROLS: PartDef<never>[] = [
   DipSwitch,
+  DipSwitchSpst4,
+  DipSwitchSpst6,
+  DipSwitchDpst,
   ToggleSwitch,
   SlidePot,
   RotaryEncoder,

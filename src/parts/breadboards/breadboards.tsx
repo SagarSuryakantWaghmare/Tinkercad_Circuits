@@ -213,69 +213,40 @@ function BreadboardArt({ cols, rails }: { cols: number; rails: boolean }) {
   );
 }
 
-/**
- * One breadboard, resizable in place.
- *
- * The reference product ships three separate components and puts only the
- * half-size one in its Basic palette, which leaves people believing that is
- * the only board on offer — a conclusion reached first-hand while testing
- * this build. A size property is both fewer entries to hunt through and one
- * fewer reason to delete a board and re-wire everything just to get a bigger
- * one.
- */
-export const BREADBOARD_SIZES = {
-  mini: { cols: 17, rails: false, label: 'Mini — 17 columns, no power rails' },
-  small: { cols: 30, rails: true, label: 'Small — 30 columns, two rail pairs' },
-  full: { cols: 63, rails: true, label: 'Full — 63 columns, two rail pairs' },
-} as const;
-
-export type BreadboardSize = keyof typeof BREADBOARD_SIZES;
-
-interface BoardProps extends Record<string, string | number> {
-  size: BreadboardSize;
+function makeBreadboard(
+  id: string,
+  name: string,
+  cols: number,
+  rails: boolean,
+  basic = false,
+): PartDef<Record<string, never>> {
+  const w = (cols - 1) * 10 + 40;
+  const h = rails ? 210 : 130;
+  return definePart({
+    id,
+    name,
+    category: 'breadboards',
+    keywords: ['breadboard', 'protoboard', 'solderless', String(cols)],
+    basic,
+    size: { w, h },
+    origin: { x: w / 2, y: h / 2 },
+    terminals: buildTerminals(cols, rails),
+    props: [],
+    defaults: {},
+    substrate: true,
+    rotationStep: 90,
+    Art: () => <BreadboardArt cols={cols} rails={rails} />,
+  });
 }
 
-const specOf = (props: BoardProps) =>
-  BREADBOARD_SIZES[props.size as BreadboardSize] ?? BREADBOARD_SIZES.small;
+export const BreadboardMini = makeBreadboard('breadboard-mini', 'Breadboard Mini', 17, false);
+export const BreadboardSmall = makeBreadboard(
+  'breadboard-small',
+  'Breadboard Small',
+  30,
+  true,
+  true,
+);
+export const BreadboardFull = makeBreadboard('breadboard', 'Breadboard', 63, true);
 
-const boxOf = (props: BoardProps) => {
-  const { cols, rails } = specOf(props);
-  return { w: (cols - 1) * 10 + 40, h: rails ? 210 : 130 };
-};
-
-export const Breadboard = definePart<BoardProps>({
-  id: 'breadboard',
-  name: 'Breadboard',
-  category: 'breadboards',
-  keywords: ['breadboard', 'protoboard', 'solderless', 'mini', 'small', 'full', 'half'],
-  size: boxOf,
-  origin: (props) => {
-    const { w, h } = boxOf(props);
-    return { x: w / 2, y: h / 2 };
-  },
-  terminals: (props) => {
-    const { cols, rails } = specOf(props);
-    return buildTerminals(cols, rails);
-  },
-  props: [
-    {
-      key: 'size',
-      label: 'Size',
-      kind: 'select',
-      options: (Object.keys(BREADBOARD_SIZES) as BreadboardSize[]).map((k) => ({
-        value: k,
-        label: BREADBOARD_SIZES[k].label,
-      })),
-      help: 'Changing size keeps the board in place; anything plugged past the new end comes loose.',
-    },
-  ],
-  defaults: { size: 'small' },
-  substrate: true,
-  rotationStep: 90,
-  Art: ({ props }) => {
-    const { cols, rails } = specOf(props);
-    return <BreadboardArt cols={cols} rails={rails} />;
-  },
-});
-
-export const BREADBOARDS = [Breadboard] as unknown as PartDef<never>[];
+export const BREADBOARDS = [BreadboardMini, BreadboardSmall, BreadboardFull];

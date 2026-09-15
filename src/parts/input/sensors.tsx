@@ -28,6 +28,7 @@ function moduleBoard(opts: {
   model: string;
   keywords: string[];
   pins?: string[];
+  basic?: boolean;
   w?: number;
   h?: number;
   /** Drawn above the header, centred on the origin. */
@@ -68,6 +69,7 @@ function moduleBoard(opts: {
     name: opts.name,
     category: 'input',
     keywords: opts.keywords,
+    basic: opts.basic,
     size: { w: w + 10, h: h + 40 },
     origin: { x: (w + 10) / 2, y: (h + 40) / 2 - 14 },
     socketable: true,
@@ -158,6 +160,7 @@ export const PirSensor = moduleBoard({
   name: 'PIR Sensor',
   label: 'HC-SR501',
   model: 'pir-sensor',
+  basic: true,
   keywords: ['pir', 'motion', 'passive infrared', 'presence', 'occupancy'],
   w: 90,
   h: 90,
@@ -334,6 +337,62 @@ export const HallSensor = moduleBoard({
   ),
 });
 
+// Tinkercad ships an Ambient Light Sensor breakout distinct from the CdS
+// photoresistor. It reads lux over a wider dynamic range with clean digital
+// output, so users can build brightness-triggered code without a divider.
+export const AmbientLight = moduleBoard({
+  id: 'ambient-light',
+  name: 'Ambient Light Sensor',
+  label: 'BH1750',
+  model: 'photoresistor',
+  keywords: ['light', 'ambient', 'lux', 'bh1750', 'sensor', 'illuminance'],
+  control: {
+    kind: 'slider',
+    min: 0.05,
+    max: 100000,
+    log: true,
+    color: '#E3B341',
+    lowIcon: MoonIcon,
+    highIcon: SunIcon,
+    label: (v) => `${v < 10 ? v.toFixed(1) : Math.round(v)} lux`,
+  },
+  element: (s) => {
+    const lux = Number(s?.value ?? 100);
+    const lit = Math.min(1, Math.log10(Math.max(lux, 0.1) + 1) / 5);
+    return (
+      <g>
+        <rect x={-16} y={-12} width={32} height={22} rx={2} fill="#12305F" />
+        <circle cx={0} cy={-1} r={7} fill="#E9E2CC" opacity={0.7 + lit * 0.3} />
+        <circle cx={0} cy={-1} r={4} fill="#F5D033" opacity={lit} />
+      </g>
+    );
+  },
+});
+
+// Tinkercad's generic IR proximity sensor is distinct from the IR receiver
+// (which decodes a modulated NEC/RC5 signal). This one just returns near/far.
+export const IrProximity = moduleBoard({
+  id: 'ir-proximity',
+  name: 'IR Proximity Sensor',
+  label: 'IR PROX',
+  model: 'ir-proximity',
+  keywords: ['ir', 'infrared', 'proximity', 'obstacle', 'reflective', 'sensor'],
+  control: { kind: 'toggle', onLabel: 'OBJECT', offLabel: 'clear' },
+  element: (s) => (
+    <g>
+      <rect x={-20} y={-14} width={40} height={22} rx={2} fill="#12305F" />
+      <circle cx={-8} cy={-3} r={4.5} fill="#1F2123" />
+      <circle cx={8} cy={-3} r={4.5} fill="#1F2123" />
+      {s?.value ? (
+        <g>
+          <circle cx={-8} cy={-3} r={2.5} fill="#A56BFF" opacity={0.9} />
+          <circle cx={8} cy={-3} r={2.5} fill="#A56BFF" opacity={0.9} />
+        </g>
+      ) : null}
+    </g>
+  ),
+});
+
 export const IrReceiver = moduleBoard({
   id: 'ir-receiver',
   name: 'IR Receiver',
@@ -374,7 +433,7 @@ export const RtcModule = moduleBoard({
 
 // ─── Ultrasonic ──────────────────────────────────────────────────────────────
 
-function ultrasonicPart(id: string, name: string, pins: string[], keywords: string[]) {
+function ultrasonicPart(id: string, name: string, pins: string[], keywords: string[], basic = false) {
   const w = 130;
   const h = 76;
   return definePart({
@@ -382,6 +441,7 @@ function ultrasonicPart(id: string, name: string, pins: string[], keywords: stri
     name,
     category: 'input',
     keywords,
+    basic,
     size: { w: w + 10, h: h + 40 },
     origin: { x: (w + 10) / 2, y: (h + 40) / 2 - 14 },
     socketable: true,
@@ -447,6 +507,7 @@ export const Ultrasonic4 = ultrasonicPart(
   'Ultrasonic Distance Sensor (4-pin)',
   ['VCC', 'TRIG', 'ECHO', 'GND'],
   ['ultrasonic', 'distance', 'hc-sr04', 'sonar', 'range', 'proximity'],
+  true,
 );
 export const Ultrasonic3 = ultrasonicPart(
   'ultrasonic-3pin',
@@ -708,7 +769,7 @@ export const Photodiode = twoLead({
 
 export const SENSORS: PartDef<never>[] = [
   PirSensor, GasSensor, FlameSensor, SoilMoisture, WaterLevel, SoundSensor,
-  HallSensor, IrReceiver, RtcModule,
+  HallSensor, IrReceiver, IrProximity, AmbientLight, RtcModule,
   Ultrasonic4, Ultrasonic3,
   FlexSensor, ForceSensor, Thermistor, TiltSensor, VibrationSensor, ReedSwitch,
   Phototransistor, Photodiode,

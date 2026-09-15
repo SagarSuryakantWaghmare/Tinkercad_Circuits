@@ -20,14 +20,6 @@ export const IconPlay = (p: P) => (
   </svg>
 );
 
-export const IconHistory = (p: P) => (
-  <svg {...base(p)}>
-    <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" />
-    <path d="M3.2 4.6v4.2h4.2" />
-    <path d="M12 7.6V12l3 1.8" />
-  </svg>
-);
-
 export const IconKeyboard = (p: P) => (
   <svg {...base(p)}>
     <rect x="2.5" y="6" width="19" height="12" rx="2" />
@@ -217,5 +209,44 @@ export const IconWarning = (p: P) => (
   <svg {...base(p)}>
     <path d="M12 4l9 16H3l9-16z" />
     <path d="M12 10v4M12 17.2v.1" />
+  </svg>
+);
+
+export const IconHand = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M9 11V5.5a1.5 1.5 0 013 0V11" />
+    <path d="M12 11V4.5a1.5 1.5 0 013 0V11" />
+    <path d="M15 11V6.5a1.5 1.5 0 013 0V13" />
+    <path d="M9 11V8a1.5 1.5 0 00-3 0v7.5c0 2.8 2 5.5 6 5.5s6-2.7 6-5.5V11" />
+  </svg>
+);
+
+export const IconCursor = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M5 3l4 15 2.5-6.5L18 9z" />
+  </svg>
+);
+
+export const IconInfo = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 8.2v.1M11 12h1v5h1" />
+  </svg>
+);
+
+export const IconUsers = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="9" cy="8" r="3.4" />
+    <path d="M2.5 20a6.5 6.5 0 0113 0" />
+    <circle cx="17.5" cy="9" r="2.6" />
+    <path d="M15 20a5 5 0 016.5-4.5" />
+  </svg>
+);
+
+export const IconLightbulb = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M9 18h6" />
+    <path d="M10 21h4" />
+    <path d="M8.5 14A5 5 0 1116 10c0 2-1.2 3-1.8 4-.4.6-.7 1.2-.7 2v.5H10.5V16c0-.8-.3-1.4-.7-2z" />
   </svg>
 );

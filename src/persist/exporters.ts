@@ -1,7 +1,6 @@
 'use client';
 
 import { getPartDef } from '@/parts/registry';
-import { originOf, sizeOf } from '@/parts/types';
 import { migrateDesign, type Design } from '@/state/design';
 import { transformedBounds, unionRect, type Rect } from '@/lib/geometry';
 
@@ -80,13 +79,7 @@ function contentBounds(design: Design): Rect | null {
     if (!def) continue;
     box = unionRect(
       box,
-      transformedBounds(
-        sizeOf(def, inst.props as never),
-        originOf(def, inst.props as never),
-        { x: inst.x, y: inst.y },
-        inst.rotation,
-        inst.mirrored,
-      ),
+      transformedBounds(def.size, def.origin, { x: inst.x, y: inst.y }, inst.rotation, inst.mirrored),
     );
   }
   return box;

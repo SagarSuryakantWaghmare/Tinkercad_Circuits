@@ -89,6 +89,7 @@ export const SevenSegment = definePart<SegProps>({
   name: '7-Segment Display',
   category: 'output',
   keywords: ['seven segment', 'digit', 'display', 'numeric', '7seg'],
+  basic: true,
   size: { w: 70, h: 96 },
   origin: { x: 35, y: 48 },
   socketable: true,
@@ -271,6 +272,7 @@ function makeLcd(id: string, name: string, cols: number, rows: number, i2c: bool
     name,
     category: 'output',
     keywords: ['lcd', 'display', 'character', 'hd44780', 'screen', i2c ? 'i2c' : 'parallel'],
+    basic: !i2c && cols === 16 && rows === 2,
     size: { w: w + 10, h: h + 10 },
     origin: { x: (w + 10) / 2, y: (h + 10) / 2 },
     socketable: true,
@@ -501,6 +503,72 @@ export const LedMatrix = definePart({
   },
 });
 
+// Tinkercad ships fixed-size ring and strip presets alongside the flexible
+// module. We keep the flexible NeoPixelRing/Strip and add named presets so
+// students dragging "NeoPixel Ring 12" find it directly under Output rather
+// than having to change a prop after placing the generic ring.
+function neoRingPreset(id: string, name: string, count: number, base: PartDef<RingProps>) {
+  return definePart<RingProps>({
+    ...base,
+    id,
+    name,
+    // Different id / name / defaults share the same Art and terminals.
+    defaults: { ...base.defaults, count },
+  });
+}
+
+function neoStripPreset(id: string, name: string, count: number, base: PartDef<RingProps>) {
+  return definePart<RingProps>({
+    ...base,
+    id,
+    name,
+    defaults: { ...base.defaults, count },
+  });
+}
+
+export const NeoPixelRing12 = neoRingPreset(
+  'neopixel-ring-12',
+  'NeoPixel Ring 12',
+  12,
+  NeoPixelRing,
+);
+export const NeoPixelRing16 = neoRingPreset(
+  'neopixel-ring-16',
+  'NeoPixel Ring 16',
+  16,
+  NeoPixelRing,
+);
+export const NeoPixelStrip6 = neoStripPreset(
+  'neopixel-strip-6',
+  'NeoPixel Strip 6',
+  6,
+  NeoPixelStrip,
+);
+export const NeoPixelStrip8 = neoStripPreset(
+  'neopixel-strip-8',
+  'NeoPixel Strip 8',
+  8,
+  NeoPixelStrip,
+);
+export const NeoPixelStrip10 = neoStripPreset(
+  'neopixel-strip-10',
+  'NeoPixel Strip 10',
+  10,
+  NeoPixelStrip,
+);
+export const NeoPixelStrip16 = neoStripPreset(
+  'neopixel-strip-16',
+  'NeoPixel Strip 16',
+  16,
+  NeoPixelStrip,
+);
+export const NeoPixelStrip20 = neoStripPreset(
+  'neopixel-strip-20',
+  'NeoPixel Strip 20',
+  20,
+  NeoPixelStrip,
+);
+
 export const DISPLAYS: PartDef<never>[] = [
   SevenSegment,
   BarGraph,
@@ -509,6 +577,13 @@ export const DISPLAYS: PartDef<never>[] = [
   Lcd16x2I2C,
   NeoPixel,
   NeoPixelRing,
+  NeoPixelRing12,
+  NeoPixelRing16,
   NeoPixelStrip,
+  NeoPixelStrip6,
+  NeoPixelStrip8,
+  NeoPixelStrip10,
+  NeoPixelStrip16,
+  NeoPixelStrip20,
   LedMatrix,
 ] as unknown as PartDef<never>[];

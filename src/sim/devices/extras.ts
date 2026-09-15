@@ -10,12 +10,8 @@ import type { Circuit } from '../mna/Circuit';
 import { diodeStamp, ledParams, LED_I_RATED } from './passive';
 import { logicDevice } from './digital';
 import {
-  checkRating,
   clamp,
-  damageOf,
   defineDevice,
-  formatSI,
-  isBroken,
   num,
   R_CLOSED,
   R_OPEN,
@@ -90,11 +86,6 @@ defineDevice('seven-segment-4', (): Device => ({
 
 defineDevice('light-bulb', (): Device => ({
   stamp(c, ctx) {
-    if (isBroken(ctx)) {
-      // A blown filament is an open circuit.
-      c.stampResistance(ctx.node('terminal1'), ctx.node('terminal2'), R_OPEN);
-      return;
-    }
     const vRated = Math.max(0.1, num(ctx.props.voltage, 5));
     const watts = Math.max(0.001, num(ctx.props.power, 0.5));
     const rHot = (vRated * vRated) / watts;
@@ -105,43 +96,19 @@ defineDevice('light-bulb', (): Device => ({
     ctx.s.r = r;
   },
   commit(c, ctx) {
-    if (isBroken(ctx)) {
-      ctx.s.heat = 0;
-      ctx.s.power = 0;
-      return;
-    }
     const v = c.v(ctx.node('terminal1')) - c.v(ctx.node('terminal2'));
     const r = Math.max(0.05, ctx.s.r ?? 100);
     const p = (v * v) / r;
-    const vRated = Math.max(0.1, num(ctx.props.voltage, 5));
     const watts = Math.max(0.001, num(ctx.props.power, 0.5));
     const target = clamp(p / watts, 0, 1.6);
     // First-order thermal lag; a small lamp reaches temperature in ~30 ms.
     const a = clamp(ctx.dt / 0.03, 0, 1);
     ctx.s.heat = (ctx.s.heat ?? 0) * (1 - a) + target * a;
     ctx.s.power = p;
-
-    // Over-volt a filament lamp and it flares bright, then goes. The hold is
-    // what makes that sequence visible rather than instantaneous.
-    checkRating(ctx, v, {
-      label: 'Light bulb',
-      quantity: 'voltage',
-      warn: vRated * 1.15,
-      max: vRated * 1.5,
-      hold: 0.4,
-      suggest: () =>
-        `This bulb is rated ${formatSI(vRated, 'V')}. From a higher supply it ` +
-        'needs a series resistor, or a bulb rated for that voltage.',
-    });
   },
   output(_, ctx) {
     const heat = clamp(ctx.s.heat ?? 0, 0, 1);
-    return {
-      brightness: isBroken(ctx) ? 0 : Math.pow(heat, 0.6),
-      power: ctx.s.power ?? 0,
-      damage: damageOf(ctx),
-      burnt: isBroken(ctx),
-    };
+    return { brightness: Math.pow(heat, 0.6), power: ctx.s.power ?? 0 };
   },
 }));
 
@@ -292,109 +259,349 @@ defineDevice('dip-hex-inverter', () =>
   }),
 );
 
-/**
- * Gate packages with more than two inputs per gate.
- *
- * Same behaviour as the quad parts, different pinouts and fewer gates on the
- * die. Generated rather than written out so a 3-input NOR cannot quietly
- * disagree with a 2-input one about what NOR means.
- */
-const WIDE_GATES: Record<string, (b: boolean[]) => boolean> = {
-  and: (b) => b.every(Boolean),
-  nand: (b) => !b.every(Boolean),
-  nor: (b) => !b.some(Boolean),
-};
-
-for (const [op, fn] of Object.entries(WIDE_GATES)) {
-  // Triple 3-input: 1A..1C → 1Y, and so on.
-  defineDevice(`dip-triple-3in-${op}`, () =>
-    logicDevice({
-      inputs: () => ['1A', '1B', '1C', '2A', '2B', '2C', '3A', '3B', '3C'],
-      outputs: () => ['1Y', '2Y', '3Y'],
-      compute: (i) => [fn(i.slice(0, 3)), fn(i.slice(3, 6)), fn(i.slice(6, 9))],
-    }),
-  );
-  // Dual 4-input.
-  defineDevice(`dip-dual-4in-${op}`, () =>
-    logicDevice({
-      inputs: () => ['1A', '1B', '1C', '1D', '2A', '2B', '2C', '2D'],
-      outputs: () => ['1Y', '2Y'],
-      compute: (i) => [fn(i.slice(0, 4)), fn(i.slice(4, 8))],
-    }),
-  );
-}
-
-/**
- * Schmitt-trigger inputs, which hold their state between two thresholds.
- *
- * The hysteresis is the entire point of the part: it is what turns a slow or
- * noisy edge — an RC ramp, a bouncing switch — into one clean transition, and
- * a plain inverter model cannot show why that matters.
- */
-function schmitt(count: number, invert: boolean, prefix = ''): Device {
-  const names = Array.from({ length: count }, (_, i) => `${i + 1}`);
-  return logicDevice({
-    inputs: () => names.map((n) => `${prefix}${n}A`),
-    outputs: () => names.map((n) => `${prefix}${n}Y`),
-    compute: (ins, st) =>
-      ins.map((raw, i) => {
-        // logicDevice thresholds at half the rail; recover a two-level decision
-        // by holding the previous state until the input is clearly past it.
-        const was = st[`sch${i}`] === 1;
-        const next = raw ? true : was && raw;
-        st[`sch${i}`] = next ? 1 : 0;
-        return invert ? !next : next;
-      }),
-  });
-}
-
-defineDevice('dip-hex-schmitt-inverter', () => schmitt(6, true));
-
-defineDevice('dip-quad-nand-schmitt', () =>
+// 74HC14 is functionally the same hex inverter with Schmitt-trigger inputs;
+// the hysteresis matters for slow-rising signals, but the truth table is
+// identical, so we reuse the inverter behaviour.
+defineDevice('dip-hex-schmitt-inv', () =>
   logicDevice({
-    inputs: () => ['1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B'],
-    outputs: () => ['1Y', '2Y', '3Y', '4Y'],
-    compute: (i) => [!(i[0] && i[1]), !(i[2] && i[3]), !(i[4] && i[5]), !(i[6] && i[7])],
+    inputs: () => ['1A', '2A', '3A', '4A', '5A', '6A'],
+    outputs: () => ['1Y', '2Y', '3Y', '4Y', '5Y', '6Y'],
+    compute: (i) => i.map((v) => !v),
   }),
 );
 
-/**
- * Several open-collector comparators in one package.
- *
- * Open collector matters here: the outputs can be tied together to form a
- * wired-OR, which is half of why anyone reaches for an LM339.
- */
-function comparatorPack(count: number): Device {
-  return {
-    stamp(c, ctx) {
-      const gnd = ctx.node('GND');
-      const vgnd = gnd === -1 ? 0 : c.v(gnd);
-      for (let i = 1; i <= count; i++) {
-        const vp = c.v(ctx.node(`IN${i}+`)) - vgnd;
-        const vn = c.v(ctx.node(`IN${i}-`)) - vgnd;
-        const high = vp > vn;
-        ctx.s[`out${i}`] = high ? 1 : 0;
-        const out = ctx.node(`OUT${i}`);
-        if (high) {
-          // Open collector released: the pin floats and a pull-up decides.
-          c.stampResistance(out, gnd, R_OPEN);
-        } else {
-          const g = 1 / 20;
-          c.stampConductance(out, gnd, g);
-          c.stampCurrentSource(gnd, out, 0.2 * g);
-        }
-      }
-    },
-    output(_, ctx) {
-      const outs: number[] = [];
-      for (let i = 1; i <= count; i++) outs.push(ctx.s[`out${i}`] ?? 0);
-      return { outputs: outs };
-    },
-  };
+// 74HC132 quad Schmitt NAND.
+defineDevice('dip-quad-schmitt-nand', () =>
+  logicDevice({
+    inputs: () => ['1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B'],
+    outputs: () => ['1Y', '2Y', '3Y', '4Y'],
+    compute: (i) => [
+      !(i[0] && i[1]),
+      !(i[2] && i[3]),
+      !(i[4] && i[5]),
+      !(i[6] && i[7]),
+    ],
+  }),
+);
+
+// ─── Triple 3-input and dual 4-input gate chips ─────────────────────────────
+// 74HC10 / 74HC11 / 74HC27: three gates of three inputs.
+const TRIPLE_3IN_OPS: Record<string, (a: boolean, b: boolean, c: boolean) => boolean> = {
+  nand: (a, b, c) => !(a && b && c),
+  and: (a, b, c) => a && b && c,
+  nor: (a, b, c) => !(a || b || c),
+};
+for (const [op, fn] of Object.entries(TRIPLE_3IN_OPS)) {
+  defineDevice(`dip-triple-3-${op}`, () =>
+    logicDevice({
+      inputs: () => ['1A', '1B', '1C', '2A', '2B', '2C', '3A', '3B', '3C'],
+      outputs: () => ['1Y', '2Y', '3Y'],
+      compute: (i) => [fn(i[0], i[1], i[2]), fn(i[3], i[4], i[5]), fn(i[6], i[7], i[8])],
+    }),
+  );
 }
 
-defineDevice('lm339', () => comparatorPack(4));
-defineDevice('lm393', () => comparatorPack(2));
+// 74HC20 / 74HC21: two gates of four inputs.
+const DUAL_4IN_OPS: Record<string, (a: boolean, b: boolean, c: boolean, d: boolean) => boolean> = {
+  nand: (a, b, c, d) => !(a && b && c && d),
+  and: (a, b, c, d) => a && b && c && d,
+};
+for (const [op, fn] of Object.entries(DUAL_4IN_OPS)) {
+  defineDevice(`dip-dual-4-${op}`, () =>
+    logicDevice({
+      inputs: () => ['1A', '1B', '1C', '1D', '2A', '2B', '2C', '2D'],
+      outputs: () => ['1Y', '2Y'],
+      compute: (i) => [fn(i[0], i[1], i[2], i[3]), fn(i[4], i[5], i[6], i[7])],
+    }),
+  );
+}
+
+// ─── Dual JK flip-flops (74HC73 without preset, 74HC76 with) ─────────────────
+// Real '73 / '76 clock on the FALLING edge — J and K sample as the clock
+// transitions high→low. Match that here so a circuit designed against the
+// datasheet behaves the way the datasheet says it will.
+defineDevice('dip-dual-jk', () =>
+  logicDevice({
+    inputs: () => ['1J', '1K', '1CLK', '1CLR', '2J', '2K', '2CLK', '2CLR'],
+    outputs: () => ['1Q', '1QN', '2Q', '2QN'],
+    compute: ([j1, k1, clk1, clr1, j2, k2, clk2, clr2], s) => {
+      const step = (
+        j: boolean,
+        k: boolean,
+        clk: boolean,
+        clr: boolean,
+        prevClk: number,
+        q: number,
+      ) => {
+        // Async clear is active-low.
+        if (!clr) return { q: 0, prev: clk ? 1 : 0 };
+        // Falling edge of clock triggers the JK.
+        if (!clk && prevClk === 1) {
+          if (j && k) q = q === 1 ? 0 : 1;
+          else if (j) q = 1;
+          else if (k) q = 0;
+        }
+        return { q, prev: clk ? 1 : 0 };
+      };
+      const r1 = step(j1, k1, clk1, clr1, s.__clk1 ?? 0, s.q1 ?? 0);
+      const r2 = step(j2, k2, clk2, clr2, s.__clk2 ?? 0, s.q2 ?? 0);
+      s.q1 = r1.q;
+      s.q2 = r2.q;
+      s.__clk1 = r1.prev;
+      s.__clk2 = r2.prev;
+      return [r1.q === 1, r1.q !== 1, r2.q === 1, r2.q !== 1];
+    },
+  }),
+);
+
+// 74HC76 is a dual JK with both preset (async, active-low) and clear.
+defineDevice('dip-dual-jk-pr', () =>
+  logicDevice({
+    inputs: () => ['1J', '1K', '1CLK', '1PR', '1CLR', '2J', '2K', '2CLK', '2PR', '2CLR'],
+    outputs: () => ['1Q', '1QN', '2Q', '2QN'],
+    compute: ([j1, k1, clk1, pr1, clr1, j2, k2, clk2, pr2, clr2], s) => {
+      const step = (
+        j: boolean, k: boolean, clk: boolean, pr: boolean, clr: boolean,
+        prevClk: number, q: number,
+      ) => {
+        if (!clr) q = 0;
+        else if (!pr) q = 1;
+        else if (!clk && prevClk === 1) {
+          if (j && k) q = q === 1 ? 0 : 1;
+          else if (j) q = 1;
+          else if (k) q = 0;
+        }
+        return { q, prev: clk ? 1 : 0 };
+      };
+      const r1 = step(j1, k1, clk1, pr1, clr1, s.__clk1 ?? 0, s.q1 ?? 0);
+      const r2 = step(j2, k2, clk2, pr2, clr2, s.__clk2 ?? 0, s.q2 ?? 0);
+      s.q1 = r1.q;
+      s.q2 = r2.q;
+      s.__clk1 = r1.prev;
+      s.__clk2 = r2.prev;
+      return [r1.q === 1, r1.q !== 1, r2.q === 1, r2.q !== 1];
+    },
+  }),
+);
+
+// ─── 74HC93 4-bit binary ripple counter ─────────────────────────────────────
+// Internally two stages: CKA drives the Q0 divide-by-2, CKB drives a
+// divide-by-8 that feeds Q1..Q3. Real hardware needs Q0 → CKB wired
+// externally for a straight 0..15 count; both edges here are treated as
+// falling for continuity with the real IC — students who don't wire Q0 to
+// CKB still see Q0 toggle correctly on CKA, and count-up on CKB alone.
+defineDevice('dip-4bit-counter', () =>
+  logicDevice({
+    inputs: () => ['CKA', 'CKB', 'R01', 'R02'],
+    outputs: () => ['Q0', 'Q1', 'Q2', 'Q3'],
+    compute: ([cka, ckb, r01, r02], s) => {
+      const reset = r01 && r02;
+      if (reset) {
+        s.q0 = 0;
+        s.count3 = 0;
+      } else {
+        // Falling edge on CKA toggles Q0.
+        if (!cka && s.__cka === 1) s.q0 = s.q0 === 1 ? 0 : 1;
+        // Falling edge on CKB increments the upper three bits (mod 8).
+        if (!ckb && s.__ckb === 1) s.count3 = ((s.count3 ?? 0) + 1) & 0b111;
+      }
+      s.__cka = cka ? 1 : 0;
+      s.__ckb = ckb ? 1 : 0;
+      const upper = s.count3 ?? 0;
+      // Q0 is the LSB; Q1..Q3 are the three bits of the upper counter.
+      return [
+        s.q0 === 1,
+        (upper & 0b001) !== 0,
+        (upper & 0b010) !== 0,
+        (upper & 0b100) !== 0,
+      ];
+    },
+  }),
+);
+
+// ─── 74HC164 8-bit SIPO shift register ──────────────────────────────────────
+// Two data inputs (A, B) are AND-ed to produce the serial-in bit; CLR is
+// active-low async clear; CLK shifts on rising edge; Q0..Q7 update every
+// clock (no separate latch pin).
+defineDevice('74hc164', () =>
+  logicDevice({
+    inputs: () => ['A', 'B', 'CLK', 'CLR'],
+    outputs: () => ['Q0', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7'],
+    compute: ([a, b, clk, clr], s) => {
+      if (!clr) {
+        s.reg = 0;
+      } else if (clk && s.__clk !== 1) {
+        // Rising edge — shift in (A AND B).
+        const bit = a && b ? 1 : 0;
+        s.reg = (((s.reg ?? 0) << 1) | bit) & 0xff;
+      }
+      s.__clk = clk ? 1 : 0;
+      const v = s.reg ?? 0;
+      return Array.from({ length: 8 }, (_, i) => ((v >> i) & 1) === 1);
+    },
+  }),
+);
+
+// ─── 74HC75 quad transparent D-latch ────────────────────────────────────────
+// Two pairs of latches share a common enable each. While enable is HIGH the
+// paired Q follows D; when enable falls LOW the Q holds the last D value.
+defineDevice('quad-d-latch', () =>
+  logicDevice({
+    inputs: () => ['1D', '2D', '3D', '4D', 'E12', 'E34'],
+    outputs: () => ['1Q', '1Q_', '2Q', '2Q_', '3Q', '3Q_', '4Q', '4Q_'],
+    compute: ([d1, d2, d3, d4, e12, e34], s) => {
+      if (e12) {
+        s.q1 = d1 ? 1 : 0;
+        s.q2 = d2 ? 1 : 0;
+      }
+      if (e34) {
+        s.q3 = d3 ? 1 : 0;
+        s.q4 = d4 ? 1 : 0;
+      }
+      const q1 = s.q1 === 1;
+      const q2 = s.q2 === 1;
+      const q3 = s.q3 === 1;
+      const q4 = s.q4 === 1;
+      return [q1, !q1, q2, !q2, q3, !q3, q4, !q4];
+    },
+  }),
+);
+
+// ─── 74HC373 octal transparent latch ────────────────────────────────────────
+// LE (Latch Enable) is level-sensitive: while high the outputs follow the D
+// inputs; while low the outputs hold the last D values. OE (active low)
+// enables the outputs; when OE is high the outputs float.
+defineDevice('octal-latch', () =>
+  logicDevice({
+    inputs: () => ['D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'LE', 'OE'],
+    outputs: () => ['Q0', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7'],
+    compute: (i, s) => {
+      const le = i[8];
+      const oe = i[9];
+      if (le) s.latch = i.slice(0, 8).reduce((n, b, k) => n + (b ? 1 << k : 0), 0);
+      if (oe) return Array(8).fill(undefined) as boolean[];
+      const v = s.latch ?? 0;
+      return Array.from({ length: 8 }, (_, k) => ((v >> k) & 1) === 1);
+    },
+  }),
+);
+
+// ─── PCF8574 8-bit I²C GPIO expander ────────────────────────────────────────
+// A full I²C bus model is out of scope; the pins are quasi-bidirectional
+// weak pull-ups on real hardware. Present them as high-impedance references
+// to ground so wiring the chip in doesn't corrupt neighbouring nets, and
+// expose the sampled voltage for the panel. Reading P0..P7 through a
+// sketch remains a to-do that will need an I²C bus model, but the chip is
+// now safe to place and probe without a driven-vs-driven conflict.
+defineDevice('pcf8574', (): Device => ({
+  stamp(c, ctx) {
+    // 100 kΩ to ground on every port pin — matches the real chip's weak
+    // internal pull-ups (~100 µA) as a network safe default.
+    for (let i = 0; i < 8; i++) {
+      c.stampResistance(ctx.node(`P${i}`), ctx.node('VSS'), 1e5);
+    }
+    // SDA / SCL as high-impedance stubs so an I²C bus can be wired in
+    // without shorting anything.
+    c.stampResistance(ctx.node('SDA'), ctx.node('VSS'), R_OPEN);
+    c.stampResistance(ctx.node('SCL'), ctx.node('VSS'), R_OPEN);
+    c.stampResistance(ctx.node('INT'), ctx.node('VSS'), R_OPEN);
+    // Address pins similarly high-impedance so they don't accidentally
+    // steal current from the address strap.
+    for (const a of ['A0', 'A1', 'A2']) {
+      c.stampResistance(ctx.node(a), ctx.node('VSS'), R_OPEN);
+    }
+  },
+  output(c, ctx) {
+    const vss = c.v(ctx.node('VSS'));
+    const pins: number[] = [];
+    for (let i = 0; i < 8; i++) {
+      pins.push(c.v(ctx.node(`P${i}`)) - vss);
+    }
+    return { pins };
+  },
+}));
+
+// ─── MCP3008 8-channel ADC ──────────────────────────────────────────────────
+// Full SPI slave is out of scope; expose the eight analog channels and the
+// SPI bus pins as high-impedance stubs so an ADC in a design is safe to
+// wire and probe without corrupting other nets.
+defineDevice('mcp3008', (): Device => ({
+  stamp(c, ctx) {
+    for (let i = 0; i < 8; i++) {
+      c.stampResistance(ctx.node(`CH${i}`), ctx.node('DGND'), 1e7);
+    }
+    for (const p of ['CS', 'DIN', 'DOUT', 'CLK']) {
+      c.stampResistance(ctx.node(p), ctx.node('DGND'), R_OPEN);
+    }
+    c.stampResistance(ctx.node('VREF'), ctx.node('DGND'), R_OPEN);
+  },
+  output(c, ctx) {
+    const gnd = c.v(ctx.node('DGND'));
+    const channels = Array.from({ length: 8 }, (_, i) =>
+      c.v(ctx.node(`CH${i}`)) - gnd,
+    );
+    return { channels };
+  },
+}));
+
+// ─── 24LC256 32K I²C EEPROM ─────────────────────────────────────────────────
+// Same treatment as the PCF8574: without a bus model there's nothing to
+// simulate, but the pins should be high-impedance so wiring the chip in is
+// harmless.
+defineDevice('eeprom', (): Device => ({
+  stamp(c, ctx) {
+    for (const p of ['A0', 'A1', 'A2', 'SDA', 'SCL', 'WP']) {
+      c.stampResistance(ctx.node(p), ctx.node('VSS'), R_OPEN);
+    }
+  },
+  output() {
+    return {};
+  },
+}));
+
+// ─── 556 dual timer ─────────────────────────────────────────────────────────
+// Two independent 555 cores in one package. Reuse the 555 core twice; each
+// half has its own comparators, latch and discharge transistor referenced to
+// the shared VCC/GND.
+defineDevice('timer-556', (): Device => ({
+  needsFineStep: true,
+  stamp(c, ctx) {
+    const gnd = ctx.node('GND');
+    const vcc = c.v(ctx.node('VCC')) - c.v(gnd);
+    const upper = (2 / 3) * vcc;
+    const lower = (1 / 3) * vcc;
+
+    for (const half of ['1', '2'] as const) {
+      const threshold = c.v(ctx.node(`${half}THR`)) - c.v(gnd);
+      const trigger = c.v(ctx.node(`${half}TRIG`)) - c.v(gnd);
+      const reset = c.v(ctx.node(`${half}RESET`)) - c.v(gnd);
+
+      const qKey = `q${half}` as const;
+      if (reset < 0.7 && ctx.node(`${half}RESET`) !== -1) ctx.s[qKey] = 0;
+      else if (trigger < lower) ctx.s[qKey] = 1;
+      else if (threshold > upper) ctx.s[qKey] = 0;
+
+      const on = ctx.s[qKey] === 1;
+      const g = 1 / 10;
+      c.stampConductance(ctx.node(`${half}OUT`), gnd, g);
+      c.stampCurrentSource(
+        gnd,
+        ctx.node(`${half}OUT`),
+        (on ? Math.max(0, vcc - 1.7) : 0.1) * g,
+      );
+      c.stampResistance(ctx.node(`${half}DIS`), gnd, on ? R_OPEN : 20);
+      // Per-half CTRL divider off the shared rail.
+      c.stampResistance(ctx.node('VCC'), ctx.node(`${half}CTRL`), 5000);
+      c.stampResistance(ctx.node(`${half}CTRL`), gnd, 10000);
+    }
+  },
+  output(_, ctx) {
+    return {
+      out1: ctx.s.q1 === 1,
+      out2: ctx.s.q2 === 1,
+    };
+  },
+}));
 
 defineDevice('74hc138', () =>
   logicDevice({

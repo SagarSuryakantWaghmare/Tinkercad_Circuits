@@ -1,20 +1,5 @@
 import type { Circuit } from '../mna/Circuit';
-import {
-  checkRating,
-  clamp,
-  damageOf,
-  defineDevice,
-  destroy,
-  formatSI,
-  GMIN,
-  isBroken,
-  num,
-  pnjlim,
-  R_CLOSED,
-  R_OPEN,
-  VT,
-  type Device,
-} from './types';
+import { clamp, defineDevice, GMIN, num, pnjlim, R_CLOSED, R_OPEN, VT, type Device } from './types';
 
 /**
  * Bipolar transistor, Ebers–Moll level 1.
@@ -30,14 +15,6 @@ function bjt(sign: 1 | -1): Device {
       const b = ctx.node('base');
       const col = ctx.node('collector');
       const e = ctx.node('emitter');
-
-      if (isBroken(ctx)) {
-        // A cooked transistor stops controlling anything. Open, not shorted:
-        // the base drive no longer reaches the load at all.
-        c.stampResistance(col, e, R_OPEN);
-        c.stampResistance(b, e, R_OPEN);
-        return;
-      }
 
       const is = num(ctx.props.is, 1e-14);
       const bf = Math.max(num(ctx.props.beta, 100), 1);
@@ -82,72 +59,15 @@ function bjt(sign: 1 | -1): Device {
       ctx.s.ib = sign * (ibe + ibc);
       ctx.s.vce = c.v(col) - c.v(e);
     },
-    commit(_, ctx) {
-      if (isBroken(ctx)) return;
-      const ic = Math.abs(ctx.s.ic ?? 0);
-      const ib = Math.abs(ctx.s.ib ?? 0);
-
-      // A transistor driven straight from a logic pin with no base resistor is
-      // the classic beginner mistake, and it kills the junction rather than
-      // the load. Tinkercad cannot fail a discrete transistor at all, so this
-      // mistake is silent there.
-      if (
-        checkRating(ctx, ib, {
-          label: 'Transistor',
-          quantity: 'current',
-          warn: num(ctx.props.ibMax, 0.05) * 0.6,
-          max: num(ctx.props.ibMax, 0.05),
-          hold: 0.05,
-          suggest: () =>
-            'The base-emitter junction is being driven far too hard. Put a ' +
-            'resistor in series with the base — a few kilohms is usual for ' +
-            'switching from a logic pin.',
-        }) === 'broken'
-      ) {
-        return;
-      }
-
-      const icMax = num(ctx.props.icMax, 0.6);
-      const pd = ic * Math.abs(ctx.s.vce ?? 0);
-      if (
-        checkRating(ctx, ic, {
-          label: 'Transistor',
-          quantity: 'current',
-          warn: icMax * 0.8,
-          max: icMax,
-          hold: 0.2,
-          suggest: () =>
-            `This part is good for about ${formatSI(icMax, 'A')} of collector ` +
-            'current. Use a bigger transistor, or a MOSFET, for a load this size.',
-        }) === 'broken'
-      ) {
-        return;
-      }
-
-      // Dissipation kills a transistor held half-on even when neither current
-      // on its own is out of range.
-      checkRating(ctx, pd, {
-        label: 'Transistor',
-        quantity: 'power',
-        warn: num(ctx.props.pMax, 0.6) * 0.7,
-        max: num(ctx.props.pMax, 0.6),
-        hold: 0.5,
-        suggest: () =>
-          'It is being held part-way on, which turns the difference into heat. ' +
-          'Drive the base hard enough to saturate it, or fit a heatsink.',
-      });
-    },
     output(_, ctx) {
-      const dead = isBroken(ctx);
-      const ic = dead ? 0 : ctx.s.ic ?? 0;
-      const ib = dead ? 0 : ctx.s.ib ?? 0;
+      const ic = ctx.s.ic ?? 0;
+      const ib = ctx.s.ib ?? 0;
       return {
         ic,
         ib,
         vce: ctx.s.vce ?? 0,
-        damage: damageOf(ctx),
-        saturated: !dead && Math.abs(ctx.s.vce ?? 0) < 0.4 && Math.abs(ic) > 1e-4,
-        conducting: !dead && Math.abs(ic) > 1e-5,
+        saturated: Math.abs(ctx.s.vce ?? 0) < 0.4 && Math.abs(ic) > 1e-4,
+        conducting: Math.abs(ic) > 1e-5,
       };
     },
   };
@@ -289,11 +209,6 @@ defineDevice('relay-dpdt', () => relay(2));
 
 defineDevice('regulator', (): Device => ({
   stamp(c, ctx) {
-    if (isBroken(ctx)) {
-      c.stampResistance(ctx.node('input'), ctx.node('gnd'), R_OPEN);
-      c.stampResistance(ctx.node('output'), ctx.node('gnd'), R_OPEN);
-      return;
-    }
     const vin = c.v(ctx.node('input')) - c.v(ctx.node('gnd'));
     const target = num(ctx.props.output, 5);
     // A linear regulator cannot exceed its input minus the dropout.
@@ -307,26 +222,10 @@ defineDevice('regulator', (): Device => ({
     ctx.s.vout = vout;
     ctx.s.vin = vin;
   },
-  commit(_, ctx) {
-    if (isBroken(ctx)) return;
-    // A 78xx-style part is rated to about 35 V in; past that the pass element
-    // goes, and it usually takes whatever it was feeding with it.
-    checkRating(ctx, ctx.s.vin ?? 0, {
-      label: 'Regulator',
-      quantity: 'voltage',
-      warn: num(ctx.props.vinMax, 35) * 0.8,
-      max: num(ctx.props.vinMax, 35),
-      hold: 0.1,
-      suggest: () =>
-        'Input voltage is beyond what this regulator can take. Drop it first, ' +
-        'or use a switching regulator rated for the input.',
-    });
-  },
   output(_, ctx) {
     return {
-      vout: isBroken(ctx) ? 0 : ctx.s.vout ?? 0,
+      vout: ctx.s.vout ?? 0,
       vin: ctx.s.vin ?? 0,
-      damage: damageOf(ctx),
       dropout: (ctx.s.vin ?? 0) - (ctx.s.vout ?? 0) < 2.2,
     };
   },
@@ -376,11 +275,6 @@ defineDevice('optocoupler', (): Device => ({
     // Input LED.
     const a = ctx.node('anode');
     const k = ctx.node('cathode');
-    if (isBroken(ctx)) {
-      c.stampResistance(a, k, R_OPEN);
-      c.stampResistance(ctx.node('collector'), ctx.node('emitter'), R_OPEN);
-      return;
-    }
     const vd = c.v(a) - c.v(k);
     const is = 1e-15;
     const e = Math.exp(clamp(vd / (2 * VT), -60, 60));
@@ -395,42 +289,9 @@ defineDevice('optocoupler', (): Device => ({
     const rce = ic > 1e-6 ? Math.max(50, 0.2 / ic) : R_OPEN;
     c.stampResistance(ctx.node('collector'), ctx.node('emitter'), rce);
     ctx.s.ledCurrent = i;
-    ctx.s.vled = vd;
     ctx.s.on = ic > 1e-5 ? 1 : 0;
   },
-  commit(_, ctx) {
-    if (isBroken(ctx)) return;
-    const vled = ctx.s.vled ?? 0;
-
-    // The input LED has almost no reverse withstand — six volts backwards is
-    // enough to destroy it, and it is the one reverse-polarity check the
-    // reference product bothers with.
-    if (vled < -6) {
-      destroy(ctx, {
-        severity: 'breakdown',
-        title: 'Optocoupler destroyed',
-        detail:
-          `The input LED has ${formatSI(Math.abs(vled), 'V')} across it the ` +
-          'wrong way round, against a reverse rating of 6 V.',
-        suggestion: 'Turn the input round, or add a diode across it to clamp the reverse voltage.',
-      });
-      return;
-    }
-
-    checkRating(ctx, ctx.s.ledCurrent ?? 0, {
-      label: 'Optocoupler',
-      quantity: 'current',
-      warn: 0.02,
-      max: 0.06,
-      hold: 0.05,
-      suggest: () => 'Add a series resistor on the input LED, as you would for any LED.',
-    });
-  },
   output(_, ctx) {
-    return {
-      on: !isBroken(ctx) && ctx.s.on === 1,
-      ledCurrent: isBroken(ctx) ? 0 : ctx.s.ledCurrent ?? 0,
-      damage: damageOf(ctx),
-    };
+    return { on: ctx.s.on === 1, ledCurrent: ctx.s.ledCurrent ?? 0 };
   },
 }));

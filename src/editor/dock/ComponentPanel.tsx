@@ -2,11 +2,11 @@
 
 import { useMemo } from 'react';
 import { useEditorStore } from '@/state/editorStore';
-import { allParts, basicParts, describePart, searchParts } from '@/parts/registry';
-import { CATEGORIES, type PartDef } from '@/parts/types';
+import { allParts, basicParts, categoriesOf, searchParts } from '@/parts/registry';
+import { CATEGORIES, type CategoryId, type PartDef } from '@/parts/types';
 import { PartThumb } from './PartThumb';
 import { StartersDrawer } from './StartersDrawer';
-import { IconChevronDown, IconSearch } from '../icons';
+import { IconSearch } from '../icons';
 
 export function ComponentPanel() {
   const view = useEditorStore((s) => s.panelView);
@@ -20,17 +20,25 @@ export function ComponentPanel() {
 
   const parts = useMemo(() => {
     let pool: PartDef<never>[] = view === 'basic' ? basicParts() : allParts();
-    if (category !== 'all') pool = pool.filter((p) => p.category === category);
+    if (category !== 'all') {
+      const cat = category as CategoryId;
+      pool = pool.filter((p) => categoriesOf(p).includes(cat));
+    }
     return searchParts(search, pool);
   }, [view, category, search]);
 
   const grouped = useMemo(() => {
     if (category !== 'all' || search.trim()) return null;
+    // A part can appear in more than one section — Tinkercad files 74xx chips
+    // under Logic, our IC section keeps the physical-chip copy too. Walking
+    // every category each part claims puts it in each rail exactly once.
     const map = new Map<string, PartDef<never>[]>();
     for (const p of parts) {
-      const arr = map.get(p.category) ?? [];
-      arr.push(p);
-      map.set(p.category, arr);
+      for (const cat of categoriesOf(p)) {
+        const arr = map.get(cat) ?? [];
+        arr.push(p);
+        map.set(cat, arr);
+      }
     }
     return CATEGORIES.filter((c) => map.has(c.id)).map((c) => ({
       label: c.label,
@@ -39,46 +47,66 @@ export function ComponentPanel() {
   }, [parts, category, search]);
 
   return (
-    <aside className="flex h-full w-[220px] shrink-0 flex-col border-l border-neutral-200 bg-white lg:w-[300px]">
-      <header className="border-b border-neutral-200 px-3 py-2.5">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-[13px] font-semibold text-neutral-800">Components</span>
-          <div className="relative">
-            <select
-              value={view}
-              onChange={(e) => setView(e.target.value as typeof view)}
-              className="appearance-none rounded-md border border-neutral-300 bg-white py-1 pl-2.5 pr-7 text-[12px] font-medium text-neutral-700 outline-none hover:border-neutral-400 focus:border-sky-500"
+    <aside
+      className="flex h-full w-[320px] shrink-0 flex-col border-l border-neutral-200 bg-white"
+      aria-label="Components"
+    >
+      {/* Header laid out like Tinkercad's: title, then a Basic / All / Starters
+          segmented pill, then the search field. Segmented pill is easier to
+          read at a glance than a native <select>. */}
+      <header className="border-b border-neutral-200 px-3 py-3">
+        <div className="mb-2 text-[14px] font-semibold text-neutral-900">Components</div>
+
+        {/* Segmented view toggle. */}
+        <div
+          className="mb-2 grid grid-cols-3 gap-0.5 rounded-md bg-neutral-100 p-0.5"
+          role="tablist"
+          aria-label="Component view"
+        >
+          {([
+            { key: 'basic', label: 'Basic' },
+            { key: 'all', label: 'All' },
+            { key: 'starters', label: 'Starters' },
+          ] as const).map((opt) => (
+            <button
+              key={opt.key}
+              role="tab"
+              aria-selected={view === opt.key}
+              onClick={() => setView(opt.key)}
+              className={`rounded px-2 py-1 text-[12px] font-medium transition ${
+                view === opt.key
+                  ? 'bg-white text-neutral-900 shadow-sm'
+                  : 'text-neutral-600 hover:text-neutral-900'
+              }`}
             >
-              <option value="basic">Basic</option>
-              <option value="all">All</option>
-              <option value="starters">Starters</option>
-            </select>
-            <IconChevronDown
-              width={13}
-              height={13}
-              className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-neutral-500"
-            />
-          </div>
+              {opt.label}
+            </button>
+          ))}
         </div>
 
         {view !== 'starters' && (
-        <div className="relative">
-          <IconSearch
-            width={14}
-            height={14}
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400"
-          />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search components"
-            className="w-full rounded-md border border-neutral-300 bg-neutral-50 py-1.5 pl-8 pr-2 text-[12.5px] text-neutral-800 outline-none placeholder:text-neutral-400 focus:border-sky-500 focus:bg-white"
-          />
-        </div>
+          <div className="relative">
+            <IconSearch
+              width={14}
+              height={14}
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400"
+            />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search components"
+              aria-label="Search components"
+              className="w-full rounded-md border border-neutral-300 bg-neutral-50 py-1.5 pl-8 pr-2 text-[12.5px] text-neutral-800 outline-none placeholder:text-neutral-400 focus:border-sky-500 focus:bg-white focus-visible:ring-2 focus-visible:ring-sky-200"
+            />
+          </div>
         )}
 
         {view === 'all' && (
-          <div className="mt-2 flex flex-wrap gap-1">
+          <div
+            className="mt-2 flex gap-1 overflow-x-auto whitespace-nowrap pb-1"
+            role="tablist"
+            aria-label="Categories"
+          >
             <Chip active={category === 'all'} onClick={() => setCategory('all')}>
               All
             </Chip>
@@ -141,7 +169,7 @@ function Grid({
               ? 'border-sky-500 bg-sky-50 ring-1 ring-sky-200'
               : 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50'
           }`}
-          title={describePart(p) ? `${p.name} — ${describePart(p)}` : p.name}
+          title={p.name}
         >
           <span className="flex h-[58px] w-full items-center justify-center">
             <PartThumb def={p} />
