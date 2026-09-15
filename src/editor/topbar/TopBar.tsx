@@ -6,6 +6,7 @@ import { useDesignStore } from '@/state/designStore';
 import { useEditorStore } from '@/state/editorStore';
 import { useSimStore } from '@/state/simStore';
 import { SendToMenu } from './SendToMenu';
+import { SessionStatus } from './SessionStatus';
 import { IconCode, IconPlay, IconStop } from '../icons';
 
 export function TopBar() {
@@ -29,6 +30,8 @@ export function TopBar() {
       />
 
       <div className="ml-auto flex items-center gap-2">
+        <SessionStatus />
+
         <button
           onClick={() => setCodeOpen(!codeOpen)}
           className={`flex h-8 items-center gap-1.5 rounded-md border px-3 text-[13px] font-medium transition ${

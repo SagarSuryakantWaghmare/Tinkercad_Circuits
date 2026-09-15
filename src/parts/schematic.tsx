@@ -193,7 +193,10 @@ const Pushbutton: ComponentType<ArtProps> = ({ state }) => {
 };
 
 const Slideswitch: ComponentType<ArtProps> = ({ state }) => {
-  const right = Number(state?.position ?? 0) === 1;
+  // 0 = left closed, 1 = centre OFF (wiper up), 2 = right closed.
+  const p = Math.max(0, Math.min(2, Number(state?.position ?? 0)));
+  const tipX = p === 0 ? -10 : p === 2 ? 10 : 0;
+  const tipY = p === 1 ? -4 : 4;
   return (
     <g>
       {line(-10, 18, -10, 6)}
@@ -202,7 +205,7 @@ const Slideswitch: ComponentType<ArtProps> = ({ state }) => {
       <circle cx={-10} cy={4} r={2.6} fill={INK} />
       <circle cx={10} cy={4} r={2.6} fill={INK} />
       <circle cx={0} cy={10} r={2.6} fill={INK} />
-      {line(0, 10, right ? 10 : -10, 4)}
+      {line(0, 10, tipX, tipY)}
     </g>
   );
 };

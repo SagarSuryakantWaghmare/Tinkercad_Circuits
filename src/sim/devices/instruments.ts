@@ -136,9 +136,11 @@ const SCOPE_CAP = 8192;
 defineDevice('oscilloscope', (): Device => {
   const ch1 = new Float32Array(SCOPE_CAP);
   const ch2 = new Float32Array(SCOPE_CAP);
-  const ts = new Float32Array(SCOPE_CAP);
+  // Float64 so timestamps keep sub-microsecond precision across long runs.
+  const ts = new Float64Array(SCOPE_CAP);
   let head = 0;
   let count = 0;
+  let lastT = 0;
 
   return {
     needsFineStep: true,
@@ -148,12 +150,21 @@ defineDevice('oscilloscope', (): Device => {
       c.stampResistance(ctx.node('CH2+'), ctx.node('CH2-'), 1e7);
     },
     commit(c, ctx) {
+      // Sim restart: t rewound, drop stale ring so trace doesn't mix runs.
+      if (ctx.t < lastT) {
+        head = 0;
+        count = 0;
+      }
+      lastT = ctx.t;
       // Every solver step is a sample. Storing time along with the sample
       // means the display can lay the trace out on real elapsed time
       // rather than assuming a uniform interval that never matches the
       // solver's actual step size.
-      ch1[head] = c.v(ctx.node('CH1+')) - c.v(ctx.node('CH1-'));
-      ch2[head] = c.v(ctx.node('CH2+')) - c.v(ctx.node('CH2-'));
+      const v1 = c.v(ctx.node('CH1+')) - c.v(ctx.node('CH1-'));
+      const v2 = c.v(ctx.node('CH2+')) - c.v(ctx.node('CH2-'));
+      // A floating probe returns NaN; store 0 so the ring stays usable.
+      ch1[head] = Number.isFinite(v1) ? v1 : 0;
+      ch2[head] = Number.isFinite(v2) ? v2 : 0;
       ts[head] = ctx.t;
       head = (head + 1) % SCOPE_CAP;
       if (count < SCOPE_CAP) count++;
@@ -172,7 +183,13 @@ defineDevice('oscilloscope', (): Device => {
       const span = num(ctx.props.timePerDiv, 0.001) * 10;
       const newest = (head - 1 + SCOPE_CAP) % SCOPE_CAP;
       const tNow = ts[newest];
-      const tStart = tNow - span;
+      const oldestNeeded = (head - count + SCOPE_CAP) % SCOPE_CAP;
+      const tOldest = ts[oldestNeeded];
+      // If the requested window predates our history, start at the oldest
+      // sample instead of clamping every column to it (which draws a long
+      // flat leader before the real trace).
+      const tStart = Math.max(tNow - span, tOldest);
+      const visibleSpan = tNow - tStart || span;
 
       // Resample the ring onto SCOPE_POINTS evenly spaced along the display
       // window. Target time sweeps left-to-right; the previous implementation
@@ -182,10 +199,9 @@ defineDevice('oscilloscope', (): Device => {
       // straddles target, giving the true nearest-sample-after semantic.
       const a: number[] = new Array(SCOPE_POINTS);
       const b: number[] = new Array(SCOPE_POINTS);
-      const oldestNeeded = (head - count + SCOPE_CAP) % SCOPE_CAP;
       let cursor = oldestNeeded;
       for (let i = 0; i < SCOPE_POINTS; i++) {
-        const target = tStart + (i / (SCOPE_POINTS - 1)) * span;
+        const target = tStart + (i / (SCOPE_POINTS - 1)) * visibleSpan;
         // Advance cursor while the next-newer sample is still ≤ target.
         while (cursor !== newest) {
           const next = (cursor + 1) % SCOPE_CAP;

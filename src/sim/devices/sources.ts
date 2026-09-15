@@ -118,13 +118,22 @@ defineDevice('pushbutton', (): Device => ({
 
 defineDevice('slideswitch', (): Device => ({
   stamp(c, ctx) {
-    const right = ctx.s.position === 1;
-    c.stampResistance(ctx.node('common'), ctx.node('1'), right ? R_OPEN : R_CLOSED);
-    c.stampResistance(ctx.node('common'), ctx.node('2'), right ? R_CLOSED : R_OPEN);
+    // Three positions: 0 = left closed (common↔1), 1 = centre OFF (both open),
+    // 2 = right closed (common↔2). Wiring a motor through common+one terminal
+    // used to short across on the opposite throw, so flipping reversed the
+    // motor instead of stopping it — the neutral middle position gives a real
+    // OFF regardless of how many terminals are wired.
+    const p = ctx.s.position ?? 0;
+    c.stampResistance(ctx.node('common'), ctx.node('1'), p === 0 ? R_CLOSED : R_OPEN);
+    c.stampResistance(ctx.node('common'), ctx.node('2'), p === 2 ? R_CLOSED : R_OPEN);
   },
   interact(event, value, ctx) {
-    if (event === 'toggle') ctx.s.position = ctx.s.position === 1 ? 0 : 1;
-    if (event === 'set') ctx.s.position = value ? 1 : 0;
+    // Cycle 0 → 1 (off) → 2 → 0 on click so a tap can always find OFF.
+    if (event === 'toggle') ctx.s.position = ((ctx.s.position ?? 0) + 1) % 3;
+    if (event === 'set') {
+      const n = Number(value);
+      ctx.s.position = Number.isFinite(n) && n >= 0 && n <= 2 ? Math.round(n) : 0;
+    }
   },
   output(_, ctx) {
     return { position: ctx.s.position ?? 0 };

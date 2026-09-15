@@ -422,6 +422,10 @@ export const Oscilloscope = definePart<ScopeProps>({
         }
         const x = -W / 2 + (i / (samples.length - 1)) * W;
         const y = clamp(-(v / vdiv) * (H / 8), -H / 2, H / 2);
+        if (!Number.isFinite(y)) {
+          pen = false;
+          continue;
+        }
         parts.push(`${pen ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`);
         pen = true;
       }
@@ -463,8 +467,8 @@ export const Oscilloscope = definePart<ScopeProps>({
               strokeWidth={i === 4 ? 1.2 : 0.6}
             />
           ))}
-          <path d={trace(ch1)} fill="none" stroke="#F5D033" strokeWidth={1.6} />
-          <path d={trace(ch2)} fill="none" stroke="#3FC5F0" strokeWidth={1.6} />
+          <path d={trace(ch1)} fill="none" stroke="#F5D033" strokeWidth={1.8} strokeLinejoin="round" strokeLinecap="round" />
+          <path d={trace(ch2)} fill="none" stroke="#3FC5F0" strokeWidth={1.8} strokeLinejoin="round" strokeLinecap="round" />
           <Silk x={-W / 2 + 6} y={-H / 2 + 8} size={7} anchor="start" fill="#F5D033" weight={700}>
             {state ? `CH1 ${Number(state.vpp1 ?? 0).toFixed(2)} Vpp` : 'CH1'}
           </Silk>

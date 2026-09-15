@@ -404,6 +404,30 @@ export const ATtiny = definePart({
       </Silk>
     </g>
   ),
+  summary:
+    'An 8-pin AVR microcontroller with 5 usable I/O lines (PB0–PB4). No USB on-board — flash it from the Arduino IDE with an ISP programmer or a Digispark-style bootloader.',
+  learn: [
+    {
+      title: 'Pins',
+      body:
+        'PB0, PB1 — do PWM via analogWrite.\nPB2, PB3, PB4 — plain digital I/O; PB2/3/4 also read analog voltages.\nRESET/PB5 — usually left as reset; sacrifice it for I/O only if you can still reprogram.',
+    },
+    {
+      title: 'Power',
+      body:
+        'VCC — typically 5 V (works 2.7–5.5 V).\nGND — shared reference for every part.\nDraws a few mA; sleep modes drop that to microamps. No on-board regulator, so feed it clean logic-level power.',
+    },
+    {
+      title: 'First program',
+      body:
+        'void setup() {\n  pinMode(0, OUTPUT); // PB0\n}\nvoid loop() {\n  digitalWrite(0, HIGH);\n  delay(500);\n  digitalWrite(0, LOW);\n  delay(500);\n}\n\nBlinks an LED wired PB0 → 220 Ω → LED → GND.',
+    },
+    {
+      title: 'Tips',
+      body:
+        '• 8 KB flash, 512 B RAM — keep sketches small.\n• No hardware Serial; use SoftwareSerial or the on-chip USI.\n• Pick "ATtiny25/45/85" in the IDE and set clock to 8 MHz internal for portable timing.\n• Every LED still needs a series resistor.',
+    },
+  ],
 });
 
 export const MICROCONTROLLERS: PartDef<never>[] = [UnoR3, ATtiny] as unknown as PartDef<never>[];

@@ -327,6 +327,35 @@ export const NanoBoard = definePart({
       ))}
     </g>
   ),
+  summary:
+    'A breadboard-friendly ATmega328P board. Same chip as the Uno in a 30-pin DIP footprint, so it drops straight into a breadboard and runs the same sketches.',
+  learn: [
+    {
+      title: 'Power',
+      body:
+        '5V — regulated output when powered from USB or VIN.\n3V3 — small 3.3 V rail for sensors.\nVIN — external supply input, 7–12 V.\nGND — reference; every device must share it.',
+    },
+    {
+      title: 'Digital pins (D2 – D13)',
+      body:
+        'digitalRead / digitalWrite drive them HIGH or LOW. D3, D5, D6, D9, D10 and D11 also do PWM via analogWrite. D0/D1 are the hardware serial pins — leave them free while the USB monitor is open.',
+    },
+    {
+      title: 'Analog pins (A0 – A7)',
+      body:
+        'analogRead(A0..A7) returns 0…1023 for 0–5 V. Two more channels than the Uno. A4/A5 double as the I2C bus (SDA/SCL).',
+    },
+    {
+      title: 'First sketch',
+      body:
+        'void setup() {\n  pinMode(13, OUTPUT);\n}\nvoid loop() {\n  digitalWrite(13, HIGH);\n  delay(500);\n  digitalWrite(13, LOW);\n  delay(500);\n}\n\nBlinks the on-board LED wired to pin 13.',
+    },
+    {
+      title: 'Tips',
+      body:
+        '• Original Nanos use mini-USB; newer clones may be USB-C — the pinout is the same.\n• Some boards ship with the "old bootloader"; pick it in the IDE if uploads fail.\n• D0 (RX) and D1 (TX) are the USB-serial bridge — avoid wiring parts to them.',
+    },
+  ],
 });
 
 // Tinkercad ships a "micro:bit with Breakout" preset — the same board on a

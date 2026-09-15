@@ -82,7 +82,10 @@ export const Pushbutton = definePart({
 // ─── Slideswitch (SPDT) ──────────────────────────────────────────────────────
 
 function SlideswitchArt({ state, simulating, interact }: ArtProps<Record<string, never>>) {
-  const pos = Number(state?.position ?? 0); // 0 = left, 1 = right
+  // 0 = left closed, 1 = centre OFF, 2 = right closed.
+  const pos = Math.max(0, Math.min(2, Number(state?.position ?? 0)));
+  const knobX = pos === 0 ? -9 : pos === 2 ? 1 : -4;
+  const label = pos === 0 ? '1' : pos === 2 ? '2' : 'OFF';
   return (
     <g>
       {[-10, 0, 10].map((x) => (
@@ -91,15 +94,25 @@ function SlideswitchArt({ state, simulating, interact }: ArtProps<Record<string,
       <rect x={-18} y={-13} width={36} height={22} rx={2} fill="#B9BEC4" stroke="#8E949A" />
       <rect x={-11} y={-9} width={22} height={12} rx={1.5} fill="#2B2E30" />
       <rect
-        x={pos ? 1 : -9}
+        x={knobX}
         y={-15}
         width={8}
         height={16}
         rx={1.5}
-        fill="#E8EAEC"
+        fill={pos === 1 ? '#F5D033' : '#E8EAEC'}
         stroke="#A6ACB2"
         strokeWidth={0.7}
       />
+      <text
+        x={0}
+        y={-16}
+        fontSize={4.5}
+        fontWeight={700}
+        textAnchor="middle"
+        fill="#5A6068"
+      >
+        {label}
+      </text>
       {simulating && (
         <rect
           x={-18}

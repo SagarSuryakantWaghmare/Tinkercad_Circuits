@@ -69,7 +69,7 @@ export function Toolbar() {
 
   return (
     <div
-      className="flex h-11 shrink-0 items-center gap-1 border-b border-neutral-200 bg-neutral-50 px-2"
+      className="flex h-11 shrink-0 items-center gap-1 border-b border-neutral-300 bg-white px-2 shadow-sm"
       role="toolbar"
       aria-label="Editing tools"
     >
@@ -83,21 +83,36 @@ export function Toolbar() {
       <Divider />
 
       {/* Select vs pan (hand). The reference product carries the same pair so
-          new users can drag the canvas around without hunting for space-bar. */}
-      <TBtn
-        title="Select (V)"
-        active={!ed.handTool}
-        onClick={() => ed.setHandTool(false)}
+          new users can drag the canvas around without hunting for space-bar.
+          Wrapped in a labelled segmented control so the mode toggle reads as
+          a first-class control instead of blending into the icon strip. */}
+      <span className="pl-1 text-[11px] font-medium text-neutral-500">Tool:</span>
+      <div
+        className="flex items-center gap-0.5 rounded-md border border-neutral-300 bg-neutral-50 p-0.5"
+        role="group"
+        aria-label="Pointer tool"
       >
-        <IconCursor />
-      </TBtn>
-      <TBtn
-        title="Pan / hand tool (H) — drag the canvas"
-        active={ed.handTool}
-        onClick={() => ed.setHandTool(!ed.handTool)}
-      >
-        <IconHand />
-      </TBtn>
+        <TBtn
+          title="Select tool (V) — click to select or drag components"
+          active={!ed.handTool}
+          onClick={() => ed.setHandTool(false)}
+        >
+          <IconCursor />
+        </TBtn>
+        <TBtn
+          title="Pan / hand tool (H) — drag the canvas"
+          active={ed.handTool}
+          prominent={ed.handTool}
+          onClick={() => ed.setHandTool(!ed.handTool)}
+        >
+          <IconHand />
+          {ed.handTool && (
+            <span className="ml-1 text-[10px] font-bold uppercase leading-none tracking-wide">
+              Pan
+            </span>
+          )}
+        </TBtn>
+      </div>
 
       <Divider />
 
@@ -249,13 +264,23 @@ function TBtn({
   onClick,
   disabled,
   active,
+  prominent,
 }: {
   children: React.ReactNode;
   title: string;
   onClick: () => void;
   disabled?: boolean;
   active?: boolean;
+  // `prominent` upgrades the active state to a high-contrast fill so a mode
+  // change (e.g. entering the hand/pan tool) is unmissable at a glance.
+  prominent?: boolean;
 }) {
+  const base = 'inline-flex items-center rounded p-1.5 transition';
+  const cls = active
+    ? prominent
+      ? `${base} bg-sky-500 text-white shadow-sm hover:bg-sky-600`
+      : `${base} bg-sky-100 text-sky-700 ring-1 ring-sky-200 hover:bg-sky-200`
+    : `${base} text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent`;
   return (
     <button
       title={title}
@@ -266,11 +291,7 @@ function TBtn({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
-      className={
-        active
-          ? 'rounded bg-sky-100 p-1.5 text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-200'
-          : 'rounded p-1.5 text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-900 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent'
-      }
+      className={cls}
     >
       {children}
     </button>
