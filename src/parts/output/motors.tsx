@@ -390,6 +390,12 @@ export const StepperMotor = definePart({
         </g>
         <circle cx={0} cy={0} r={4} fill="#6E7479" />
         <rect x={-38} y={44} width={76} height={14} rx={3} fill="#2B2E31" />
+        {[-30, -10, 10, 30].map((px) => (
+          <g key={px}>
+            <rect x={px - 3} y={47} width={6} height={6} rx={0.6} fill="#181A1C" />
+            <rect x={px - 1.5} y={50} width={3} height={8} rx={0.6} fill="#CFCFCF" stroke="#8E949A" strokeWidth={0.5} />
+          </g>
+        ))}
         <Silk x={0} y={30} size={7} fill="#5C6166" weight={600}>
           28BYJ-48
         </Silk>

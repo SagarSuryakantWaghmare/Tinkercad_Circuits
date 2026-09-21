@@ -2,7 +2,7 @@ import { definePart } from '../registry';
 import type { ArtProps, PartDef, TerminalDef } from '../types';
 import { C } from '@/lib/tokens';
 import { beginValueDrag } from '../interact';
-import { BoardShadow, Leg, Silk } from '../primitives';
+import { BoardShadow, HeaderStrip, Leg, Silk } from '../primitives';
 
 // ─── DIP switch ──────────────────────────────────────────────────────────────
 
@@ -334,6 +334,8 @@ export const Keypad = definePart({
             </g>
           );
         })}
+        <rect x={-42} y={91} width={84} height={4} fill="#1F2325" />
+        <HeaderStrip x={-35} y={100} count={8} male />
       </g>
     );
   },
@@ -371,6 +373,8 @@ export const Joystick = definePart({
       <g>
         <BoardShadow w={150} h={150} rx={4} />
         <rect x={-75} y={-75} width={150} height={150} rx={4} fill="#1E5FA8" stroke="#154379" />
+        <rect x={-27} y={75} width={54} height={10} fill="#1E5FA8" stroke="#154379" strokeWidth={0.5} />
+        <HeaderStrip x={-20} y={90} count={5} male />
         <rect x={-56} y={-56} width={112} height={112} rx={4} fill="#2B2E31" stroke="#17191B" />
         <circle cx={0} cy={0} r={44} fill="#3A3D41" />
         <circle cx={cx} cy={cy} r={30} fill={pressed ? '#1F2123' : '#31363B'} stroke="#15171A" />
@@ -443,6 +447,9 @@ export const LimitSwitch = definePart({
     const on = !!state?.closed;
     return (
       <g>
+        <Leg x1={-20} y1={28} x2={-20} y2={34} />
+        <Leg x1={0} y1={28} x2={0} y2={34} />
+        <Leg x1={20} y1={28} x2={20} y2={34} />
         <rect x={-38} y={-12} width={76} height={44} rx={2} fill="#2B2E31" stroke="#17191B" />
         <g transform={`rotate(${on ? 8 : -14} -34 -8)`}>
           <rect x={-36} y={-11} width={72} height={5} rx={2.5} fill="#B9BEC4" />

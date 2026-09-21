@@ -1,7 +1,7 @@
 import { definePart } from '../registry';
 import type { ArtProps, PartDef, TerminalDef } from '../types';
 import { C, LED_COLORS } from '@/lib/tokens';
-import { BoardShadow, Silk } from '../primitives';
+import { BoardShadow, HeaderStrip, Leg, Silk } from '../primitives';
 
 const clamp01 = (n: number) => (isFinite(n) ? Math.max(0, Math.min(1, n)) : 0);
 
@@ -346,6 +346,10 @@ export const NeoPixel = definePart({
     const hex = `rgb(${r},${g},${b})`;
     return (
       <g>
+        <Leg x1={-15} y1={-16} x2={-15} y2={-25} />
+        <Leg x1={-15} y1={16} x2={-15} y2={25} />
+        <Leg x1={15} y1={-16} x2={15} y2={-25} />
+        <Leg x1={15} y1={16} x2={15} y2={25} />
         {lit > 0.02 && <circle cx={0} cy={0} r={26} fill={hex} opacity={0.3 * lit} />}
         <rect x={-16} y={-16} width={32} height={32} rx={2} fill="#F2F2F2" stroke="#CFCFCF" />
         <rect x={-11} y={-11} width={22} height={22} rx={1.5} fill={lit > 0.02 ? hex : '#E4E4E4'} />
@@ -394,6 +398,11 @@ export const NeoPixelRing = definePart<RingProps>({
       <g>
         <circle cx={0} cy={0} r={66} fill="#1B1D1F" stroke="#0E0F10" />
         <circle cx={0} cy={0} r={34} fill={C.canvasBg} />
+        {/* Connector solder pads */}
+        <rect x={-36} y={58} width={72} height={12} rx={2} fill="#1B1D1F" stroke="#0E0F10" />
+        {[-30, -10, 10, 30].map((pinX) => (
+          <circle key={pinX} cx={pinX} cy={66} r={2.5} fill="#CFCFCF" stroke="#8E949A" strokeWidth={0.8} />
+        ))}
         {Array.from({ length: count }, (_, i) => {
           const a = (i / count) * Math.PI * 2 - Math.PI / 2;
           const x = Math.cos(a) * R;
@@ -447,6 +456,12 @@ export const NeoPixelStrip = definePart<RingProps>({
     return (
       <g>
         <rect x={-155} y={-14} width={310} height={28} rx={2} fill="#1B1D1F" stroke="#0E0F10" />
+        {/* Left connector pads */}
+        <rect x={-159} y={-18} width={6} height={4} rx={1} fill="#CFCFCF" stroke="#8E949A" strokeWidth={0.6} />
+        <rect x={-159} y={-2} width={6} height={4} rx={1} fill="#CFCFCF" stroke="#8E949A" strokeWidth={0.6} />
+        <rect x={-159} y={14} width={6} height={4} rx={1} fill="#CFCFCF" stroke="#8E949A" strokeWidth={0.6} />
+        {/* Right connector pad */}
+        <rect x={153} y={-2} width={6} height={4} rx={1} fill="#CFCFCF" stroke="#8E949A" strokeWidth={0.6} />
         {Array.from({ length: count }, (_, i) => {
           const x = -150 + step / 2 + i * step;
           const { r, g, b } = rgbOf(Number(px[i] ?? 0));
@@ -499,6 +514,8 @@ export const LedMatrix = definePart({
     const grid = (state?.grid as number[] | undefined) ?? [];
     return (
       <g>
+        <HeaderStrip x={-35} y={-80} count={8} male />
+        <HeaderStrip x={-35} y={80} count={8} male />
         <BoardShadow w={156} h={156} rx={3} />
         <rect x={-78} y={-78} width={156} height={156} rx={3} fill="#1B1D1F" stroke="#0D0E0F" />
         {Array.from({ length: 8 }, (_, r) =>

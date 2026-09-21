@@ -112,11 +112,11 @@ export const Capacitor = definePart<CapProps>({
       <Leg x1={5} y1={-2} x2={5} y2={12} />
       <path
         d="M-13,-14 C-13,-19 13,-19 13,-14 L13,-4 C13,1 -13,1 -13,-4 Z"
-        fill="#C99A3E"
-        stroke="#A87C29"
+        fill="#1F5FA8"
+        stroke="#154379"
         strokeWidth={0.8}
       />
-      <Silk x={0} y={-11} size={5.5} fill="#5B4212" weight={600}>
+      <Silk x={0} y={-11} size={5.5} fill="#DCE8F5" weight={600}>
         {capLabel(Number(props.capacitance))}
       </Silk>
     </g>
@@ -163,13 +163,13 @@ export const ElectrolyticCapacitor = definePart<CapProps>({
     <g>
       <Leg x1={-5} y1={4} x2={-5} y2={14} />
       <Leg x1={5} y1={4} x2={5} y2={14} />
-      <rect x={-15} y={-24} width={30} height={30} rx={4} fill="#2C4A8C" stroke="#1E3466" />
-      <rect x={-15} y={-24} width={9} height={30} fill="#C9CDD3" opacity={0.85} />
-      <Silk x={-10.5} y={-9} size={7} fill="#2C4A8C">−</Silk>
-      <Silk x={6} y={-19} size={5} fill="#DCE3F0" weight={500}>
+      <rect x={-15} y={-24} width={30} height={30} rx={4} fill="#1A1A1A" stroke="#111111" />
+      <rect x={-15} y={-24} width={9} height={30} fill="#C9CDD3" opacity={0.9} />
+      <Silk x={-10.5} y={-9} size={7} fill="#1A1A1A">−</Silk>
+      <Silk x={6} y={-19} size={5} fill="#E8ECEF" weight={500}>
         {capLabel(Number(props.capacitance))}
       </Silk>
-      <Silk x={6} y={-11} size={5} fill="#DCE3F0" weight={500}>
+      <Silk x={6} y={-11} size={5} fill="#E8ECEF" weight={500}>
         {props.voltage}V
       </Silk>
       {state?.burnt ? <circle cx={0} cy={-9} r={13} fill="#000" opacity={0.55} /> : null}
@@ -212,13 +212,13 @@ export const Inductor = definePart<IndProps>({
     <g>
       <Leg x1={-30} y1={0} x2={-18} y2={0} />
       <Leg x1={18} y1={0} x2={30} y2={0} />
-      <rect x={-19} y={-8} width={38} height={16} rx={7} fill="#7C7C7C" stroke="#5F5F5F" />
+      <rect x={-19} y={-8} width={38} height={16} rx={7} fill="#8C4E12" stroke="#68390B" />
       {[-12, -4, 4, 12].map((x) => (
         <path
           key={x}
           d={`M${x},-8 A5,8 0 0,1 ${x},8`}
           fill="none"
-          stroke="#B78A4A"
+          stroke="#C8741A"
           strokeWidth={2.6}
         />
       ))}
@@ -268,7 +268,7 @@ export const Diode = definePart({
   ],
   props: [],
   defaults: {},
-  Art: diodeArt('#1A1A1A', '#C8C0A8'),
+  Art: diodeArt('#1F5FA8', '#1C1C1C'),
 });
 
 interface ZenerProps extends Record<string, string | number> {
@@ -300,7 +300,7 @@ export const ZenerDiode = definePart<ZenerProps>({
     },
   ],
   defaults: { breakdown: 5.1 },
-  Art: diodeArt('#2E63B8', '#D8D2C0'),
+  Art: diodeArt('#1F5FA8', '#1C1C1C'),
 });
 
 export const SchottkyDiode = definePart({

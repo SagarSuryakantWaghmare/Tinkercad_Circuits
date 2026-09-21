@@ -525,6 +525,7 @@ function twoLead(opts: {
   keywords: string[];
   w: number;
   h: number;
+  legY1?: number;
   body: (state: ArtProps['state']) => ReactNode;
   terminals?: [string, string];
   control:
@@ -541,6 +542,7 @@ function twoLead(opts: {
     | { kind: 'toggle'; onLabel: string; offLabel: string };
 }) {
   const names = opts.terminals ?? ['terminal1', 'terminal2'];
+  const legTop = opts.legY1 !== undefined ? opts.legY1 : opts.h / 2 - 6;
   return definePart({
     id: opts.id,
     name: opts.name,
@@ -558,8 +560,8 @@ function twoLead(opts: {
     defaults: {},
     Art: ({ state, simulating, interact }: ArtProps) => (
       <g>
-        <Leg x1={-5} y1={opts.h / 2 - 6} x2={-5} y2={opts.h / 2 + 10} />
-        <Leg x1={5} y1={opts.h / 2 - 6} x2={5} y2={opts.h / 2 + 10} />
+        <Leg x1={-5} y1={legTop} x2={-5} y2={opts.h / 2 + 10} />
+        <Leg x1={5} y1={legTop} x2={5} y2={opts.h / 2 + 10} />
         {opts.body(state)}
         {simulating && opts.control.kind === 'slider' && (
           <PartSlider
@@ -698,6 +700,7 @@ export const Thermistor = twoLead({
   keywords: ['thermistor', 'ntc', 'temperature', '10k', 'thermal'],
   w: 40,
   h: 46,
+  legY1: -4,
   control: {
     kind: 'slider',
     min: -40,
