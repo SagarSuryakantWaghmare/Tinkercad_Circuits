@@ -41,27 +41,50 @@ export const DipSwitch = definePart<DipProps>({
   Art: ({ props, state, simulating, interact }: ArtProps<DipProps>) => {
     const n = Math.max(2, Math.min(8, Number(props.ways) || 4));
     const states = (state?.states as number[] | undefined) ?? [];
-    const w = n * 10 + 12;
+    const w = n * 10 + 16;
+    const isBlue = n === 4;
+    const bodyColor = isBlue ? '#186DB8' : '#C11F1F';
+    const borderColor = isBlue ? '#104F85' : '#8E1616';
     return (
       <g>
-        <BoardShadow w={w} h={38} rx={2} />
-        <rect x={-w / 2} y={-19} width={w} height={38} rx={2} fill="#C11F1F" stroke="#8E1616" />
+        <BoardShadow w={w} h={40} rx={2.5} />
+        {/* Main DIP housing */}
+        <rect x={-w / 2} y={-20} width={w} height={40} rx={2.5} fill={bodyColor} stroke={borderColor} strokeWidth={1} />
+        {/* Top ON indicator */}
+        <Silk x={-w / 2 + 6} y={-14} size={4.5} fill="#FFFFFF" weight={800}>
+          ON
+        </Silk>
+        <path d={`M${-w / 2 + 10},-12 L${-w / 2 + 10},-16 L${-w / 2 + 8},-14 Z`} fill="#FFFFFF" />
         {Array.from({ length: n }, (_, i) => {
           const x = -((n - 1) * 10) / 2 + i * 10;
           const on = states[i] === 1;
           return (
             <g key={i}>
-              <rect x={x - 3.5} y={-14} width={7} height={28} rx={1} fill="#F2F2F2" />
-              <rect x={x - 3} y={on ? -13 : 1} width={6} height={12} rx={1} fill="#2B2E31" />
-              <Silk x={x} y={on ? 22 : -22} size={5} fill="#8E1616" weight={700}>
+              {/* Recessed slider well */}
+              <rect x={x - 3.5} y={-15} width={7} height={30} rx={1} fill="#181A1C" />
+              {/* White slider actuator */}
+              <rect
+                x={x - 3}
+                y={on ? -14 : 1}
+                width={6}
+                height={13}
+                rx={1}
+                fill="#FFFFFF"
+                stroke="#D0D5DA"
+                strokeWidth={0.5}
+              />
+              {/* Actuator grip ridges */}
+              <line x1={x - 2} y1={on ? -8 : 7} x2={x + 2} y2={on ? -8 : 7} stroke="#9AA0A6" strokeWidth={0.8} />
+              {/* Switch channel number */}
+              <Silk x={x} y={17} size={4.8} fill="#FFFFFF" weight={700}>
                 {i + 1}
               </Silk>
               {simulating && (
                 <rect
                   x={x - 5}
-                  y={-19}
+                  y={-20}
                   width={10}
-                  height={38}
+                  height={40}
                   fill="transparent"
                   style={{ cursor: 'pointer' }}
                   onPointerDown={(e) => {
@@ -293,34 +316,51 @@ export const Keypad = definePart({
     const active = Number(state?.key ?? -1);
     return (
       <g>
-        <BoardShadow w={186} h={186} rx={4} />
-        <rect x={-93} y={-93} width={186} height={186} rx={4} fill="#2B2E31" stroke="#17191B" />
+        <BoardShadow w={186} h={186} rx={6} />
+        {/* Main keypad membrane base */}
+        <rect x={-93} y={-93} width={186} height={186} rx={6} fill="#1E2124" stroke="#101214" strokeWidth={1.5} />
+        {/* Yellow graphic border outline */}
+        <rect x={-88} y={-88} width={176} height={176} rx={4} fill="none" stroke="#D4AF37" strokeWidth={1} opacity={0.65} />
         {KEYS.map((k, i) => {
           const r = Math.floor(i / 4);
           const c = i % 4;
           const x = -69 + c * 46;
           const y = -69 + r * 46;
           const on = active === i;
+          const isAlphaOrSymbol = ['A', 'B', 'C', 'D', '*', '#'].includes(k);
+          const textColor = isAlphaOrSymbol ? '#EF4444' : '#FFFFFF';
           return (
             <g key={k}>
+              {/* Blue key cap */}
               <rect
-                x={x - 19}
-                y={y - 19}
-                width={38}
-                height={38}
-                rx={4}
-                fill={on ? '#8E949A' : '#4A4F55'}
-                stroke="#1F2325"
+                x={x - 18}
+                y={y - 18}
+                width={36}
+                height={36}
+                rx={5}
+                fill={on ? '#3B82F6' : '#1D5A9E'}
+                stroke={on ? '#60A5FA' : '#123A68'}
+                strokeWidth={1.2}
               />
-              <Silk x={x} y={y} size={16} fill="#E8EAEC" weight={700}>
+              {/* Key bevel highlight */}
+              <rect
+                x={x - 16}
+                y={y - 16}
+                width={32}
+                height={16}
+                rx={3}
+                fill="#FFFFFF"
+                opacity={on ? 0.2 : 0.1}
+              />
+              <Silk x={x} y={y + 1} size={15} fill={textColor} weight={800}>
                 {k}
               </Silk>
               {simulating && (
                 <rect
-                  x={x - 19}
-                  y={y - 19}
-                  width={38}
-                  height={38}
+                  x={x - 18}
+                  y={y - 18}
+                  width={36}
+                  height={36}
                   fill="transparent"
                   style={{ cursor: 'pointer' }}
                   onPointerDown={(e) => {
@@ -334,7 +374,13 @@ export const Keypad = definePart({
             </g>
           );
         })}
-        <rect x={-42} y={91} width={84} height={4} fill="#1F2325" />
+        {/* Ribbon cable leading to header pins */}
+        <path d="M-42,93 L-42,98 L-38,100 L38,100 L42,98 L42,93 Z" fill="#2E3338" />
+        {Array.from({ length: 8 }, (_, i) => {
+          const px = -35 + i * 10;
+          return <line key={i} x1={px} y1={93} x2={px} y2={100} stroke="#D4AF37" strokeWidth={1} />;
+        })}
+        <rect x={-42} y={97} width={84} height={3} fill="#181A1C" />
         <HeaderStrip x={-35} y={100} count={8} male />
       </g>
     );
@@ -661,19 +707,39 @@ export const DipSwitchDpst = definePart<DipProps>({
   Art: ({ props, state, simulating, interact }: ArtProps<DipProps>) => {
     const n = Math.max(2, Math.min(8, Number(props.ways) || 4));
     const states = (state?.states as number[] | undefined) ?? [];
-    const w = n * 10 + 12;
+    const w = n * 10 + 16;
     return (
       <g>
-        <BoardShadow w={w} h={64} rx={2} />
-        <rect x={-w / 2} y={-32} width={w} height={64} rx={2} fill="#C11F1F" stroke="#8E1616" />
+        <BoardShadow w={w} h={64} rx={2.5} />
+        {/* Main Red DPST DIP housing */}
+        <rect x={-w / 2} y={-32} width={w} height={64} rx={2.5} fill="#C11F1F" stroke="#8E1616" strokeWidth={1} />
+        {/* Top ON indicator */}
+        <Silk x={-w / 2 + 6} y={-25} size={4.5} fill="#FFFFFF" weight={800}>
+          ON
+        </Silk>
+        <path d={`M${-w / 2 + 10},-23 L${-w / 2 + 10},-27 L${-w / 2 + 8},-25 Z`} fill="#FFFFFF" />
         {Array.from({ length: n }, (_, i) => {
           const x = -((n - 1) * 10) / 2 + i * 10;
           const on = states[i] === 1;
           return (
             <g key={i}>
-              <rect x={x - 3.5} y={-27} width={7} height={54} rx={1} fill="#F2F2F2" />
-              <rect x={x - 3} y={on ? -26 : 2} width={6} height={24} rx={1} fill="#2B2E31" />
-              <Silk x={x} y={on ? 40 : -40} size={5} fill="#8E1616" weight={700}>
+              {/* Recessed dual-pole slider track */}
+              <rect x={x - 3.5} y={-26} width={7} height={52} rx={1} fill="#181A1C" />
+              {/* White dual-pole slider actuator */}
+              <rect
+                x={x - 3}
+                y={on ? -25 : 1}
+                width={6}
+                height={24}
+                rx={1}
+                fill="#FFFFFF"
+                stroke="#D0D5DA"
+                strokeWidth={0.5}
+              />
+              {/* Actuator grip ridges */}
+              <line x1={x - 2} y1={on ? -13 : 13} x2={x + 2} y2={on ? -13 : 13} stroke="#9AA0A6" strokeWidth={0.8} />
+              {/* Switch channel number */}
+              <Silk x={x} y={28} size={4.8} fill="#FFFFFF" weight={700}>
                 {i + 1}
               </Silk>
               {simulating && (

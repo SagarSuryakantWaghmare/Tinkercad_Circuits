@@ -167,20 +167,32 @@ export const PirSensor = moduleBoard({
   control: { kind: 'toggle', onLabel: 'MOTION', offLabel: 'no motion' },
   element: (s) => (
     <g>
-      <circle cx={0} cy={-6} r={26} fill="#F0F2F4" stroke="#C6CBD1" />
-      <circle cx={0} cy={-6} r={26} fill="none" stroke="#D8DCE1" strokeWidth={6} opacity={0.5} />
-      {[0, 60, 120, 180, 240, 300].map((a) => (
-        <circle
-          key={a}
-          cx={Math.cos((a * Math.PI) / 180) * 13}
-          cy={-6 + Math.sin((a * Math.PI) / 180) * 13}
-          r={7}
-          fill="none"
-          stroke="#DDE1E5"
-          strokeWidth={1.4}
-        />
-      ))}
-      {s?.value ? <circle cx={0} cy={-6} r={9} fill="#E3853B" opacity={0.85} /> : null}
+      {/* Fresnel dome outer ring and shadow */}
+      <circle cx={0} cy={-6} r={28} fill="#14171A" opacity={0.15} />
+      <circle cx={0} cy={-6} r={26} fill="#F4F6F8" stroke="#CFD5DC" strokeWidth={1.2} />
+      {/* Honeycomb facet grid */}
+      <circle cx={0} cy={-6} r={21} fill="none" stroke="#E2E7ED" strokeWidth={1.2} />
+      <circle cx={0} cy={-6} r={14} fill="none" stroke="#D5DCE3" strokeWidth={1.2} />
+      <circle cx={0} cy={-6} r={7} fill="#EAEEF2" stroke="#CAD2DA" strokeWidth={1} />
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => {
+        const rad = (a * Math.PI) / 180;
+        return (
+          <line
+            key={a}
+            x1={Math.cos(rad) * 7}
+            y1={-6 + Math.sin(rad) * 7}
+            x2={Math.cos(rad) * 25.5}
+            y2={-6 + Math.sin(rad) * 25.5}
+            stroke="#DCE2E8"
+            strokeWidth={1}
+          />
+        );
+      })}
+      {/* Dome gloss highlight */}
+      <ellipse cx={-8} cy={-14} rx={10} ry={6} fill="#FFFFFF" opacity={0.65} />
+      {s?.value ? (
+        <circle cx={0} cy={-6} r={8} fill="#E24B3F" opacity={0.85} />
+      ) : null}
     </g>
   ),
 });
@@ -202,11 +214,39 @@ export const GasSensor = moduleBoard({
   },
   element: () => (
     <g>
-      <circle cx={0} cy={-6} r={22} fill="#B9BEC4" stroke="#8E949A" />
-      {Array.from({ length: 7 }, (_, i) => (
-        <line key={i} x1={-20} y1={-18 + i * 4} x2={20} y2={-18 + i * 4} stroke="#8E949A" strokeWidth={1.6} />
+      {/* Sensor base rim */}
+      <circle cx={0} cy={-6} r={24} fill="#8A9096" stroke="#666C72" strokeWidth={1.2} />
+      <circle cx={0} cy={-6} r={22} fill="#C4C9CE" />
+      <circle cx={0} cy={-6} r={20} fill="#9FA5AB" />
+      {/* Wire mesh pattern */}
+      {Array.from({ length: 9 }, (_, i) => (
+        <line
+          key={`h-${i}`}
+          x1={-Math.sqrt(Math.max(0, 400 - Math.pow(-16 + i * 4, 2)))}
+          y1={-6 - 16 + i * 4}
+          x2={Math.sqrt(Math.max(0, 400 - Math.pow(-16 + i * 4, 2)))}
+          y2={-6 - 16 + i * 4}
+          stroke="#5C6268"
+          strokeWidth={1.2}
+          opacity={0.75}
+        />
       ))}
-      <circle cx={0} cy={-6} r={22} fill="none" stroke="#6E7479" strokeWidth={2} />
+      {Array.from({ length: 9 }, (_, i) => (
+        <line
+          key={`v-${i}`}
+          x1={-16 + i * 4}
+          y1={-6 - Math.sqrt(Math.max(0, 400 - Math.pow(-16 + i * 4, 2)))}
+          x2={-16 + i * 4}
+          y2={-6 + Math.sqrt(Math.max(0, 400 - Math.pow(-16 + i * 4, 2)))}
+          stroke="#5C6268"
+          strokeWidth={1.2}
+          opacity={0.75}
+        />
+      ))}
+      {/* Central cap and outer metal bevel */}
+      <circle cx={0} cy={-6} r={20} fill="none" stroke="#D8DCE1" strokeWidth={1.5} opacity={0.6} />
+      <circle cx={0} cy={-6} r={7} fill="#8E949A" stroke="#5C6268" strokeWidth={1} />
+      <circle cx={0} cy={-6} r={4} fill="#ADB3B8" />
     </g>
   ),
 });
@@ -254,9 +294,25 @@ export const SoilMoisture = moduleBoard({
     const wet = Number(s?.value ?? 0) / 100;
     return (
       <g>
-        <rect x={-20} y={-40} width={16} height={64} rx={2} fill="#C8A24B" />
-        <rect x={4} y={-40} width={16} height={64} rx={2} fill="#C8A24B" />
-        <rect x={-20} y={24 - 44 * wet} width={40} height={44 * wet} fill="#2E8BD6" opacity={0.35} />
+        {/* PCB Cutout gap in the middle */}
+        <rect x={-7} y={-44} width={14} height={68} rx={2} fill="#0F2C4D" />
+        {/* Left and Right sensing prongs with gold plating */}
+        <rect x={-24} y={-42} width={15} height={66} rx={2} fill="#B8860B" stroke="#946C06" strokeWidth={0.8} />
+        <rect x={-22} y={-40} width={11} height={62} rx={1} fill="#D4AF37" />
+        <rect x={9} y={-42} width={15} height={66} rx={2} fill="#B8860B" stroke="#946C06" strokeWidth={0.8} />
+        <rect x={11} y={-40} width={11} height={62} rx={1} fill="#D4AF37" />
+        {/* Water immersion level overlay */}
+        {wet > 0 && (
+          <rect
+            x={-26}
+            y={24 - 64 * wet}
+            width={52}
+            height={64 * wet}
+            rx={2}
+            fill="#2E8BD6"
+            opacity={0.4}
+          />
+        )}
       </g>
     );
   },
@@ -361,9 +417,17 @@ export const AmbientLight = moduleBoard({
     const lit = Math.min(1, Math.log10(Math.max(lux, 0.1) + 1) / 5);
     return (
       <g>
-        <rect x={-16} y={-12} width={32} height={22} rx={2} fill="#12305F" />
-        <circle cx={0} cy={-1} r={7} fill="#E9E2CC" opacity={0.7 + lit * 0.3} />
-        <circle cx={0} cy={-1} r={4} fill="#F5D033" opacity={lit} />
+        {/* Optical dome housing */}
+        <circle cx={0} cy={-4} r={14} fill="#243348" stroke="#121D2C" strokeWidth={1} />
+        {/* Clear glass dome with lux brightness glow */}
+        <circle cx={0} cy={-4} r={11} fill="#EBF2FA" opacity={0.3 + lit * 0.5} />
+        {/* Silicon photodiode IC die */}
+        <rect x={-5} y={-9} width={10} height={10} rx={1} fill="#141E2D" stroke="#3A4D68" strokeWidth={0.6} />
+        <rect x={-3} y={-7} width={6} height={6} fill="#0F1722" />
+        {/* Bond wires and silicon reflection */}
+        <line x1={-3} y1={-7} x2={-8} y2={-2} stroke="#D4AF37" strokeWidth={0.7} />
+        <line x1={3} y1={-7} x2={8} y2={-2} stroke="#D4AF37" strokeWidth={0.7} />
+        <ellipse cx={-4} cy={-8} rx={5} ry={3} fill="#FFFFFF" opacity={0.5} />
       </g>
     );
   },
@@ -403,9 +467,22 @@ export const IrReceiver = moduleBoard({
   control: { kind: 'toggle', onLabel: 'SIGNAL', offLabel: 'idle' },
   element: (s) => (
     <g>
-      <path d="M-11,-14 A11,11 0 0,1 11,-14 L11,8 L-11,8 Z" fill="#1F2123" />
-      <circle cx={0} cy={-4} r={6} fill="#2C3034" />
-      {s?.value ? <circle cx={0} cy={-4} r={4} fill="#A56BFF" opacity={0.9} /> : null}
+      {/* Molded epoxy casing */}
+      <path
+        d="M-13,-16 Q-13,-20 -9,-20 L9,-20 Q13,-20 13,-16 L13,8 L-13,8 Z"
+        fill="#1C1E20"
+        stroke="#101213"
+        strokeWidth={1}
+      />
+      {/* Convex optical lens dome */}
+      <ellipse cx={0} cy={-6} rx={8} ry={9} fill="#2A2D31" stroke="#16181A" strokeWidth={0.8} />
+      <ellipse cx={-2.5} cy={-9} rx={4} ry={3.5} fill="#FFFFFF" opacity={0.25} />
+      {/* Metallic mesh window / signal glow */}
+      {s?.value ? (
+        <circle cx={0} cy={-6} r={5} fill="#9A5CFF" opacity={0.85} />
+      ) : (
+        <circle cx={0} cy={-6} r={3} fill="#181A1C" />
+      )}
     </g>
   ),
 });
@@ -462,16 +539,32 @@ function ultrasonicPart(id: string, name: string, pins: string[], keywords: stri
       return (
         <g>
           <BoardShadow w={w} h={h} rx={3} />
-          <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={3} fill={PCB} stroke={PCB_EDGE} />
-          {[-32, 32].map((x) => (
+          {/* PCB Base */}
+          <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={3} fill="#185A9D" stroke="#124375" strokeWidth={1} />
+          {/* Dual Transducer Cans (T & R) */}
+          {[-32, 32].map((x, idx) => (
             <g key={x}>
-              <circle cx={x} cy={-6} r={24} fill="#B9BEC4" stroke="#8E949A" strokeWidth={1.5} />
-              <circle cx={x} cy={-6} r={19} fill="#9AA0A6" />
-              <circle cx={x} cy={-6} r={19} fill="none" stroke="#7E848A" strokeWidth={4} opacity={0.5} />
-              <circle cx={x} cy={-6} r={5} fill="#6E7479" />
+              {/* Outer aluminum housing */}
+              <circle cx={x} cy={-6} r={24.5} fill="#103860" opacity={0.4} />
+              <circle cx={x} cy={-6} r={24} fill="#D0D5DA" stroke="#9FA5AB" strokeWidth={1.2} />
+              {/* Recessed transducer mesh */}
+              <circle cx={x} cy={-6} r={19} fill="#8E949A" stroke="#71767B" strokeWidth={1} />
+              <circle cx={x} cy={-6} r={15} fill="#7A8086" />
+              {/* Center piezoelectric element */}
+              <circle cx={x} cy={-6} r={5} fill="#4E5358" stroke="#3A3D40" strokeWidth={0.8} />
+              {/* Silk label T (Transmitter) and R (Receiver) */}
+              <Silk x={x} y={-22} size={6} fill="#EBF2FA" weight={700}>
+                {idx === 0 ? 'T' : 'R'}
+              </Silk>
             </g>
           ))}
-          <rect x={-14} y={-16} width={26} height={20} rx={2} fill="#1A2E45" />
+          {/* Crystal Oscillator in center */}
+          <rect x={-8} y={-14} width={16} height={8} rx={2} fill="#D4D9DE" stroke="#9AA0A6" strokeWidth={0.8} />
+          <rect x={-14} y={-3} width={28} height={16} rx={1.5} fill="#1A2433" stroke="#0F1722" />
+          <Silk x={0} y={5} size={5} fill="#7A94B8" weight={600}>
+            HC-SR04
+          </Silk>
+          {/* Pin header */}
           {pins.map((p, i) => (
             <g key={p}>
               <rect
@@ -605,11 +698,35 @@ export const FlexSensor = twoLead({
   body: (s) => {
     const bend = Number(s?.value ?? 0) / 90;
     return (
-      <path
-        d={`M-8,-56 Q${18 * bend},0 -8,54 L8,54 Q${18 * bend + 16},0 8,-56 Z`}
-        fill="#2B2E31"
-        stroke="#17191B"
-      />
+      <g>
+        {/* Amber polyimide flexible substrate */}
+        <path
+          d={`M-9,-56 Q${20 * bend},0 -9,54 L9,54 Q${20 * bend + 18},0 9,-56 Z`}
+          fill="#D47B28"
+          stroke="#A85B12"
+          strokeWidth={1}
+        />
+        {/* Carbon resistive ladder segments */}
+        {Array.from({ length: 12 }, (_, i) => {
+          const t = i / 11;
+          const y = -46 + t * 90;
+          const curX = 20 * bend * (1 - Math.pow(2 * t - 1, 2));
+          return (
+            <line
+              key={i}
+              x1={curX - 6}
+              y1={y}
+              x2={curX + 6}
+              y2={y}
+              stroke="#1C1E20"
+              strokeWidth={2.4}
+              strokeLinecap="round"
+            />
+          );
+        })}
+        {/* Solder tabs at base */}
+        <rect x={-8} y={46} width={16} height={8} rx={1} fill="#8A4A0E" />
+      </g>
     );
   },
 });
@@ -626,10 +743,20 @@ export const ForceSensor = twoLead({
     const f = Number(s?.value ?? 0) / 100;
     return (
       <g>
-        <circle cx={0} cy={-6} r={26} fill="#2B2E31" stroke="#17191B" />
-        <circle cx={0} cy={-6} r={20} fill="#3A3D41" />
-        <circle cx={0} cy={-6} r={20 * (1 - f * 0.45)} fill="#5A5F64" opacity={0.5 + f * 0.5} />
-        <rect x={-9} y={12} width={18} height={16} fill="#2B2E31" />
+        {/* Tail connection neck */}
+        <rect x={-9} y={10} width={18} height={20} rx={1} fill="#353A3E" stroke="#202428" strokeWidth={0.8} />
+        <line x1={-5} y1={12} x2={-5} y2={30} stroke="#7A848E" strokeWidth={1.5} />
+        <line x1={5} y1={12} x2={5} y2={30} stroke="#7A848E" strokeWidth={1.5} />
+        {/* Outer bezel */}
+        <circle cx={0} cy={-6} r={26} fill="#2C3034" stroke="#16181A" strokeWidth={1.2} />
+        {/* Active sensing pad area */}
+        <circle cx={0} cy={-6} r={21} fill="#7A828A" stroke="#5A6168" strokeWidth={0.8} />
+        {/* Interdigitated circular grid pattern */}
+        <circle cx={0} cy={-6} r={16} fill="none" stroke="#60666E" strokeWidth={1.2} />
+        <circle cx={0} cy={-6} r={11} fill="none" stroke="#60666E" strokeWidth={1.2} />
+        <circle cx={0} cy={-6} r={6} fill="none" stroke="#60666E" strokeWidth={1.2} />
+        {/* Pressure deformation indicator */}
+        <circle cx={0} cy={-6} r={21 * (1 - f * 0.4)} fill="#454B52" opacity={0.4 + f * 0.6} />
       </g>
     );
   },
@@ -730,8 +857,19 @@ export const TiltSensor = twoLead({
   control: { kind: 'toggle', onLabel: 'TILTED', offLabel: 'upright' },
   body: (s) => (
     <g>
-      <rect x={-11} y={-24} width={22} height={44} rx={10} fill="#B9BEC4" stroke="#8E949A" />
-      <circle cx={0} cy={s?.closed ? 12 : -12} r={7} fill="#5C6166" />
+      {/* Metallic top cap */}
+      <rect x={-10} y={-25} width={20} height={5} rx={1} fill="#C4C9CE" stroke="#9AA0A6" strokeWidth={0.8} />
+      {/* Green cylinder barrel */}
+      <rect x={-10} y={-20} width={20} height={36} rx={2} fill="#1EAE56" stroke="#15823F" strokeWidth={1} />
+      <rect x={-8} y={-18} width={4} height={32} fill="#52D183" opacity={0.4} />
+      {/* Silk part label */}
+      <Silk x={0} y={-2} size={4.5} fill="#E8F8EE" weight={700}>
+        SW-200D
+      </Silk>
+      {/* Metallic bottom cap */}
+      <rect x={-10} y={16} width={20} height={5} rx={1} fill="#C4C9CE" stroke="#9AA0A6" strokeWidth={0.8} />
+      {/* Internal rolling ball switch indicator */}
+      <circle cx={0} cy={s?.closed ? 10 : -10} r={5.5} fill="#D8DCE1" stroke="#9AA0A6" strokeWidth={0.8} />
     </g>
   ),
 });
@@ -821,9 +959,18 @@ export const Photodiode = twoLead({
   },
   body: () => (
     <g>
-      <path d="M-10,-8 A10,10 0 0,1 10,-8 L10,16 L-10,16 Z" fill="#2E3B52" opacity={0.9} />
-      <circle cx={0} cy={-8} r={10} fill="#41527A" opacity={0.7} />
-      <rect x={5} y={8} width={5} height={8} fill="#D8DCE1" />
+      {/* Metal TO-can base and rim */}
+      <circle cx={0} cy={-6} r={13.5} fill="#A6ACB2" stroke="#7A8086" strokeWidth={1} />
+      <circle cx={0} cy={-6} r={11.5} fill="#C4C9CE" />
+      {/* Optical window */}
+      <circle cx={0} cy={-6} r={9.5} fill="#141E2E" stroke="#0D1522" strokeWidth={0.8} />
+      {/* Active photodiode silicon die */}
+      <rect x={-4} y={-10} width={8} height={8} rx={0.8} fill="#243754" stroke="#3D5A85" strokeWidth={0.6} />
+      <line x1={-2} y1={-8} x2={-7} y2={-5} stroke="#D4AF37" strokeWidth={0.6} />
+      {/* Cathode tab indicator */}
+      <rect x={-14} y={-8} width={2.5} height={4} rx={0.5} fill="#7A8086" />
+      {/* Glass gloss highlight */}
+      <ellipse cx={-3} cy={-9} rx={4} ry={2.5} fill="#FFFFFF" opacity={0.35} />
     </g>
   ),
 });
