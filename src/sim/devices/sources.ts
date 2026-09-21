@@ -41,6 +41,9 @@ function battery(defaultV: number, rInternal: number): Device {
 
 // One model id covers every cell chemistry; the part supplies voltage/cells.
 defineDevice('battery', () => battery(9, 1.2));
+// Fruit/vegetable cells: realistic internal resistance (~20Ω / 15Ω) allowing 3+ cells in series to visibly drive LED & motor
+defineDevice('battery-potato', () => battery(0.9, 20));
+defineDevice('battery-lemon', () => battery(0.95, 15));
 
 // ─── Bench power supply ──────────────────────────────────────────────────────
 

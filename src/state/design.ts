@@ -44,6 +44,8 @@ export interface Note {
   x: number;
   y: number;
   text: string;
+  width?: number;
+  height?: number;
   /** When set, the note tethers to a part and moves with it. */
   anchorPartId?: PartInstanceId;
 }

@@ -538,6 +538,42 @@ defineDevice('comparator', (): Device => ({
   },
 }));
 
+defineDevice('lm393', (): Device => ({
+  stamp(c, ctx) {
+    const gnd = ctx.node('GND');
+    // Channel 1
+    const vp1 = c.v(ctx.node('IN1+')) - c.v(gnd);
+    const vn1 = c.v(ctx.node('IN1-')) - c.v(gnd);
+    const high1 = vp1 > vn1;
+    ctx.s.high1 = high1 ? 1 : 0;
+    if (high1) c.stampResistance(ctx.node('OUT1'), gnd, R_OPEN);
+    else {
+      const g = 1 / 20;
+      c.stampConductance(ctx.node('OUT1'), gnd, g);
+      c.stampCurrentSource(gnd, ctx.node('OUT1'), 0.2 * g);
+    }
+    c.stampResistance(ctx.node('IN1+'), gnd, 1e8);
+    c.stampResistance(ctx.node('IN1-'), gnd, 1e8);
+
+    // Channel 2
+    const vp2 = c.v(ctx.node('IN2+')) - c.v(gnd);
+    const vn2 = c.v(ctx.node('IN2-')) - c.v(gnd);
+    const high2 = vp2 > vn2;
+    ctx.s.high2 = high2 ? 1 : 0;
+    if (high2) c.stampResistance(ctx.node('OUT2'), gnd, R_OPEN);
+    else {
+      const g = 1 / 20;
+      c.stampConductance(ctx.node('OUT2'), gnd, g);
+      c.stampCurrentSource(gnd, ctx.node('OUT2'), 0.2 * g);
+    }
+    c.stampResistance(ctx.node('IN2+'), gnd, 1e8);
+    c.stampResistance(ctx.node('IN2-'), gnd, 1e8);
+  },
+  output(_, ctx) {
+    return { high1: ctx.s.high1 === 1, high2: ctx.s.high2 === 1 };
+  },
+}));
+
 // ─── Buzzer-style piezo driven directly by logic (no MCU present) ────────────
 
 defineDevice('logic-sounder', (): Device => ({

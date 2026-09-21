@@ -133,6 +133,17 @@ export const Comparator = dip({
   roles: { GND: 'gnd', VCC: 'power' },
 });
 
+export const DualComparator = dip({
+  id: 'lm393',
+  name: 'Dual Comparator [LM393]',
+  label: 'LM393',
+  sub: 'DUAL COMP',
+  model: 'lm393',
+  keywords: ['comparator', 'lm393', 'dual', 'threshold', 'analog', 'dip'],
+  pins: ['OUT1', 'IN1-', 'IN1+', 'GND', 'IN2+', 'IN2-', 'OUT2', 'VCC'],
+  roles: { GND: 'gnd', VCC: 'power' },
+});
+
 // ─── Shift registers and counters ────────────────────────────────────────────
 
 export const ShiftRegister595 = dip({
@@ -312,6 +323,7 @@ export const ICS: PartDef<never>[] = [
   Timer556,
   OpAmp,
   Comparator,
+  DualComparator,
   ShiftRegister595,
   ShiftRegister164,
   ShiftRegister165,

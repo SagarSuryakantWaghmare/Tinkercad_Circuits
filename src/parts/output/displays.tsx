@@ -384,9 +384,12 @@ export const NeoPixelRing = definePart<RingProps>({
   ],
   defaults: { count: 12 },
   Art: ({ props, state }: ArtProps<RingProps>) => {
-    const count = Number(props.count) || 12;
+    const count = Math.max(1, Number(props.count) || 12);
     const px = (state?.pixels as number[] | undefined) ?? [];
     const R = 52;
+    const chord = 2 * R * Math.sin(Math.PI / count);
+    const pkgW = Math.min(14, Math.max(6, chord * 0.58));
+    const emitW = pkgW * (9 / 14);
     return (
       <g>
         <circle cx={0} cy={0} r={66} fill="#1B1D1F" stroke="#0E0F10" />
@@ -395,14 +398,15 @@ export const NeoPixelRing = definePart<RingProps>({
           const a = (i / count) * Math.PI * 2 - Math.PI / 2;
           const x = Math.cos(a) * R;
           const y = Math.sin(a) * R;
+          const deg = (a * 180) / Math.PI + 90;
           const { r, g, b } = rgbOf(Number(px[i] ?? 0));
           const lit = Math.max(r, g, b) / 255;
           const hex = `rgb(${r},${g},${b})`;
           return (
-            <g key={i}>
-              {lit > 0.02 && <circle cx={x} cy={y} r={14} fill={hex} opacity={0.35 * lit} />}
-              <rect x={x - 7} y={y - 7} width={14} height={14} rx={1.5} fill="#F2F2F2" stroke="#CFCFCF" strokeWidth={0.6} />
-              <rect x={x - 4.5} y={y - 4.5} width={9} height={9} rx={1} fill={lit > 0.02 ? hex : '#E4E4E4'} />
+            <g key={i} transform={`translate(${x},${y}) rotate(${deg})`}>
+              {lit > 0.02 && <circle cx={0} cy={0} r={pkgW} fill={hex} opacity={0.35 * lit} />}
+              <rect x={-pkgW / 2} y={-pkgW / 2} width={pkgW} height={pkgW} rx={1.5} fill="#F2F2F2" stroke="#CFCFCF" strokeWidth={0.6} />
+              <rect x={-emitW / 2} y={-emitW / 2} width={emitW} height={emitW} rx={1} fill={lit > 0.02 ? hex : '#E4E4E4'} />
             </g>
           );
         })}
@@ -430,14 +434,16 @@ export const NeoPixelStrip = definePart<RingProps>({
       key: 'count',
       label: 'Pixels',
       kind: 'select',
-      options: [8, 12, 16, 24, 30].map((v) => ({ value: String(v), label: `${v}` })),
+      options: [4, 6, 8, 10, 12, 16, 20, 24, 30].map((v) => ({ value: String(v), label: `${v}` })),
     },
   ],
   defaults: { count: 8 },
   Art: ({ props, state }: ArtProps<RingProps>) => {
-    const count = Number(props.count) || 8;
+    const count = Math.max(1, Number(props.count) || 8);
     const px = (state?.pixels as number[] | undefined) ?? [];
     const step = 300 / count;
+    const pkgW = Math.min(14, Math.max(6, step * 0.6));
+    const emitW = pkgW * (9 / 14);
     return (
       <g>
         <rect x={-155} y={-14} width={310} height={28} rx={2} fill="#1B1D1F" stroke="#0E0F10" />
@@ -448,9 +454,9 @@ export const NeoPixelStrip = definePart<RingProps>({
           const hex = `rgb(${r},${g},${b})`;
           return (
             <g key={i}>
-              {lit > 0.02 && <circle cx={x} cy={0} r={13} fill={hex} opacity={0.3 * lit} />}
-              <rect x={x - 7} y={-7} width={14} height={14} rx={1.5} fill="#F2F2F2" stroke="#CFCFCF" strokeWidth={0.6} />
-              <rect x={x - 4.5} y={-4.5} width={9} height={9} rx={1} fill={lit > 0.02 ? hex : '#E4E4E4'} />
+              {lit > 0.02 && <circle cx={x} cy={0} r={pkgW} fill={hex} opacity={0.3 * lit} />}
+              <rect x={x - pkgW / 2} y={-pkgW / 2} width={pkgW} height={pkgW} rx={1.5} fill="#F2F2F2" stroke="#CFCFCF" strokeWidth={0.6} />
+              <rect x={x - emitW / 2} y={-emitW / 2} width={emitW} height={emitW} rx={1} fill={lit > 0.02 ? hex : '#E4E4E4'} />
             </g>
           );
         })}
@@ -550,6 +556,18 @@ export const NeoPixelRing16 = neoRingPreset(
   16,
   NeoPixelRing,
 );
+export const NeoPixelRing24 = neoRingPreset(
+  'neopixel-ring-24',
+  'NeoPixel Ring 24',
+  24,
+  NeoPixelRing,
+);
+export const NeoPixelStrip4 = neoStripPreset(
+  'neopixel-strip-4',
+  'NeoPixel Strip 4',
+  4,
+  NeoPixelStrip,
+);
 export const NeoPixelStrip6 = neoStripPreset(
   'neopixel-strip-6',
   'NeoPixel Strip 6',
@@ -566,6 +584,12 @@ export const NeoPixelStrip10 = neoStripPreset(
   'neopixel-strip-10',
   'NeoPixel Strip 10',
   10,
+  NeoPixelStrip,
+);
+export const NeoPixelStrip12 = neoStripPreset(
+  'neopixel-strip-12',
+  'NeoPixel Strip 12',
+  12,
   NeoPixelStrip,
 );
 export const NeoPixelStrip16 = neoStripPreset(
@@ -592,10 +616,13 @@ export const DISPLAYS: PartDef<never>[] = [
   NeoPixelRing,
   NeoPixelRing12,
   NeoPixelRing16,
+  NeoPixelRing24,
   NeoPixelStrip,
+  NeoPixelStrip4,
   NeoPixelStrip6,
   NeoPixelStrip8,
   NeoPixelStrip10,
+  NeoPixelStrip12,
   NeoPixelStrip16,
   NeoPixelStrip20,
   LedMatrix,

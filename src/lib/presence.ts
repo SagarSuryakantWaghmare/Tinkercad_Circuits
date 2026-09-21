@@ -70,7 +70,11 @@ export function useActiveUsers(): number {
 
     const bye = () => {
       localStorage.removeItem(key);
-      bc?.postMessage('bye');
+      try {
+        bc?.postMessage('bye');
+      } catch {
+        // BroadcastChannel may already be closed
+      }
     };
     window.addEventListener('pagehide', bye);
     window.addEventListener('beforeunload', bye);
@@ -82,9 +86,13 @@ export function useActiveUsers(): number {
       window.removeEventListener('storage', storage);
       window.removeEventListener('pagehide', bye);
       window.removeEventListener('beforeunload', bye);
-      bc?.removeEventListener('message', message);
-      bc?.close();
       bye();
+      bc?.removeEventListener('message', message);
+      try {
+        bc?.close();
+      } catch {
+        // Ignore close error
+      }
     };
   }, []);
 

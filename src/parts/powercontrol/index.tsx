@@ -205,6 +205,16 @@ export const PowerMosfet = makeMos('irf520', 'Power MOSFET [IRF520]', 'nmos', 'I
   'motor',
   'high current',
 ]);
+export const PowerPMosfet = makeMos('irf9540', 'Power MOSFET [IRF9540]', 'pmos', 'IRF9540', true, [
+  'mosfet',
+  'power',
+  'irf9540',
+  'pmos',
+  'p-channel',
+  'high side',
+  'motor',
+  'high current',
+]);
 
 // ─── Relays ──────────────────────────────────────────────────────────────────
 
@@ -451,6 +461,7 @@ export const POWER_CONTROL: PartDef<never>[] = [
   NMosfet,
   PMosfet,
   PowerMosfet,
+  PowerPMosfet,
   RelaySpdt,
   RelayDpdt,
   Regulator,

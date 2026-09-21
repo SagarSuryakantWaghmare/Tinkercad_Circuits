@@ -262,6 +262,22 @@ export const Ic74HC73 = dip({
   roles: { GND: 'gnd', VCC: 'power' },
 });
 
+// 74HC74: dual D flip-flop with preset and clear, in a 14-pin package.
+export const Ic74HC74 = dip({
+  id: '74hc74',
+  name: 'Dual D Flip-Flop [74HC74]',
+  label: '74HC74',
+  sub: 'DUAL D w/PRE,CLR',
+  model: 'dip-dual-d',
+  keywords: ['74hc74', '7474', 'd flip flop', 'dual', 'preset', 'clear', 'dip', 'logic'],
+  altCategories: LOGIC_ALT,
+  pins: [
+    '1CLR', '1D', '1CLK', '1PR', '1Q', '1QN', 'GND',
+    '2QN', '2Q', '2PR', '2CLK', '2D', '2CLR', 'VCC',
+  ],
+  roles: { GND: 'gnd', VCC: 'power' },
+});
+
 // 74HC76: dual JK flip-flop with preset and clear, in a 16-pin package.
 export const Ic74HC76 = dip({
   id: '74hc76',
@@ -308,6 +324,7 @@ export const DIP74 = [
   Ic74HC27,
   Ic74HC32,
   Ic74HC73,
+  Ic74HC74,
   Ic74HC76,
   Ic74HC86,
   Ic74HC93,

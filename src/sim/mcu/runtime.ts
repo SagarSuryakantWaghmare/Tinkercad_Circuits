@@ -482,13 +482,27 @@ export interface NeoState {
 }
 
 function installNeoPixel(interp: Interpreter, board: Board) {
+  // NeoPixel constants
+  const K = interp.constants;
+  K.set('NEO_RGB', 0x00);
+  K.set('NEO_RBG', 0x01);
+  K.set('NEO_GRB', 0x52);
+  K.set('NEO_GBR', 0x53);
+  K.set('NEO_BRG', 0x54);
+  K.set('NEO_BGR', 0x55);
+  K.set('NEO_WRGB', 0x1B);
+  K.set('NEO_RGBW', 0x00);
+  K.set('NEO_KHZ800', 0x0000);
+  K.set('NEO_KHZ400', 0x0100);
+
   interp.classFactories.set('Adafruit_NeoPixel', (args) => {
     const pin = toNum(args[1]) || 6;
+    const count = toNum(args[0]) || 1;
     const st: NeoState = {
-      count: toNum(args[0]) || 1,
+      count,
       pin,
       pins: [pin],
-      pixels: new Array(toNum(args[0]) || 1).fill(0),
+      pixels: new Array(count).fill(0),
       brightness: 255,
     };
     board.peripherals.set(`neopixel:${st.pin}`, st);
@@ -499,6 +513,20 @@ function installNeoPixel(interp: Interpreter, board: Board) {
       numPixels: () => st.count,
       setBrightness: (a) => ((st.brightness = toNum(a[0])), 0),
       getBrightness: () => st.brightness,
+      setPin: (a) => {
+        st.pin = toNum(a[0]);
+        st.pins = [st.pin];
+        board.peripherals.set(`neopixel:${st.pin}`, st);
+        return 0;
+      },
+      updateLength: (a) => {
+        st.count = toNum(a[0]);
+        st.pixels = new Array(st.count).fill(0);
+        return 0;
+      },
+      updateType: () => 0,
+      canShow: () => 1,
+      getPin: () => st.pin,
       setPixelColor: (a) => {
         const i = toNum(a[0]);
         // Either a packed colour or separate r, g, b arguments.

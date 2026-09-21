@@ -85,6 +85,7 @@ export const ToggleSwitch = definePart({
   name: 'Toggle Switch',
   category: 'input',
   keywords: ['toggle', 'switch', 'spst', 'lever', 'on off'],
+  basic: true,
   size: { w: 56, h: 84 },
   origin: { x: 28, y: 46 },
   socketable: true,

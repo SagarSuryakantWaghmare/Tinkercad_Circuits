@@ -290,12 +290,15 @@ export const FunctionGenerator = definePart<FgProps>({
       </Silk>
 
       <rect x={-108} y={-42} width={128} height={56} rx={3} fill="#1B2419" stroke="#0D120C" />
-      <g transform="translate(-44,-24)" stroke="#4ADE80" strokeWidth={2.2} fill="none" strokeLinejoin="round">
+      <Silk x={-44} y={-33} size={6} fill="#7B8F72" weight={600}>
+        {`${Number(props.amplitude).toFixed(1)} Vp  ·  ${Number(props.offset).toFixed(1)} V DC`}
+      </Silk>
+      <g transform="translate(-44,-16)" stroke="#4ADE80" strokeWidth={2.2} fill="none" strokeLinejoin="round">
         <path d={WAVE_PATHS[String(props.wave)] ?? WAVE_PATHS.sine} />
       </g>
       <text
         x={-44}
-        y={2}
+        y={4}
         fontSize={13}
         fontFamily="var(--font-geist-mono), ui-monospace, monospace"
         fontWeight={700}
@@ -306,31 +309,29 @@ export const FunctionGenerator = definePart<FgProps>({
       >
         {formatHz(Number(props.frequency))}
       </text>
-      <Silk x={-44} y={-40} size={6} fill="#7B8F72" weight={600}>
-        {`${Number(props.amplitude).toFixed(1)} Vp  ·  ${Number(props.offset).toFixed(1)} V DC`}
-      </Silk>
       {state && (
-        <Silk x={-44} y={22} size={8} fill="#4ADE80" weight={700}>
+        <Silk x={-44} y={23} size={8} fill="#4ADE80" weight={700}>
           {`${Number(state.voltage ?? 0).toFixed(2)} V now`}
         </Silk>
       )}
 
-      {/* wave selector, then frequency and amplitude knobs */}
+      {/* wave selector tabs in a row above knobs */}
       {(['sine', 'square', 'triangle', 'sawtooth'] as const).map((wave, i) => (
         <PartButton
           key={wave}
-          x={24 + i * 26}
-          y={-44}
-          width={24}
-          height={16}
+          x={35 + i * 24}
+          y={-34}
+          width={22}
+          height={18}
           label={{ sine: '\u223f', square: '\u2293', triangle: '\u2227', sawtooth: '\u2571' }[wave]}
           active={String(props.wave) === wave}
           onPress={() => setProp?.('wave', wave)}
         />
       ))}
       <PartKnob
-        x={40}
-        y={-6}
+        x={46}
+        y={2}
+        r={13}
         value={Math.log10(Math.max(0.1, Number(props.frequency)))}
         min={-1}
         max={5}
@@ -338,8 +339,9 @@ export const FunctionGenerator = definePart<FgProps>({
         onChange={(v) => setProp?.('frequency', Math.round(Math.pow(10, v) * 10) / 10)}
       />
       <PartKnob
-        x={86}
-        y={-6}
+        x={94}
+        y={2}
+        r={13}
         value={Number(props.amplitude)}
         min={0}
         max={20}
@@ -349,8 +351,8 @@ export const FunctionGenerator = definePart<FgProps>({
 
       <circle cx={70} cy={52} r={12} fill="#C11F1F" stroke="#8E1616" strokeWidth={2} />
       <circle cx={106} cy={52} r={12} fill="#1F2123" stroke="#0E1011" strokeWidth={2} />
-      <Silk x={70} y={70} size={8} fill="#5A6068" weight={700}>SIG</Silk>
-      <Silk x={106} y={70} size={8} fill="#5A6068" weight={700}>GND</Silk>
+      <Silk x={70} y={35} size={8} fill="#5A6068" weight={700}>SIG</Silk>
+      <Silk x={106} y={35} size={8} fill="#5A6068" weight={700}>GND</Silk>
     </g>
   ),
 });
@@ -403,7 +405,7 @@ export const Oscilloscope = definePart<ScopeProps>({
   defaults: { timePerDiv: 1e-3, voltsPerDiv: 1 },
   Art: ({ props, state, setProp }: ArtProps<ScopeProps>) => {
     const W = 260;
-    const H = 150;
+    const H = 120;
     const vdiv = Number(props.voltsPerDiv) || 1;
     const ch1 = (state?.ch1 as number[] | undefined) ?? [];
     const ch2 = (state?.ch2 as number[] | undefined) ?? [];
@@ -442,8 +444,8 @@ export const Oscilloscope = definePart<ScopeProps>({
         </Silk>
 
         {/* screen */}
-        <rect x={-W / 2 - 8} y={-H / 2 - 44} width={W + 16} height={H + 16} rx={3} fill="#0C1410" stroke="#0A0D0B" />
-        <g transform={`translate(0,${-36})`}>
+        <rect x={-W / 2 - 6} y={-92} width={W + 12} height={H + 12} rx={3} fill="#0C1410" stroke="#0A0D0B" />
+        <g transform={`translate(0,${-26})`}>
           {/* graticule */}
           {Array.from({ length: 11 }, (_, i) => (
             <line
@@ -482,9 +484,9 @@ export const Oscilloscope = definePart<ScopeProps>({
 
         {/* knobs step through the standard division settings */}
         <PartKnob
-          x={-112}
-          y={62}
-          r={14}
+          x={-122}
+          y={72}
+          r={13}
           value={Math.max(0, TIME_DIVS.indexOf(Number(props.timePerDiv)))}
           min={0}
           max={TIME_DIVS.length - 1}
@@ -494,9 +496,9 @@ export const Oscilloscope = definePart<ScopeProps>({
           }
         />
         <PartKnob
-          x={-62}
-          y={62}
-          r={14}
+          x={0}
+          y={72}
+          r={13}
           value={Math.max(0, VOLT_DIVS.indexOf(vdiv))}
           min={0}
           max={VOLT_DIVS.length - 1}
@@ -512,11 +514,11 @@ export const Oscilloscope = definePart<ScopeProps>({
           { x: 80, c: '#1F2123', l: 'GND' },
         ].map((p) => (
           <g key={p.x}>
-            <circle cx={p.x} cy={92} r={11} fill={p.c} stroke="#6E7479" strokeWidth={1.5} />
-            <circle cx={p.x} cy={92} r={4.5} fill="#2B2E31" />
-            <Silk x={p.x} y={108} size={6.5} fill="#5A6068" weight={700}>
+            <Silk x={p.x} y={74} size={6.5} fill="#5A6068" weight={700}>
               {p.l}
             </Silk>
+            <circle cx={p.x} cy={92} r={10} fill={p.c} stroke="#6E7479" strokeWidth={1.5} />
+            <circle cx={p.x} cy={92} r={4.5} fill="#2B2E31" />
           </g>
         ))}
       </g>

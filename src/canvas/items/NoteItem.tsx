@@ -14,18 +14,26 @@ function NoteItemInner({
   selected,
   onChange,
   onPointerDown,
+  onResize,
   onDelete,
 }: {
   note: Note;
   selected: boolean;
   onChange: (text: string) => void;
   onPointerDown: (e: React.PointerEvent, id: string) => void;
+  onResize?: (e: React.PointerEvent, id: string) => void;
   onDelete: (id: string) => void;
 }) {
-  const [editing, setEditing] = useState(!note.text);
+  const [editing, setEditing] = useState(false);
+  const [draftText, setDraftText] = useState(note.text);
 
-  const W = 180;
-  const H = 92;
+  const startEditing = () => {
+    setDraftText(note.text);
+    setEditing(true);
+  };
+
+  const W = note.width ?? 180;
+  const H = note.height ?? 92;
 
   return (
     <g transform={`translate(${note.x},${note.y})`} data-note={note.id}>
@@ -36,8 +44,24 @@ function NoteItemInner({
         strokeDasharray="4 3"
         fill="none"
       />
-      <circle cx={0} cy={0} r={3.5} fill={C.warn} />
-      <g transform={`translate(${-W - 18},${-14 - H})`}>
+      <circle
+        cx={0}
+        cy={0}
+        r={3.5}
+        fill={C.warn}
+        style={{ cursor: 'pointer' }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          startEditing();
+        }}
+      />
+      <g
+        transform={`translate(${-W - 18},${-14 - H})`}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          startEditing();
+        }}
+      >
         <rect
           x={0}
           y={0}
@@ -48,19 +72,44 @@ function NoteItemInner({
           stroke={selected ? C.select : '#E8D9A8'}
           strokeWidth={selected ? 2 : 1.2}
           style={{ cursor: 'move' }}
-          onPointerDown={(e) => onPointerDown(e, note.id)}
+          onPointerDown={(e) => {
+            if (e.detail === 2) {
+              e.stopPropagation();
+              startEditing();
+              return;
+            }
+            onPointerDown(e, note.id);
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            startEditing();
+          }}
         />
-        <foreignObject x={8} y={7} width={W - 16} height={H - 14}>
+        <foreignObject x={8} y={7} width={Math.max(20, W - 16)} height={Math.max(20, H - 14)}>
           {editing ? (
             <textarea
-              autoFocus
-              defaultValue={note.text}
-              onBlur={(e) => {
-                onChange(e.target.value);
+              ref={(el) => {
+                if (el) {
+                  el.focus();
+                  el.setSelectionRange(el.value.length, el.value.length);
+                }
+              }}
+              value={draftText}
+              onChange={(e) => setDraftText(e.target.value)}
+              onBlur={() => {
+                onChange(draftText);
                 setEditing(false);
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Escape') (e.target as HTMLTextAreaElement).blur();
+                if (e.key === 'Escape') {
+                  e.stopPropagation();
+                  setDraftText(note.text);
+                  setEditing(false);
+                } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  e.stopPropagation();
+                  onChange(draftText);
+                  setEditing(false);
+                }
                 e.stopPropagation();
               }}
               className="h-full w-full resize-none border-0 bg-transparent p-0 text-[11px] leading-snug text-neutral-800 outline-none"
@@ -68,7 +117,18 @@ function NoteItemInner({
             />
           ) : (
             <div
-              onDoubleClick={() => setEditing(true)}
+              onPointerDown={(e) => {
+                if (e.detail === 2) {
+                  e.stopPropagation();
+                  startEditing();
+                  return;
+                }
+                onPointerDown(e, note.id);
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                startEditing();
+              }}
               className="h-full w-full overflow-hidden whitespace-pre-wrap break-words text-[11px] leading-snug text-neutral-800"
               style={{ cursor: 'text' }}
             >
@@ -87,6 +147,21 @@ function NoteItemInner({
           >
             <circle cx={0} cy={0} r={7} fill="#F1E3B8" />
             <path d="M-3,-3 L3,3 M3,-3 L-3,3" stroke="#8A6B1F" strokeWidth={1.6} />
+          </g>
+        )}
+        {selected && onResize && (
+          <g
+            transform={`translate(${W - 10},${H - 10})`}
+            style={{ cursor: 'nwse-resize' }}
+            onPointerDown={(e) => onResize(e, note.id)}
+          >
+            <rect x={-4} y={-4} width={14} height={14} fill="transparent" />
+            <path
+              d="M8,0 L0,8 M8,4 L4,8 M8,8 L8,8"
+              stroke="#B3A270"
+              strokeWidth={1.4}
+              strokeLinecap="round"
+            />
           </g>
         )}
       </g>
