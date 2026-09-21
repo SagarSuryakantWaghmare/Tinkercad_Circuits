@@ -90,7 +90,9 @@ export const IrRemote = definePart({
         )}
 
         {REMOTE_KEYS.map((k) => {
-          const x = -KEY_W - 4 + k.col * (KEY_W + 4);
+          const colGap = 6;
+          const gridW = 3 * KEY_W + 2 * colGap;
+          const x = -gridW / 2 + k.col * (KEY_W + colGap);
           const y = -REMOTE_H / 2 + 24 + k.row * (KEY_H + 4);
           const active = sending && code === k.code;
           return (

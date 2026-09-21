@@ -38,15 +38,30 @@ export function findPeripheral<T extends { pins: number[] }>(
     const p = mcuPinOf(ctx, t);
     if (p !== null) wired.add(p);
   }
-  if (!wired.size) return null;
+  if (wired.size > 0) {
+    let best: { obj: T; score: number } | null = null;
+    h.board.peripherals.forEach((value, key) => {
+      if (!key.startsWith(prefix)) return;
+      const obj = value as T;
+      if (!Array.isArray(obj.pins)) return;
+      const score = obj.pins.filter((p) => wired.has(p)).length;
+      if (score > 0 && (!best || score > best.score)) best = { obj, score };
+    });
 
-  let best: { obj: T; score: number } | null = null;
-  h.board.peripherals.forEach((value, key) => {
-    if (!key.startsWith(prefix)) return;
-    const obj = value as T;
-    if (!Array.isArray(obj.pins)) return;
-    const score = obj.pins.filter((p) => wired.has(p)).length;
-    if (score > 0 && (!best || score > best.score)) best = { obj, score };
-  });
-  return best ? (best as { obj: T }).obj : null;
+    if (best) return (best as { obj: T }).obj;
+  }
+
+  // If a series resistor or breadboard separates the net from the MCU pin,
+  // fall back to the peripheral prefix — but only when there is exactly one
+  // candidate, otherwise Map insertion order would silently decide which
+  // device to bind.
+  let onlyMatch: T | null = null;
+  let matches = 0;
+  for (const [key, value] of h.board.peripherals.entries()) {
+    if (!key.startsWith(prefix)) continue;
+    matches += 1;
+    if (matches > 1) return null;
+    onlyMatch = value as T;
+  }
+  return onlyMatch;
 }

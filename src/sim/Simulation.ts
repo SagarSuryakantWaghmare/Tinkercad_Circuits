@@ -322,7 +322,7 @@ export class Simulation {
       parts,
       netV,
       terminalNet,
-      serial: h ? h.board.serialTx : [],
+      serial: h ? [...h.board.serialTx] : [],
       warnings: this.warnings.slice(-4),
     });
   }

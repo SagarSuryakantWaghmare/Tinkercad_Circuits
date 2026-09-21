@@ -27,18 +27,18 @@ function PushbuttonArt({ state, simulating, interact }: ArtProps<Record<string, 
           strokeLinecap="round"
         />
       ))}
-      <rect x={-16} y={-14} width={32} height={28} rx={2} fill="#2E3133" stroke="#1A1C1D" />
-      <rect x={-16} y={-14} width={32} height={4} rx={1} fill="#3B3F42" />
-      <circle cx={0} cy={0} r={9.5} fill="#D9DCE0" stroke="#A9AEB4" strokeWidth={0.8} />
+      <rect x={-15} y={-13} width={30} height={26} rx={2.5} fill="#DCE0E5" stroke="#ACB2B8" strokeWidth={0.8} />
+      <circle cx={-11} cy={-9} r={1.5} fill="#9BA1A8" />
+      <circle cx={11} cy={-9} r={1.5} fill="#9BA1A8" />
+      <circle cx={-11} cy={9} r={1.5} fill="#9BA1A8" />
+      <circle cx={11} cy={9} r={1.5} fill="#9BA1A8" />
+      <circle cx={0} cy={0} r={9} fill="#242628" stroke="#141517" strokeWidth={0.8} />
       <circle
         cx={0}
         cy={0}
-        r={pressed ? 7 : 8}
-        fill={pressed ? '#B7BCC2' : '#EDEFF2'}
-        stroke="#9BA1A8"
-        strokeWidth={0.6}
+        r={pressed ? 6.5 : 7.5}
+        fill={pressed ? '#161718' : '#313538'}
       />
-      {/* full-size invisible target so the whole cap is clickable while running */}
       {simulating && (
         <circle
           cx={0}
@@ -91,25 +91,27 @@ function SlideswitchArt({ state, simulating, interact }: ArtProps<Record<string,
       {[-10, 0, 10].map((x) => (
         <Leg key={x} x1={x} y1={8} x2={x} y2={18} />
       ))}
-      <rect x={-18} y={-13} width={36} height={22} rx={2} fill="#B9BEC4" stroke="#8E949A" />
-      <rect x={-11} y={-9} width={22} height={12} rx={1.5} fill="#2B2E30" />
+      <rect x={-18} y={-13} width={36} height={22} rx={2} fill="#2B2E31" stroke="#17191B" strokeWidth={0.8} />
+      <rect x={-12} y={-9} width={24} height={13} rx={1} fill="#141618" />
       <rect
         x={knobX}
-        y={-15}
+        y={-14}
         width={8}
-        height={16}
+        height={15}
         rx={1.5}
-        fill={pos === 1 ? '#F5D033' : '#E8EAEC'}
-        stroke="#A6ACB2"
+        fill="#E2E5E8"
+        stroke="#8E949A"
         strokeWidth={0.7}
       />
+      <line x1={knobX + 2.5} y1={-10} x2={knobX + 2.5} y2={-3} stroke="#ACB2B8" strokeWidth={0.8} />
+      <line x1={knobX + 5.5} y1={-10} x2={knobX + 5.5} y2={-3} stroke="#ACB2B8" strokeWidth={0.8} />
       <text
         x={0}
         y={-16}
         fontSize={4.5}
         fontWeight={700}
         textAnchor="middle"
-        fill="#5A6068"
+        fill="#8E949A"
       >
         {label}
       </text>
@@ -165,24 +167,17 @@ function PotArt({ state, simulating, interact }: ArtProps<PotProps>) {
       {[-10, 0, 10].map((x) => (
         <Leg key={x} x1={x} y1={14} x2={x} y2={24} />
       ))}
-      <rect x={-20} y={-18} width={40} height={34} rx={3} fill="#3C6EA5" stroke="#2A5279" />
-      <circle cx={0} cy={-2} r={15} fill="#D8DCE1" stroke="#A8AEB5" strokeWidth={1} />
-      <circle cx={0} cy={-2} r={12.5} fill="#EDF0F3" />
-      <g transform={`rotate(${angle} 0 -2)`}>
-        <rect x={-1.6} y={-14} width={3.2} height={11} rx={1.4} fill="#31363B" />
+      <rect x={-18} y={-18} width={36} height={34} rx={4} fill="#1A3B66" stroke="#122A4A" strokeWidth={0.8} />
+      <circle cx={0} cy={-1} r={14} fill="#24518C" stroke="#183A66" strokeWidth={1} />
+      <circle cx={0} cy={-1} r={11.5} fill="#2E66B0" />
+      <g transform={`rotate(${angle} 0 -1)`}>
+        <rect x={-1.5} y={-11} width={3} height={7} rx={1} fill="#FFFFFF" />
       </g>
-      <path
-        d="M-13,8 A15,15 0 0,1 13,8"
-        fill="none"
-        stroke="#8E959C"
-        strokeWidth={0.9}
-        strokeDasharray="1.5 3"
-      />
       {simulating && (
         <>
           <circle
             cx={0}
-            cy={-2}
+            cy={-1}
             r={16}
             fill="transparent"
             style={{ cursor: 'ew-resize' }}
@@ -190,7 +185,6 @@ function PotArt({ state, simulating, interact }: ArtProps<PotProps>) {
               beginValueDrag(e, (dx, dy) => interact?.('delta', (dx - dy) * 0.012))
             }
           />
-          {/* Voltage-divider regulator slider: precise wiper control (0–100 %). */}
           <PartSlider
             x={0}
             y={-38}
@@ -198,12 +192,10 @@ function PotArt({ state, simulating, interact }: ArtProps<PotProps>) {
             value={frac}
             min={0}
             max={1}
-            color="#3C6EA5"
+            color="#2E66B0"
             label={`${Math.round(frac * 100)} %`}
             onChange={(v) => interact?.('set', v)}
           />
-          {/* Step buttons for one-percent nudges — the reference product's
-              behaviour is that a click on the knob edge fine-tunes the value. */}
           <PartButton
             x={-30}
             y={-16}
@@ -335,19 +327,19 @@ function LdrArt({ state, simulating, interact }: ArtProps<Record<string, never>>
   const lit = clamp01(Math.log10(Math.max(lux, 0.1) + 1) / 3);
   return (
     <g>
-      <Leg x1={-5} y1={9} x2={-5} y2={20} />
-      <Leg x1={5} y1={9} x2={5} y2={20} />
-      <circle cx={0} cy={-2} r={12} fill="#E9E2CC" stroke="#B9AE8E" strokeWidth={1} />
-      <circle cx={0} cy={-2} r={9.5} fill={mix('#8A7B4E', '#F2E9C6', lit)} />
-      {/* the serpentine CdS track */}
+      <Leg x1={-5} y1={8} x2={-5} y2={20} />
+      <Leg x1={5} y1={8} x2={5} y2={20} />
+      <circle cx={0} cy={-2} r={12} fill="#E8D8C0" stroke="#C4B090" strokeWidth={1} />
+      <circle cx={0} cy={-2} r={9.5} fill={mix('#D4782A', '#F0A860', lit)} />
+      {/* serpentine CdS track */}
       <path
         d="M-7,-8 L-7,-4 L-3.5,-4 L-3.5,0 L-7,0 L-7,4 M7,-8 L7,-4 L3.5,-4 L3.5,0 L7,0 L7,4"
         fill="none"
-        stroke="#5E5233"
+        stroke="#7A240E"
         strokeWidth={1.5}
         strokeLinecap="round"
       />
-      <path d="M-7,4 L7,4" stroke="#5E5233" strokeWidth={1.5} strokeLinecap="round" />
+      <path d="M-7,4 L7,4" stroke="#7A240E" strokeWidth={1.5} strokeLinecap="round" />
       {simulating && (
         <PartSlider
           x={0}
@@ -422,12 +414,12 @@ export const TemperatureSensor = definePart({
         ))}
         <path
           d="M-11,-12 A11,11 0 0,1 11,-12 L11,7 L-11,7 Z"
-          fill="#1F2123"
-          stroke="#0E1011"
+          fill="#222426"
+          stroke="#111213"
           strokeWidth={0.8}
         />
-        <path d="M-11,-12 L11,-12" stroke="#3A3E41" strokeWidth={1} />
-        <Silk x={0} y={-2} size={5.5} fill="#C8CCD0" weight={600}>
+        <rect x={-10} y={4} width={20} height={3} fill="#2E3033" />
+        <Silk x={0} y={-3} size={6} fill="#E8ECEF" weight={700}>
           TMP
         </Silk>
         {simulating && (

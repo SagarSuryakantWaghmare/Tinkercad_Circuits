@@ -241,8 +241,117 @@ export const BatteryPack = definePart({
           </Silk>
         </g>
       ))}
-      <Silk x={0} y={-60} size={8} fill="#5A6068" weight={700}>
+      {/* terminals on the crown */}
+      <circle cx={-20} cy={-58} r={9} fill="#B9BDC2" stroke="#8A9096" strokeWidth={1} />
+      <circle cx={-20} cy={-58} r={5} fill="#8A9096" />
+      <circle cx={20} cy={-58} r={9} fill="#B9BDC2" stroke="#8A9096" strokeWidth={1} />
+      <circle cx={20} cy={-58} r={5.5} fill="#6E7479" />
+      <Silk x={-20} y={-72} size={9} fill="#5A5F65">
+        +
+      </Silk>
+      <Silk x={20} y={-72} size={11} fill="#5A5F65">
+        −
+      </Silk>
+      <Silk x={0} y={48} size={8} fill="#7A8088" weight={700}>
         6V
+      </Silk>
+    </g>
+  ),
+});
+
+// ─── Potato battery ──────────────────────────────────────────────────────────
+
+export const PotatoBattery = definePart({
+  id: 'battery-potato',
+  name: 'Potato Battery',
+  category: 'power',
+  keywords: ['potato', 'battery', 'fruit', 'vegetable', 'power', 'cell', 'copper', 'zinc'],
+  size: { w: 90, h: 90 },
+  origin: { x: 45, y: 45 },
+  model: 'battery-potato',
+  terminals: [
+    { name: '+', type: 'wire', x: -20, y: -42, dir: [0, -1], role: 'power' },
+    { name: '-', type: 'wire', x: 20, y: -42, dir: [0, -1], role: 'gnd' },
+  ],
+  props: [],
+  defaults: { voltage: 0.9, resistance: 20 },
+  Art: () => (
+    <g>
+      {/* Potato body */}
+      <path
+        d="M -36,-12 C -38,-30 -15,-36 10,-34 C 34,-32 40,-12 37,14 C 34,34 10,36 -14,35 C -34,33 -34,6 -36,-12 Z"
+        fill="#B58A4C"
+        stroke="#7A5623"
+        strokeWidth={1.5}
+      />
+      {/* Texture spots / eyes */}
+      <ellipse cx={-18} cy={-12} rx={3} ry={1.5} fill="#8A6329" opacity={0.6} />
+      <ellipse cx={16} cy={-10} rx={3.5} ry={2} fill="#8A6329" opacity={0.6} />
+      <ellipse cx={-4} cy={14} rx={4} ry={2} fill="#8A6329" opacity={0.6} />
+      <ellipse cx={20} cy={16} rx={2.5} ry={1.5} fill="#8A6329" opacity={0.6} />
+      {/* Copper electrode (+) */}
+      <rect x={-24} y={-42} width={8} height={18} rx={1.5} fill="#C87533" stroke="#8C4B18" strokeWidth={0.8} />
+      {/* Zinc electrode (-) */}
+      <rect x={16} y={-42} width={8} height={18} rx={1.5} fill="#A0AAB2" stroke="#68737B" strokeWidth={0.8} />
+      <Silk x={-20} y={-48} size={9} fill="#5A5F65" weight={800}>
+        +
+      </Silk>
+      <Silk x={20} y={-48} size={11} fill="#5A5F65" weight={800}>
+        −
+      </Silk>
+      <Silk x={0} y={2} size={8} fill="#4E330F" weight={800}>
+        POTATO
+      </Silk>
+      <Silk x={0} y={13} size={6.5} fill="#694617" weight={600}>
+        0.9V CELL
+      </Silk>
+    </g>
+  ),
+});
+
+// ─── Lemon battery ───────────────────────────────────────────────────────────
+
+export const LemonBattery = definePart({
+  id: 'battery-lemon',
+  name: 'Lemon Battery',
+  category: 'power',
+  keywords: ['lemon', 'battery', 'fruit', 'citrus', 'power', 'cell', 'copper', 'zinc'],
+  size: { w: 90, h: 90 },
+  origin: { x: 45, y: 45 },
+  model: 'battery-lemon',
+  terminals: [
+    { name: '+', type: 'wire', x: -20, y: -42, dir: [0, -1], role: 'power' },
+    { name: '-', type: 'wire', x: 20, y: -42, dir: [0, -1], role: 'gnd' },
+  ],
+  props: [],
+  defaults: { voltage: 0.95, resistance: 15 },
+  Art: () => (
+    <g>
+      {/* Lemon body */}
+      <path
+        d="M -40,-2 C -38,-24 -18,-33 0,-33 C 18,-33 38,-24 40,-2 C 38,22 18,33 0,33 C -18,33 -38,22 -40,-2 Z"
+        fill="#F4CE28"
+        stroke="#BFA016"
+        strokeWidth={1.5}
+      />
+      {/* Nipple ends */}
+      <ellipse cx={-40} cy={-2} rx={2.5} ry={4} fill="#E2BC16" />
+      <ellipse cx={40} cy={-2} rx={2.5} ry={4} fill="#E2BC16" />
+      {/* Copper electrode (+) */}
+      <rect x={-24} y={-42} width={8} height={18} rx={1.5} fill="#C87533" stroke="#8C4B18" strokeWidth={0.8} />
+      {/* Zinc electrode (-) */}
+      <rect x={16} y={-42} width={8} height={18} rx={1.5} fill="#A0AAB2" stroke="#68737B" strokeWidth={0.8} />
+      <Silk x={-20} y={-48} size={9} fill="#5A5F65" weight={800}>
+        +
+      </Silk>
+      <Silk x={20} y={-48} size={11} fill="#5A5F65" weight={800}>
+        −
+      </Silk>
+      <Silk x={0} y={2} size={8} fill="#635105" weight={800}>
+        LEMON
+      </Silk>
+      <Silk x={0} y={13} size={6.5} fill="#7A6508" weight={600}>
+        0.95V CELL
       </Silk>
     </g>
   ),
@@ -255,4 +364,6 @@ export const BATTERIES: PartDef<never>[] = [
   BatteryD,
   CoinCell,
   BatteryPack,
+  PotatoBattery,
+  LemonBattery,
 ] as unknown as PartDef<never>[];

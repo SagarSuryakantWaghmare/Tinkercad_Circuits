@@ -384,6 +384,34 @@ defineDevice('dip-dual-jk-pr', () =>
   }),
 );
 
+// 74HC74 is a dual positive-edge-triggered D flip-flop with async preset and clear.
+defineDevice('dip-dual-d', () =>
+  logicDevice({
+    inputs: () => ['1D', '1CLK', '1PR', '1CLR', '2D', '2CLK', '2PR', '2CLR'],
+    outputs: () => ['1Q', '1QN', '2Q', '2QN'],
+    compute: ([d1, clk1, pr1, clr1, d2, clk2, pr2, clr2], s) => {
+      const step = (
+        d: boolean, clk: boolean, pr: boolean, clr: boolean,
+        prevClk: number, q: number,
+      ) => {
+        if (!clr) q = 0;
+        else if (!pr) q = 1;
+        else if (clk && prevClk === 0) {
+          q = d ? 1 : 0;
+        }
+        return { q, prev: clk ? 1 : 0 };
+      };
+      const r1 = step(d1, clk1, pr1, clr1, s.__clk1 ?? 0, s.q1 ?? 0);
+      const r2 = step(d2, clk2, pr2, clr2, s.__clk2 ?? 0, s.q2 ?? 0);
+      s.q1 = r1.q;
+      s.q2 = r2.q;
+      s.__clk1 = r1.prev;
+      s.__clk2 = r2.prev;
+      return [r1.q === 1, r1.q !== 1, r2.q === 1, r2.q !== 1];
+    },
+  }),
+);
+
 // ─── 74HC93 4-bit binary ripple counter ─────────────────────────────────────
 // Internally two stages: CKA drives the Q0 divide-by-2, CKB drives a
 // divide-by-8 that feeds Q1..Q3. Real hardware needs Q0 → CKB wired

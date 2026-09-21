@@ -205,6 +205,16 @@ export const PowerMosfet = makeMos('irf520', 'Power MOSFET [IRF520]', 'nmos', 'I
   'motor',
   'high current',
 ]);
+export const PowerPMosfet = makeMos('irf9540', 'Power MOSFET [IRF9540]', 'pmos', 'IRF9540', true, [
+  'mosfet',
+  'power',
+  'irf9540',
+  'pmos',
+  'p-channel',
+  'high side',
+  'motor',
+  'high current',
+]);
 
 // ─── Relays ──────────────────────────────────────────────────────────────────
 
@@ -215,9 +225,14 @@ interface RelayProps extends Record<string, string | number> {
 
 function RelayArt({ poles, state }: { poles: number; state: ArtProps['state'] }) {
   const on = !!state?.energised;
+  const pinCount = poles === 1 ? 5 : 8;
   const w = poles === 1 ? 110 : 140;
   return (
     <g>
+      {Array.from({ length: pinCount }, (_, i) => {
+        const px = -((pinCount - 1) * 10) / 2 + i * 10;
+        return <Leg key={i} x1={px} y1={40} x2={px} y2={52} />;
+      })}
       <BoardShadow w={w} h={92} rx={3} />
       <rect x={-w / 2} y={-46} width={w} height={92} rx={3} fill="#2B5FA8" stroke="#1D4478" />
       <rect x={-w / 2 + 6} y={-40} width={w - 12} height={30} rx={2} fill="#1D4478" opacity={0.6} />
@@ -434,7 +449,7 @@ export const Optocoupler = definePart<OptoProps>({
   defaults: { ctr: 0.5 },
   Art: ({ state }: ArtProps<OptoProps>) => (
     <g>
-      <DipBody w={50} h={40} />
+      <DipBody w={50} h={40} pins={8} pinReach={25} />
       <Silk x={0} y={-4} size={7} fill="#C9CED3" weight={600}>
         4N35
       </Silk>
@@ -451,6 +466,7 @@ export const POWER_CONTROL: PartDef<never>[] = [
   NMosfet,
   PMosfet,
   PowerMosfet,
+  PowerPMosfet,
   RelaySpdt,
   RelayDpdt,
   Regulator,

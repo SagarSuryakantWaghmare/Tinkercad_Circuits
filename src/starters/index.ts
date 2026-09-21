@@ -105,18 +105,18 @@ const basics: Starter[] = [
     id: 'basic-switch',
     name: 'Switch a Light',
     category: 'basic',
-    blurb: 'A slide switch in series with an LED — flip it while the sim runs.',
+    blurb: 'A switch in series with an LED — flip it while the sim runs.',
     build: () =>
       build(
         [
           ['bat', 'battery-9v', -280, 40],
-          ['sw', 'slideswitch', -60, -140],
+          ['sw', 'toggle-switch', -60, -140],
           ['r', 'resistor', 120, -140, { resistance: 470 }],
           ['led', 'led', 280, 40, { color: 'green' }],
         ],
         [
-          ['bat', '+', 'sw', 'common', '1'],
-          ['sw', '1', 'r', 'a', '1'],
+          ['bat', '+', 'sw', 'terminal1', '1'],
+          ['sw', 'terminal2', 'r', 'a', '1'],
           ['r', 'b', 'led', 'anode', '1'],
           ['led', 'cathode', 'bat', '-', '0'],
         ],
@@ -136,7 +136,8 @@ const basics: Starter[] = [
           ['led', 'led', 300, 40, { color: 'yellow' }],
         ],
         [
-          ['bat', '+', 'pot', 'terminal1', '1'],
+          ['bat', '+', 'pot', 'terminal2', '1'],
+          ['pot', 'terminal1', 'bat', '-', '0'],
           ['pot', 'wiper', 'r', 'a', '2'],
           ['r', 'b', 'led', 'anode', '2'],
           ['led', 'cathode', 'bat', '-', '0'],
@@ -174,12 +175,12 @@ const basics: Starter[] = [
       build(
         [
           ['bat', 'battery-pack-4aa', -320, 0],
-          ['sw', 'slideswitch', -40, -160],
+          ['sw', 'toggle-switch', -40, -160],
           ['m', 'dc-motor', 240, 0, { ratedVoltage: 6 }],
         ],
         [
-          ['bat', '+', 'sw', 'common', '1'],
-          ['sw', '1', 'm', 'terminal1', '1'],
+          ['bat', '+', 'sw', 'terminal1', '1'],
+          ['sw', 'terminal2', 'm', 'terminal1', '1'],
           ['m', 'terminal2', 'bat', '-', '0'],
         ],
       ),
@@ -198,6 +199,235 @@ const basics: Starter[] = [
         [
           ['fg', 'positive', 'scope', 'CH1+', '1'],
           ['fg', 'negative', 'scope', 'CH1-', '0'],
+        ],
+      ),
+  },
+  {
+    id: 'basic-potato-led',
+    name: 'Fruit Battery LED (Potato)',
+    category: 'basic',
+    blurb: 'Three potato cells in series light a red LED through a 100 Ω resistor.',
+    build: () =>
+      build(
+        [
+          ['p1', 'battery-potato', -300, 40],
+          ['p2', 'battery-potato', -180, 40],
+          ['p3', 'battery-potato', -60, 40],
+          ['r', 'resistor', 80, -80, { resistance: 100 }],
+          ['led', 'led', 220, 40, { color: 'red' }],
+        ],
+        [
+          ['p1', '+', 'p2', '-', '1'],
+          ['p2', '+', 'p3', '-', '1'],
+          ['p3', '+', 'r', 'a', '1'],
+          ['r', 'b', 'led', 'anode', '1'],
+          ['led', 'cathode', 'p1', '-', '0'],
+        ],
+      ),
+  },
+  {
+    id: 'basic-lemon-led',
+    name: 'Fruit Battery LED (Lemon)',
+    category: 'basic',
+    blurb: 'Three lemon cells in series generate enough voltage to light an LED.',
+    build: () =>
+      build(
+        [
+          ['l1', 'battery-lemon', -300, 40],
+          ['l2', 'battery-lemon', -180, 40],
+          ['l3', 'battery-lemon', -60, 40],
+          ['r', 'resistor', 80, -80, { resistance: 100 }],
+          ['led', 'led', 220, 40, { color: 'red' }],
+        ],
+        [
+          ['l1', '+', 'l2', '-', '1'],
+          ['l2', '+', 'l3', '-', '1'],
+          ['l3', '+', 'r', 'a', '1'],
+          ['r', 'b', 'led', 'anode', '1'],
+          ['led', 'cathode', 'l1', '-', '0'],
+        ],
+      ),
+  },
+  {
+    id: 'basic-potato-motor',
+    name: 'Fruit Battery Motor',
+    category: 'basic',
+    blurb: 'Four potato cells in series driving a DC motor.',
+    build: () =>
+      build(
+        [
+          ['p1', 'battery-potato', -340, 40],
+          ['p2', 'battery-potato', -220, 40],
+          ['p3', 'battery-potato', -100, 40],
+          ['p4', 'battery-potato', 20, 40],
+          ['m', 'dc-motor', 220, 40, { ratedVoltage: 6 }],
+        ],
+        [
+          ['p1', '+', 'p2', '-', '1'],
+          ['p2', '+', 'p3', '-', '1'],
+          ['p3', '+', 'p4', '-', '1'],
+          ['p4', '+', 'm', 'terminal1', '1'],
+          ['m', 'terminal2', 'p1', '-', '0'],
+        ],
+      ),
+  },
+  {
+    id: 'basic-lm393-dual',
+    name: 'Dual Comparator (LM393) LED',
+    category: 'basic',
+    blurb: 'Turn either potentiometer above 2.5 V to switch its channel output and illuminate the LED.',
+    build: () =>
+      build(
+        [
+          ['psu', 'power-supply', -400, 0, { voltage: 5, currentLimit: 1 }],
+          ['pot1', 'potentiometer', -200, -160, { resistance: 10000 }],
+          ['pot2', 'potentiometer', -200, 160, { resistance: 10000 }],
+          ['r_div1', 'resistor', -80, -220, { resistance: 10000 }],
+          ['r_div2', 'resistor', -80, -140, { resistance: 10000 }],
+          ['comp', 'lm393', 40, 0],
+          ['r1', 'resistor', 220, -100, { resistance: 330 }],
+          ['led1', 'led', 320, -100, { color: 'green' }],
+          ['r2', 'resistor', 220, 100, { resistance: 330 }],
+          ['led2', 'led', 320, 100, { color: 'yellow' }],
+        ],
+        [
+          ['psu', '+', 'comp', 'VCC', '1'],
+          ['psu', '-', 'comp', 'GND', '0'],
+          // 2.5V reference divider
+          ['psu', '+', 'r_div1', 'a', '1'],
+          ['r_div1', 'b', 'r_div2', 'a', '3'],
+          ['r_div2', 'b', 'psu', '-', '0'],
+          ['r_div1', 'b', 'comp', 'IN1+', '3'],
+          ['r_div1', 'b', 'comp', 'IN2+', '3'],
+          // Channel A input
+          ['psu', '+', 'pot1', 'terminal2', '1'],
+          ['psu', '-', 'pot1', 'terminal1', '0'],
+          ['pot1', 'wiper', 'comp', 'IN1-', '2'],
+          // Channel A output (active low open-collector sink)
+          ['psu', '+', 'led1', 'anode', '1'],
+          ['led1', 'cathode', 'r1', 'a', '4'],
+          ['r1', 'b', 'comp', 'OUT1', '4'],
+          // Channel B input
+          ['psu', '+', 'pot2', 'terminal2', '1'],
+          ['psu', '-', 'pot2', 'terminal1', '0'],
+          ['pot2', 'wiper', 'comp', 'IN2-', '2'],
+          // Channel B output
+          ['psu', '+', 'led2', 'anode', '1'],
+          ['led2', 'cathode', 'r2', 'a', '3'],
+          ['r2', 'b', 'comp', 'OUT2', '3'],
+        ],
+      ),
+  },
+  {
+    id: 'basic-pmos-switch',
+    name: 'pMOS High-Side Switch (IRF9540)',
+    category: 'basic',
+    blurb: 'Press the pushbutton to pull the gate low and switch on the high-side load LED.',
+    build: () =>
+      build(
+        [
+          ['bat', 'battery-9v', -320, 40],
+          ['r_pull', 'resistor', -120, -140, { resistance: 10000 }],
+          ['btn', 'pushbutton', -120, 80],
+          ['mos', 'irf9540', 40, 0],
+          ['r', 'resistor', 180, 0, { resistance: 470 }],
+          ['led', 'led', 300, 40, { color: 'blue' }],
+        ],
+        [
+          ['bat', '+', 'mos', 'source', '1'],
+          ['mos', 'source', 'r_pull', 'a', '1'],
+          ['r_pull', 'b', 'mos', 'gate', '2'],
+          ['mos', 'gate', 'btn', '1a', '2'],
+          ['btn', '2a', 'bat', '-', '0'],
+          ['mos', 'drain', 'r', 'a', '5'],
+          ['r', 'b', 'led', 'anode', '5'],
+          ['led', 'cathode', 'bat', '-', '0'],
+        ],
+      ),
+  },
+  {
+    id: 'basic-74hc74-dual',
+    name: 'Dual D Flip-Flop (74HC74)',
+    category: 'basic',
+    blurb: 'Set D with the toggle switch, then press clock to latch data into Q and Q-bar.',
+    build: () =>
+      build(
+        [
+          ['psu', 'power-supply', -420, 0, { voltage: 5, currentLimit: 1 }],
+          ['sw1', 'toggle-switch', -240, -180],
+          ['btn1', 'pushbutton', -240, -60],
+          ['r_pd1', 'resistor', -240, 40, { resistance: 10000 }],
+          ['ic', '74hc74', 0, 0],
+          ['r_q1', 'resistor', 200, -180, { resistance: 330 }],
+          ['led_q1', 'led', 320, -180, { color: 'green' }],
+          ['r_qn1', 'resistor', 200, -80, { resistance: 330 }],
+          ['led_qn1', 'led', 320, -80, { color: 'red' }],
+        ],
+        [
+          ['psu', '+', 'ic', 'VCC', '1'],
+          ['psu', '-', 'ic', 'GND', '0'],
+          // Unit 1 active-low PRE and CLR tied high
+          ['psu', '+', 'ic', '1CLR', '1'],
+          ['psu', '+', 'ic', '1PR', '1'],
+          ['psu', '+', 'ic', '2CLR', '1'],
+          ['psu', '+', 'ic', '2PR', '1'],
+          // D input
+          ['psu', '+', 'sw1', 'terminal1', '1'],
+          ['sw1', 'terminal2', 'ic', '1D', '2'],
+          // CLK input with pulldown
+          ['psu', '+', 'btn1', '1a', '1'],
+          ['btn1', '2a', 'ic', '1CLK', '4'],
+          ['ic', '1CLK', 'r_pd1', 'a', '4'],
+          ['r_pd1', 'b', 'psu', '-', '0'],
+          // Q output
+          ['ic', '1Q', 'r_q1', 'a', '4'],
+          ['r_q1', 'b', 'led_q1', 'anode', '4'],
+          ['led_q1', 'cathode', 'psu', '-', '0'],
+          // QN output
+          ['ic', '1QN', 'r_qn1', 'a', '1'],
+          ['r_qn1', 'b', 'led_qn1', 'anode', '1'],
+          ['led_qn1', 'cathode', 'psu', '-', '0'],
+        ],
+      ),
+  },
+  {
+    id: 'basic-74hc74-divider',
+    name: '74HC74 Divide by 2',
+    category: 'basic',
+    blurb: 'Inverted output fed back into D creates a toggle flip-flop that divides clock frequency by 2.',
+    build: () =>
+      build(
+        [
+          ['psu', 'power-supply', -400, 0, { voltage: 5, currentLimit: 1 }],
+          ['btn', 'pushbutton', -220, -60],
+          ['r_pd', 'resistor', -220, 60, { resistance: 10000 }],
+          ['ic', '74hc74', 0, 0],
+          ['r_q', 'resistor', 200, -100, { resistance: 330 }],
+          ['led_q', 'led', 320, -100, { color: 'green' }],
+          ['r_qn', 'resistor', 200, 60, { resistance: 330 }],
+          ['led_qn', 'led', 320, 60, { color: 'red' }],
+        ],
+        [
+          ['psu', '+', 'ic', 'VCC', '1'],
+          ['psu', '-', 'ic', 'GND', '0'],
+          ['psu', '+', 'ic', '1CLR', '1'],
+          ['psu', '+', 'ic', '1PR', '1'],
+          ['psu', '+', 'ic', '2CLR', '1'],
+          ['psu', '+', 'ic', '2PR', '1'],
+          // QN feedback to D
+          ['ic', '1QN', 'ic', '1D', '5'],
+          // Clock pulse
+          ['psu', '+', 'btn', '1a', '1'],
+          ['btn', '2a', 'ic', '1CLK', '4'],
+          ['ic', '1CLK', 'r_pd', 'a', '4'],
+          ['r_pd', 'b', 'psu', '-', '0'],
+          // Outputs
+          ['ic', '1Q', 'r_q', 'a', '4'],
+          ['r_q', 'b', 'led_q', 'anode', '4'],
+          ['led_q', 'cathode', 'psu', '-', '0'],
+          ['ic', '1QN', 'r_qn', 'a', '1'],
+          ['r_qn', 'b', 'led_qn', 'anode', '1'],
+          ['led_qn', 'cathode', 'psu', '-', '0'],
         ],
       ),
   },
@@ -811,6 +1041,206 @@ void loop()
 `,
       ),
   },
+  {
+    id: 'ard-neopixel-ring16',
+    name: 'NeoPixel Ring 16 Rainbow',
+    category: 'arduino',
+    blurb: 'Chase a rainbow around a 16-LED NeoPixel ring.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 300],
+          ['r', 'resistor', -80, -80, { resistance: 330 }],
+          ['ring', 'neopixel-ring-16', 60, -180, { count: 16 }],
+        ],
+        [
+          ['uno', '5V', 'ring', 'VDD', '1'],
+          ['uno', 'GND', 'ring', 'VSS', '0'],
+          ['uno', 'D6', 'r', 'a', '4'],
+          ['r', 'b', 'ring', 'DIN', '4'],
+        ],
+        `#include <Adafruit_NeoPixel.h>
+
+Adafruit_NeoPixel ring(16, 6);
+int offset = 0;
+
+void setup()
+{
+  ring.begin();
+  ring.setBrightness(120);
+  ring.show();
+}
+
+void loop()
+{
+  for (int i = 0; i < 16; i++) {
+    int hue = (i * 22 + offset) % 360;
+
+    int r = 128 + 127 * sin(hue * 0.017453);
+    int g = 128 + 127 * sin((hue + 120) * 0.017453);
+    int b = 128 + 127 * sin((hue + 240) * 0.017453);
+
+    ring.setPixelColor(i, r, g, b);
+  }
+
+  ring.show();
+
+  offset = offset + 6;
+  delay(40);
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-neopixel-ring24',
+    name: 'NeoPixel Ring 24 Rainbow',
+    category: 'arduino',
+    blurb: 'Chase a rainbow around a 24-LED NeoPixel ring.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 300],
+          ['r', 'resistor', -80, -80, { resistance: 330 }],
+          ['ring', 'neopixel-ring-24', 60, -180, { count: 24 }],
+        ],
+        [
+          ['uno', '5V', 'ring', 'VDD', '1'],
+          ['uno', 'GND', 'ring', 'VSS', '0'],
+          ['uno', 'D6', 'r', 'a', '4'],
+          ['r', 'b', 'ring', 'DIN', '4'],
+        ],
+        `#include <Adafruit_NeoPixel.h>
+
+Adafruit_NeoPixel ring(24, 6);
+int offset = 0;
+
+void setup()
+{
+  ring.begin();
+  ring.setBrightness(120);
+  ring.show();
+}
+
+void loop()
+{
+  for (int i = 0; i < 24; i++) {
+    int hue = (i * 15 + offset) % 360;
+
+    int r = 128 + 127 * sin(hue * 0.017453);
+    int g = 128 + 127 * sin((hue + 120) * 0.017453);
+    int b = 128 + 127 * sin((hue + 240) * 0.017453);
+
+    ring.setPixelColor(i, r, g, b);
+  }
+
+  ring.show();
+
+  offset = offset + 6;
+  delay(40);
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-neopixel-strip4',
+    name: 'NeoPixel Strip 4 Rainbow',
+    category: 'arduino',
+    blurb: 'Chase a rainbow across a 4-LED NeoPixel strip.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 300],
+          ['r', 'resistor', -80, -80, { resistance: 330 }],
+          ['strip', 'neopixel-strip-4', 60, -180, { count: 4 }],
+        ],
+        [
+          ['uno', '5V', 'strip', 'VDD', '1'],
+          ['uno', 'GND', 'strip', 'VSS', '0'],
+          ['uno', 'D6', 'r', 'a', '4'],
+          ['r', 'b', 'strip', 'DIN', '4'],
+        ],
+        `#include <Adafruit_NeoPixel.h>
+
+Adafruit_NeoPixel strip(4, 6);
+int offset = 0;
+
+void setup()
+{
+  strip.begin();
+  strip.setBrightness(120);
+  strip.show();
+}
+
+void loop()
+{
+  for (int i = 0; i < 4; i++) {
+    int hue = (i * 90 + offset) % 360;
+
+    int r = 128 + 127 * sin(hue * 0.017453);
+    int g = 128 + 127 * sin((hue + 120) * 0.017453);
+    int b = 128 + 127 * sin((hue + 240) * 0.017453);
+
+    strip.setPixelColor(i, r, g, b);
+  }
+
+  strip.show();
+
+  offset = offset + 6;
+  delay(40);
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-neopixel-strip12',
+    name: 'NeoPixel Strip 12 Rainbow',
+    category: 'arduino',
+    blurb: 'Chase a rainbow across a 12-LED NeoPixel strip.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 300],
+          ['r', 'resistor', -80, -80, { resistance: 330 }],
+          ['strip', 'neopixel-strip-12', 60, -180, { count: 12 }],
+        ],
+        [
+          ['uno', '5V', 'strip', 'VDD', '1'],
+          ['uno', 'GND', 'strip', 'VSS', '0'],
+          ['uno', 'D6', 'r', 'a', '4'],
+          ['r', 'b', 'strip', 'DIN', '4'],
+        ],
+        `#include <Adafruit_NeoPixel.h>
+
+Adafruit_NeoPixel strip(12, 6);
+int offset = 0;
+
+void setup()
+{
+  strip.begin();
+  strip.setBrightness(120);
+  strip.show();
+}
+
+void loop()
+{
+  for (int i = 0; i < 12; i++) {
+    int hue = (i * 30 + offset) % 360;
+
+    int r = 128 + 127 * sin(hue * 0.017453);
+    int g = 128 + 127 * sin((hue + 120) * 0.017453);
+    int b = 128 + 127 * sin((hue + 240) * 0.017453);
+
+    strip.setPixelColor(i, r, g, b);
+  }
+
+  strip.show();
+
+  offset = offset + 6;
+  delay(40);
+}
+`,
+      ),
+  },
 ];
 
 // ─── Circuit assemblies ──────────────────────────────────────────────────────
@@ -825,13 +1255,13 @@ const assemblies: Starter[] = [
       build(
         [
           ['bat', 'battery-coin', -240, 0],
-          ['sw', 'slideswitch', -40, -140],
+          ['sw', 'toggle-switch', -40, -140],
           ['r', 'resistor', 120, -140, { resistance: 100 }],
           ['led', 'led', 280, 0, { color: 'white' }],
         ],
         [
-          ['bat', '+', 'sw', 'common', '1'],
-          ['sw', '1', 'r', 'a', '1'],
+          ['bat', '+', 'sw', 'terminal1', '1'],
+          ['sw', 'terminal2', 'r', 'a', '1'],
           ['r', 'b', 'led', 'anode', '1'],
           ['led', 'cathode', 'bat', '-', '0'],
         ],
@@ -1008,11 +1438,11 @@ display.show(count)
 
 while True:
     if button_a.was_pressed():
-        count += 1
+        count = min(9, count + 1)
         display.show(count)
         print("count", count)
     if button_b.was_pressed():
-        count -= 1
+        count = max(0, count - 1)
         display.show(count)
         print("count", count)
     sleep(50)

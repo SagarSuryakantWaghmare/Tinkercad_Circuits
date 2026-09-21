@@ -118,7 +118,11 @@ export const ScrewTerminal = definePart({
   defaults: {},
   Art: () => (
     <g>
+      <Leg x1={-10} y1={20} x2={-10} y2={30} />
+      <Leg x1={10} y1={20} x2={10} y2={30} />
       <rect x={-24} y={-24} width={48} height={48} rx={2.5} fill="#2E7D32" stroke="#1E5622" />
+      <rect x={-14} y={-27} width={8} height={6} rx={1} fill="#1F2123" stroke="#141618" strokeWidth={0.6} />
+      <rect x={6} y={-27} width={8} height={6} rx={1} fill="#1F2123" stroke="#141618" strokeWidth={0.6} />
       {[-10, 10].map((x) => (
         <g key={x}>
           <circle cx={x} cy={-8} r={7} fill="#B9BEC4" stroke="#8E949A" />
@@ -233,8 +237,12 @@ export const SolarPanel = definePart<SolarProps>({
     const illum = Number(state?.illumination ?? 100);
     return (
       <g>
+        <Leg x1={-20} y1={56} x2={-20} y2={68} color="#C11F1F" />
+        <Leg x1={20} y1={56} x2={20} y2={68} color="#2B2E31" />
         <BoardShadow w={166} h={116} rx={3} />
         <rect x={-83} y={-58} width={166} height={116} rx={3} fill="#8E949A" stroke="#6E7479" />
+        <Silk x={-20} y={50} size={7} fill="#C11F1F" weight={700}>+</Silk>
+        <Silk x={20} y={50} size={7} fill="#2B2E31" weight={700}>−</Silk>
         <rect x={-77} y={-52} width={154} height={104} rx={2} fill="#14264A" />
         {Array.from({ length: 4 }, (_, r) =>
           Array.from({ length: 6 }, (_, c) => (

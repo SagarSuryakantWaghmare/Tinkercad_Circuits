@@ -454,6 +454,37 @@ export function CanvasRoot() {
     window.addEventListener('pointerup', up);
   };
 
+  const onNoteResize = (e: React.PointerEvent, id: string) => {
+    e.stopPropagation();
+    if (e.button !== 0) return;
+    const start = worldOf(e);
+    const note = design.notes[id];
+    if (!note) return;
+    const baseW = note.width ?? 180;
+    const baseH = note.height ?? 92;
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    begin('Resize note');
+    const move = (ev: PointerEvent) => {
+      const w = useEditorStore.getState().toWorld(screenOf(ev));
+      const newW = Math.max(80, Math.round(baseW + (w.x - start.x)));
+      const newH = Math.max(50, Math.round(baseH + (w.y - start.y)));
+      transact('Resize note', (d) => {
+        const n = d.notes[id];
+        if (n) {
+          n.width = newW;
+          n.height = newH;
+        }
+      });
+    };
+    const up = () => {
+      commit();
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
   // ── interaction forwarding into the running simulation ────────────────────
   const onInteract = useCallback(
     (partId: string, event: string, value?: number | boolean) => {
@@ -748,6 +779,7 @@ export function CanvasRoot() {
                 note={n}
                 selected={ed.selectedNotes.includes(n.id)}
                 onPointerDown={onNoteDown}
+                onResize={onNoteResize}
                 onChange={(text) =>
                   transact('Edit note', (d) => {
                     const note = d.notes[n.id];
