@@ -482,16 +482,18 @@ export interface NeoState {
 }
 
 function installNeoPixel(interp: Interpreter, board: Board) {
-  // NeoPixel constants
+  // NeoPixel constants — values match Adafruit_NeoPixel.h's bit-packed byte
+  // offsets so user sketches that combine e.g. NEO_GRB + NEO_KHZ800 compile
+  // and don't collide.
   const K = interp.constants;
-  K.set('NEO_RGB', 0x00);
-  K.set('NEO_RBG', 0x01);
+  K.set('NEO_RGB', 0x06);
+  K.set('NEO_RBG', 0x09);
   K.set('NEO_GRB', 0x52);
-  K.set('NEO_GBR', 0x53);
-  K.set('NEO_BRG', 0x54);
-  K.set('NEO_BGR', 0x55);
-  K.set('NEO_WRGB', 0x1B);
-  K.set('NEO_RGBW', 0x00);
+  K.set('NEO_GBR', 0xa1);
+  K.set('NEO_BRG', 0x58);
+  K.set('NEO_BGR', 0xa4);
+  K.set('NEO_WRGB', 0x1b);
+  K.set('NEO_RGBW', 0x6c);
   K.set('NEO_KHZ800', 0x0000);
   K.set('NEO_KHZ400', 0x0100);
 

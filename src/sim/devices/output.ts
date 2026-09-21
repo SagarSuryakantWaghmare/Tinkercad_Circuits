@@ -121,7 +121,9 @@ defineDevice('dc-motor', (): Device => ({
       const target = v / ke;
       next = rpm + ((target - rpm) * ctx.dt) / tauDrive;
     } else {
-      next = 0;
+      // Frictional decay: no motor is truly frictionless, so an open circuit
+      // brings the rotor to rest in a bit over one second.
+      next = rpm * Math.exp(-ctx.dt / tauCoast);
     }
 
     ctx.s.rpm = Math.abs(next) < 1 ? 0 : next;

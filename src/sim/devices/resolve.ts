@@ -52,12 +52,16 @@ export function findPeripheral<T extends { pins: number[] }>(
   }
 
   // If a series resistor or breadboard separates the net from the MCU pin,
-  // fall back to matching by peripheral prefix.
+  // fall back to the peripheral prefix — but only when there is exactly one
+  // candidate, otherwise Map insertion order would silently decide which
+  // device to bind.
+  let onlyMatch: T | null = null;
+  let matches = 0;
   for (const [key, value] of h.board.peripherals.entries()) {
-    if (key.startsWith(prefix)) {
-      return value as T;
-    }
+    if (!key.startsWith(prefix)) continue;
+    matches += 1;
+    if (matches > 1) return null;
+    onlyMatch = value as T;
   }
-
-  return null;
+  return onlyMatch;
 }

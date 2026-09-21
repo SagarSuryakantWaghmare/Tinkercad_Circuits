@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import type { Note } from '@/state/design';
 import { C } from '@/lib/tokens';
 
@@ -26,10 +26,33 @@ function NoteItemInner({
 }) {
   const [editing, setEditing] = useState(false);
   const [draftText, setDraftText] = useState(note.text);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const startEditing = () => {
     setDraftText(note.text);
     setEditing(true);
+  };
+
+  // Focus and drop the caret at the end when the editor opens. Doing this via
+  // useEffect (rather than an inline ref callback) means the selection is not
+  // rewritten on every keystroke while the user is editing.
+  useEffect(() => {
+    if (!editing) return;
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [editing]);
+
+  const onBodyPointerDown = (e: React.PointerEvent<Element>) => {
+    if (e.detail === 2) {
+      // The second click of a double-click; enter edit mode before the drag
+      // handler on the outer rect takes over.
+      e.stopPropagation();
+      startEditing();
+      return;
+    }
+    onPointerDown(e, note.id);
   };
 
   const W = note.width ?? 180;
@@ -72,28 +95,12 @@ function NoteItemInner({
           stroke={selected ? C.select : '#E8D9A8'}
           strokeWidth={selected ? 2 : 1.2}
           style={{ cursor: 'move' }}
-          onPointerDown={(e) => {
-            if (e.detail === 2) {
-              e.stopPropagation();
-              startEditing();
-              return;
-            }
-            onPointerDown(e, note.id);
-          }}
-          onDoubleClick={(e) => {
-            e.stopPropagation();
-            startEditing();
-          }}
+          onPointerDown={onBodyPointerDown}
         />
         <foreignObject x={8} y={7} width={Math.max(20, W - 16)} height={Math.max(20, H - 14)}>
           {editing ? (
             <textarea
-              ref={(el) => {
-                if (el) {
-                  el.focus();
-                  el.setSelectionRange(el.value.length, el.value.length);
-                }
-              }}
+              ref={textareaRef}
               value={draftText}
               onChange={(e) => setDraftText(e.target.value)}
               onBlur={() => {
@@ -102,11 +109,9 @@ function NoteItemInner({
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') {
-                  e.stopPropagation();
                   setDraftText(note.text);
                   setEditing(false);
                 } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                  e.stopPropagation();
                   onChange(draftText);
                   setEditing(false);
                 }
@@ -117,18 +122,7 @@ function NoteItemInner({
             />
           ) : (
             <div
-              onPointerDown={(e) => {
-                if (e.detail === 2) {
-                  e.stopPropagation();
-                  startEditing();
-                  return;
-                }
-                onPointerDown(e, note.id);
-              }}
-              onDoubleClick={(e) => {
-                e.stopPropagation();
-                startEditing();
-              }}
+              onPointerDown={onBodyPointerDown}
               className="h-full w-full overflow-hidden whitespace-pre-wrap break-words text-[11px] leading-snug text-neutral-800"
               style={{ cursor: 'text' }}
             >
