@@ -12,15 +12,17 @@ import { IconUsers } from '../icons';
  */
 export function SessionStatus() {
   const updatedAt = useDesignStore((s) => s.design.updatedAt);
+  const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
+    setMounted(true);
     const id = setInterval(() => setNow(Date.now()), 15_000);
     return () => clearInterval(id);
   }, []);
 
   const age = Math.max(0, Math.round((now - updatedAt) / 1000));
-  const label = ageLabel(age);
+  const label = mounted ? ageLabel(age) : 'just now';
 
   return (
     <div

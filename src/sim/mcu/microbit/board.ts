@@ -78,6 +78,7 @@ export class MicrobitBoard {
   radioQueue: string[] = [];
   radioOn = false;
   radioGroup = 0;
+  onRadioSend?: (msg: string, group: number) => void;
 
   reset() {
     this.display.fill(0);

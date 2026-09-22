@@ -6,6 +6,8 @@ import { useEditorStore } from '@/state/editorStore';
 import { STARTER_CATEGORIES, STARTERS, type Starter } from '@/starters';
 import { contentBounds } from '../useHotkeys';
 
+import { StarterThumb } from './StarterThumb';
+
 /**
  * Starters. Dropping one in places its components, its wiring and its code —
  * pressing Start Simulation immediately afterwards is the whole point, so a
@@ -84,29 +86,28 @@ export function StartersDrawer() {
         className="mb-2 w-full rounded-md border border-neutral-300 bg-neutral-50 px-2 py-1.5 text-[12.5px] outline-none placeholder:text-neutral-400 focus:border-sky-500 focus:bg-white"
       />
 
-      <ul className="space-y-1.5">
+      <div className="grid grid-cols-2 gap-1.5">
         {list.map((s) => (
-          <li key={s.id}>
-            <button
-              onClick={() => place(s)}
-              className="w-full rounded-lg border border-neutral-200 bg-white p-2.5 text-left transition hover:border-sky-400 hover:bg-sky-50/40"
-            >
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[12.5px] font-medium text-neutral-800">{s.name}</span>
-                <span className="shrink-0 rounded-full bg-neutral-100 px-1.5 py-[1px] text-[10px] font-medium uppercase tracking-wide text-neutral-500">
-                  {STARTER_CATEGORIES.find((c) => c.id === s.category)?.label}
-                </span>
-              </div>
-              <p className="mt-0.5 text-[11.5px] leading-snug text-neutral-500">{s.blurb}</p>
-            </button>
-          </li>
+          <button
+            key={s.id}
+            onClick={() => place(s)}
+            className="group flex flex-col items-center gap-1 rounded-lg border border-neutral-200 bg-white p-1.5 text-center transition hover:border-sky-400 hover:bg-neutral-50 hover:shadow-sm"
+            title={`${s.name}\n${s.blurb}`}
+          >
+            <span className="flex h-[68px] w-full items-center justify-center overflow-hidden rounded bg-neutral-50/60 p-1 group-hover:bg-sky-50/30">
+              <StarterThumb starter={s} />
+            </span>
+            <span className="line-clamp-2 text-[11px] font-medium leading-tight text-neutral-700 group-hover:text-sky-700">
+              {s.name}
+            </span>
+          </button>
         ))}
         {list.length === 0 && (
-          <li className="px-2 py-8 text-center text-[12px] text-neutral-400">
+          <p className="col-span-2 px-2 py-8 text-center text-[12px] text-neutral-400">
             No starters match “{search}”.
-          </li>
+          </p>
         )}
-      </ul>
+      </div>
     </>
   );
 }

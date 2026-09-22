@@ -487,8 +487,8 @@ export function CanvasRoot() {
 
   // ── interaction forwarding into the running simulation ────────────────────
   const onInteract = useCallback(
-    (partId: string, event: string, value?: number | boolean) => {
-      simBus.emit({ partId, event, value });
+    (partId: string, event: string, value?: number | boolean | unknown) => {
+      simBus.emit({ partId, event, value } as unknown as { partId: string; event: string; value?: number | boolean });
     },
     [],
   );

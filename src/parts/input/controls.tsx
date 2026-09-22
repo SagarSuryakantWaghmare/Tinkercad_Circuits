@@ -42,9 +42,8 @@ export const DipSwitch = definePart<DipProps>({
     const n = Math.max(2, Math.min(8, Number(props.ways) || 4));
     const states = (state?.states as number[] | undefined) ?? [];
     const w = n * 10 + 16;
-    const isBlue = n === 4;
-    const bodyColor = isBlue ? '#186DB8' : '#C11F1F';
-    const borderColor = isBlue ? '#104F85' : '#8E1616';
+    const bodyColor = '#C11F1F';
+    const borderColor = '#8E1616';
     return (
       <g>
         <BoardShadow w={w} h={40} rx={2.5} />
@@ -286,7 +285,7 @@ const KEYS = ['1', '2', '3', 'A', '4', '5', '6', 'B', '7', '8', '9', 'C', '*', '
 
 export const Keypad = definePart({
   id: 'keypad-4x4',
-  name: 'Keypad 4 × 4',
+  name: 'Keypad 4x4',
   category: 'input',
   keywords: ['keypad', 'matrix', '4x4', 'keys', 'buttons', 'entry'],
   size: { w: 200, h: 230 },
@@ -659,12 +658,12 @@ function DipSwitchPreset(id: string, name: string, ways: number) {
 
 export const DipSwitchSpst4 = DipSwitchPreset(
   'dip-switch-spst-4',
-  'DIP Switch SPST × 4',
+  'DIP Switch SPST x 4',
   4,
 );
 export const DipSwitchSpst6 = DipSwitchPreset(
   'dip-switch-spst-6',
-  'DIP Switch SPST × 6',
+  'DIP Switch SPST x 6',
   6,
 );
 

@@ -3,6 +3,7 @@ import type { ArtProps, PartDef, TerminalDef } from '../types';
 import { C } from '@/lib/tokens';
 import { beginValueDrag } from '../interact';
 import { BoardShadow, HeaderStrip, Silk } from '../primitives';
+import { MoonIcon, PartSlider, SunIcon } from '../simControls';
 
 /**
  * BBC micro:bit v2 form factor.
@@ -28,7 +29,7 @@ function buildTerminals(): TerminalDef[] {
     name: p.name,
     type: 'wire',
     x: p.x,
-    y: H / 2 + 8,
+    y: H / 2 - 32,
     dir: [0, 1],
     role: p.role,
   }));
@@ -40,7 +41,7 @@ function buildTerminals(): TerminalDef[] {
       name,
       type: 'wire',
       x: -230 + i * 30,
-      y: H / 2 - 6,
+      y: H / 2 - 10,
       dir: [0, 1],
       quiet: true,
       role: 'digital',
@@ -172,6 +173,20 @@ function MicrobitArt({ state, simulating, interact }: ArtProps) {
               toneHz > 0 ? `  ·  ${Math.round(toneHz)} Hz` : ''
             }`}
           </Silk>
+
+          {/* Ambient Light Sensor Slider */}
+          <PartSlider
+            x={-W / 4}
+            y={-H / 2 - 44}
+            width={90}
+            value={Number(state?.lightLevel ?? 128)}
+            min={0}
+            max={255}
+            lowIcon={MoonIcon}
+            highIcon={SunIcon}
+            label={`light ${Math.round(Number(state?.lightLevel ?? 128))}`}
+            onChange={(v) => interact?.('light', v)}
+          />
 
           {/* Drag anywhere on the board face to tilt it in both axes. */}
           <rect

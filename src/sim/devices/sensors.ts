@@ -28,6 +28,11 @@ function interactRange(r: Ranged) {
       ctx.s[r.key] = clamp(cur * Math.pow(10, Number(value)), r.min, r.max);
     }
     if (event === 'toggle') ctx.s[r.key] = cur > (r.min + r.max) / 2 ? r.min : r.max;
+    if (event === 'target' && typeof value === 'object' && value !== null) {
+      const pos = value as { x: number; y: number };
+      ctx.s.targetX = pos.x;
+      ctx.s.targetY = pos.y;
+    }
   };
 }
 
@@ -83,6 +88,8 @@ function moduleSensor(
         value: ctx.s[r.key] ?? r.initial,
         out: ctx.s.__out ?? 0,
         powered: (ctx.s.__supply ?? 0) > 2.5,
+        targetX: ctx.s.targetX ?? 0,
+        targetY: ctx.s.targetY ?? -70,
       };
     },
   };
@@ -151,8 +158,8 @@ defineDevice('slide-pot', (): Device => ({
   stamp(c, ctx) {
     const total = Math.max(num(ctx.props.resistance, 10000), 1);
     const f = clamp(ctx.s.wiper ?? 0.5, 0, 1);
-    c.stampResistance(ctx.node('terminal1'), ctx.node('wiper'), Math.max(total * f, 1));
-    c.stampResistance(ctx.node('wiper'), ctx.node('terminal2'), Math.max(total * (1 - f), 1));
+    c.stampResistance(ctx.node('terminal1'), ctx.node('wiper'), Math.max(total * (1 - f), 1));
+    c.stampResistance(ctx.node('wiper'), ctx.node('terminal2'), Math.max(total * f, 1));
   },
   interact(event, value, ctx) {
     if (event === 'set') ctx.s.wiper = clamp(Number(value), 0, 1);
@@ -193,6 +200,7 @@ defineDevice('soil-moisture', () =>
   moduleSensor(
     { key: 'moisture', min: 0, max: 100, initial: 30, scale: 0.6 },
     (m, supply) => clamp((m / 100) * supply, 0, supply),
+    { pins: { vcc: 'VCC', gnd: 'GND', out: 'SIG' } },
   ),
 );
 

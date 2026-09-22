@@ -2,6 +2,7 @@ import { audio } from '../audio';
 import type { LcdState, NeoState } from '../mcu/runtime';
 import { diodeStamp, ledParams, LED_I_RATED } from './passive';
 import { findPeripheral, mcuHandle, mcuPinOf } from './resolve';
+import { MICROBIT_KEY, type MicrobitHandle } from './microbit';
 import { clamp, defineDevice, num, R_OPEN, type Device, type DeviceCtx } from './types';
 import type { Circuit } from '../mna/Circuit';
 
@@ -152,26 +153,39 @@ defineDevice('servo', (): Device => ({
     c.stampResistance(ctx.node('power'), ctx.node('gnd'), 120);
   },
   commit(c, ctx) {
-    const powered = c.v(ctx.node('power')) - c.v(ctx.node('gnd')) > 3;
+    const supply = c.v(ctx.node('power')) - c.v(ctx.node('gnd'));
+    const powered = supply > 1.8;
     if (!powered) return;
 
     const continuous = String(ctx.props.kind) === 'continuous';
     let target = ctx.s.target ?? 90;
-
     const pin = mcuPinOf(ctx, 'signal');
     const h = mcuHandle(ctx);
     const commanded = pin !== null ? h?.board.servos.get(pin) : undefined;
 
     if (commanded?.attached) {
       target = commanded.angle;
+    } else {
+      // Check if driven by micro:bit
+      const mb = ctx.shared.get(MICROBIT_KEY) as MicrobitHandle | undefined;
+      if (mb) {
+        const sigNode = ctx.node('signal');
+        if (sigNode !== -1) {
+          const mbPin = mb.netToPin.get(sigNode);
+          if (mbPin !== undefined) {
+            const outVal = mb.board.outputs[mbPin];
+            if (outVal >= 20 && outVal <= 145) {
+              target = Math.max(0, Math.min(180, ((outVal - 26) / (128 - 26)) * 180));
+            } else if (outVal > 0 && outVal <= 180) {
+              // Direct angle written (0..180)
+              target = outVal;
+            } else if (outVal > 180) {
+              target = (outVal / 1023) * 180;
+            }
+          }
+        }
+      }
     }
-    // Without Servo.attach the previous fallback tried to derive angle from
-    // raw analogWrite duty (assuming a 490 Hz PWM = ~2 ms pulse). But most
-    // sketches that call analogWrite(pin, 128) mean 50 % duty for LED
-    // brightness, not a servo pulse; the fallback caused a servo wired to
-    // any PWM pin to slam to 180° the moment the pin was written. Do
-    // nothing here — the servo simply stays at its last commanded angle
-    // (or the 90° default) until the sketch attaches a Servo.
 
     ctx.s.target = target;
     // Servos slew at roughly 0.12 s per 60°.

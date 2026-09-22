@@ -431,6 +431,162 @@ const basics: Starter[] = [
         ],
       ),
   },
+  {
+    id: 'basic-multiple-leds',
+    name: 'Multiple LEDs',
+    category: 'basic',
+    blurb: 'Several LEDs wired in parallel from a battery, sharing current across branches.',
+    build: () =>
+      build(
+        [
+          ['bat', 'battery-9v', -280, 0],
+          ['r1', 'resistor', -40, -120, { resistance: 470 }],
+          ['led1', 'led', 140, -120, { color: 'red' }],
+          ['r2', 'resistor', -40, 0, { resistance: 470 }],
+          ['led2', 'led', 140, 0, { color: 'green' }],
+          ['r3', 'resistor', -40, 120, { resistance: 470 }],
+          ['led3', 'led', 140, 120, { color: 'yellow' }],
+        ],
+        [
+          ['bat', '+', 'r1', 'a', '1'],
+          ['bat', '+', 'r2', 'a', '1'],
+          ['bat', '+', 'r3', 'a', '1'],
+          ['r1', 'b', 'led1', 'anode', '1'],
+          ['r2', 'b', 'led2', 'anode', '1'],
+          ['r3', 'b', 'led3', 'anode', '1'],
+          ['led1', 'cathode', 'bat', '-', '0'],
+          ['led2', 'cathode', 'bat', '-', '0'],
+          ['led3', 'cathode', 'bat', '-', '0'],
+        ],
+      ),
+  },
+  {
+    id: 'basic-rgb-led',
+    name: 'RGB LED',
+    category: 'basic',
+    blurb: 'Drive red, green, and blue channels through resistors and switches to mix colours.',
+    build: () =>
+      build(
+        [
+          ['bat', 'battery-9v', -320, 0],
+          ['sw1', 'toggle-switch', -140, -120],
+          ['sw2', 'toggle-switch', -140, 0],
+          ['sw3', 'toggle-switch', -140, 120],
+          ['r1', 'resistor', 40, -120, { resistance: 330 }],
+          ['r2', 'resistor', 40, 0, { resistance: 330 }],
+          ['r3', 'resistor', 40, 120, { resistance: 330 }],
+          ['rgb', 'led-rgb', 200, 0, { common: 'cathode' }],
+        ],
+        [
+          ['bat', '+', 'sw1', 'terminal1', '1'],
+          ['bat', '+', 'sw2', 'terminal1', '1'],
+          ['bat', '+', 'sw3', 'terminal1', '1'],
+          ['sw1', 'terminal2', 'r1', 'a', '1'],
+          ['sw2', 'terminal2', 'r2', 'a', '2'],
+          ['sw3', 'terminal2', 'r3', 'a', '3'],
+          ['r1', 'b', 'rgb', 'red', '1'],
+          ['r2', 'b', 'rgb', 'green', '2'],
+          ['r3', 'b', 'rgb', 'blue', '3'],
+          ['rgb', 'common', 'bat', '-', '0'],
+        ],
+      ),
+  },
+  {
+    id: 'basic-temperature-sensor',
+    name: 'Temperature Sensor',
+    category: 'basic',
+    blurb: 'An analog temperature sensor wired to a multimeter — drag the slider to watch voltage change.',
+    build: () =>
+      build(
+        [
+          ['psu', 'power-supply', -280, 0, { voltage: 5, currentLimit: 1 }],
+          ['tmp', 'temperature-sensor', -40, 0],
+          ['dmm', 'multimeter', 220, 0, { mode: 'voltage' }],
+        ],
+        [
+          ['psu', '+', 'tmp', 'power', '1'],
+          ['psu', '-', 'tmp', 'gnd', '0'],
+          ['tmp', 'vout', 'dmm', 'positive', '2'],
+          ['tmp', 'gnd', 'dmm', 'negative', '0'],
+        ],
+      ),
+  },
+  {
+    id: 'basic-tilt-sensor',
+    name: 'Tilt Sensor',
+    category: 'basic',
+    blurb: 'A ball-switch in series with an LED — click to tilt the sensor and close the circuit.',
+    build: () =>
+      build(
+        [
+          ['bat', 'battery-9v', -260, 0],
+          ['tilt', 'tilt-sensor', -40, -100],
+          ['r', 'resistor', 120, -100, { resistance: 470 }],
+          ['led', 'led', 260, 0, { color: 'blue' }],
+        ],
+        [
+          ['bat', '+', 'tilt', 'terminal1', '1'],
+          ['tilt', 'terminal2', 'r', 'a', '1'],
+          ['r', 'b', 'led', 'anode', '1'],
+          ['led', 'cathode', 'bat', '-', '0'],
+        ],
+      ),
+  },
+  {
+    id: 'basic-pir-sensor',
+    name: 'PIR Sensor',
+    category: 'basic',
+    blurb: 'A passive infrared motion sensor lighting an LED when movement is detected.',
+    build: () =>
+      build(
+        [
+          ['psu', 'power-supply', -280, 0, { voltage: 5, currentLimit: 1 }],
+          ['pir', 'pir-sensor', 0, -60],
+          ['r', 'resistor', 160, 60, { resistance: 220 }],
+          ['led', 'led', 260, 60, { color: 'red' }],
+        ],
+        [
+          ['psu', '+', 'pir', 'VCC', '1'],
+          ['psu', '-', 'pir', 'GND', '0'],
+          ['pir', 'OUT', 'r', 'a', '2'],
+          ['r', 'b', 'led', 'anode', '2'],
+          ['led', 'cathode', 'psu', '-', '0'],
+        ],
+      ),
+  },
+  {
+    id: 'basic-npn',
+    name: 'NPN',
+    category: 'basic',
+    blurb: 'An NPN transistor on a breadboard switching an LED on when the pushbutton is pressed.',
+    build: () =>
+      build(
+        [
+          ['bat', 'battery-9v', -280, 0],
+          ['bb', 'breadboard-small', 80, 0],
+          ['q', 'npn-transistor', 10, -50],
+          ['rc', 'resistor', 80, -100, { resistance: 330 }],
+          ['led', 'led', 80, -30, { color: 'red' }],
+          ['rb', 'resistor', 20, 20, { resistance: 1000 }],
+          ['btn', 'pushbutton', 180, 0],
+        ],
+        [
+          // Battery power to upper breadboard rails
+          ['bat', '+', 'bb', 'w1', '1'],
+          ['bat', '-', 'bb', 'x1', '0'],
+          // Collector branch: + rail -> collector resistor -> LED anode -> LED cathode -> transistor collector
+          ['bb', 'w6', 'rc', 'a', '1'],
+          ['rc', 'b', 'led', 'anode', '1'],
+          ['led', 'cathode', 'q', 'collector', '1'],
+          // Emitter branch: transistor emitter -> GND rail
+          ['q', 'emitter', 'bb', 'x3', '0'],
+          // Base trigger branch: + rail -> pushbutton -> base resistor -> transistor base
+          ['bb', 'w24', 'btn', '1a', '1'],
+          ['btn', '2a', 'rb', 'a', '2'],
+          ['rb', 'b', 'q', 'base', '2'],
+        ],
+      ),
+  },
 ];
 
 // ─── Arduino ─────────────────────────────────────────────────────────────────
@@ -1241,6 +1397,857 @@ void loop()
 `,
       ),
   },
+  {
+    id: 'ard-breadboard',
+    name: 'Breadboard',
+    category: 'arduino',
+    blurb: 'A basic Arduino and breadboard layout ready for prototyping custom circuits.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['bb', 'breadboard-small', 0, -120],
+        ],
+        [
+          ['uno', '5V', 'bb', 'w1', '1'],
+          ['uno', 'GND', 'bb', 'x1', '0'],
+          ['bb', 'w30', 'bb', 'y30', '1'],
+          ['bb', 'x30', 'bb', 'z30', '0'],
+        ],
+        `// Arduino + Breadboard prototype template.
+
+void setup()
+{
+  // Put your setup code here, to run once:
+}
+
+void loop()
+{
+  // Put your main code here, to run repeatedly:
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-debounce',
+    name: 'Debounce',
+    category: 'arduino',
+    blurb: 'Read a pushbutton with software debouncing to prevent false triggers from switch bounce.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['btn', 'pushbutton', -220, -140],
+          ['rpull', 'resistor', -220, -20, { resistance: 10000 }],
+          ['rled', 'resistor', 80, -140, { resistance: 220 }],
+          ['led', 'led', 240, -140, { color: 'green' }],
+        ],
+        [
+          ['uno', '5V', 'btn', '1a', '1'],
+          ['btn', '2a', 'uno', 'D2', '5'],
+          ['btn', '2a', 'rpull', 'a', '5'],
+          ['rpull', 'b', 'uno', 'GND', '0'],
+          ['uno', 'D13', 'rled', 'a', '4'],
+          ['rled', 'b', 'led', 'anode', '4'],
+          ['led', 'cathode', 'uno', 'GND', '0'],
+        ],
+        `// Debounce a pushbutton input using millis() timing.
+
+const int buttonPin = 2;
+const int ledPin = 13;
+
+int ledState = HIGH;
+int buttonState;
+int lastButtonState = LOW;
+
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;
+
+void setup()
+{
+  pinMode(buttonPin, INPUT);
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, ledState);
+}
+
+void loop()
+{
+  int reading = digitalRead(buttonPin);
+
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading != buttonState) {
+      buttonState = reading;
+      if (buttonState == HIGH) {
+        ledState = !ledState;
+      }
+    }
+  }
+
+  digitalWrite(ledPin, ledState);
+  lastButtonState = reading;
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-state-change',
+    name: 'State Change Detection',
+    category: 'arduino',
+    blurb: 'Detect and count pushbutton press events rather than reading continuous state.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['btn', 'pushbutton', -220, -140],
+          ['rpull', 'resistor', -220, -20, { resistance: 10000 }],
+          ['rled', 'resistor', 80, -140, { resistance: 220 }],
+          ['led', 'led', 240, -140, { color: 'yellow' }],
+        ],
+        [
+          ['uno', '5V', 'btn', '1a', '1'],
+          ['btn', '2a', 'uno', 'D2', '5'],
+          ['btn', '2a', 'rpull', 'a', '5'],
+          ['rpull', 'b', 'uno', 'GND', '0'],
+          ['uno', 'D13', 'rled', 'a', '3'],
+          ['rled', 'b', 'led', 'anode', '3'],
+          ['led', 'cathode', 'uno', 'GND', '0'],
+        ],
+        `// Count button presses and toggle the LED every 4 presses.
+
+const int buttonPin = 2;
+const int ledPin = 13;
+
+int buttonPushCounter = 0;
+int buttonState = 0;
+int lastButtonState = 0;
+
+void setup()
+{
+  pinMode(buttonPin, INPUT);
+  pinMode(ledPin, OUTPUT);
+  Serial.begin(9600);
+}
+
+void loop()
+{
+  buttonState = digitalRead(buttonPin);
+
+  if (buttonState != lastButtonState) {
+    if (buttonState == HIGH) {
+      buttonPushCounter++;
+      Serial.print("number of button pushes: ");
+      Serial.println(buttonPushCounter);
+    }
+    delay(50);
+  }
+  lastButtonState = buttonState;
+
+  if (buttonPushCounter % 4 == 0) {
+    digitalWrite(ledPin, HIGH);
+  } else {
+    digitalWrite(ledPin, LOW);
+  }
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-analog-input',
+    name: 'Analog Input',
+    category: 'arduino',
+    blurb: 'Read a potentiometer to control the blink rate of an LED.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['pot', 'potentiometer', -200, -150, { resistance: 10000 }],
+          ['r', 'resistor', 60, -150, { resistance: 220 }],
+          ['led', 'led', 220, -150, { color: 'red' }],
+        ],
+        [
+          ['uno', '5V', 'pot', 'terminal1', '1'],
+          ['pot', 'wiper', 'uno', 'A0', '5'],
+          ['pot', 'terminal2', 'uno', 'GND', '0'],
+          ['uno', 'D13', 'r', 'a', '4'],
+          ['r', 'b', 'led', 'anode', '4'],
+          ['led', 'cathode', 'uno', 'GND', '0'],
+        ],
+        `// Read potentiometer to set LED blink delay.
+
+int sensorPin = A0;
+int ledPin = 13;
+int sensorValue = 0;
+
+void setup()
+{
+  pinMode(ledPin, OUTPUT);
+}
+
+void loop()
+{
+  sensorValue = analogRead(sensorPin);
+  digitalWrite(ledPin, HIGH);
+  delay(sensorValue);
+  digitalWrite(ledPin, LOW);
+  delay(sensorValue);
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-digital-read-serial',
+    name: 'Digital Read Serial',
+    category: 'arduino',
+    blurb: 'Read a pushbutton state on a digital pin and print it to the serial monitor.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['btn', 'pushbutton', -160, -140],
+          ['r', 'resistor', -160, -20, { resistance: 10000 }],
+        ],
+        [
+          ['uno', '5V', 'btn', '1a', '1'],
+          ['btn', '2a', 'uno', 'D2', '5'],
+          ['btn', '2a', 'r', 'a', '5'],
+          ['r', 'b', 'uno', 'GND', '0'],
+        ],
+        `// Read a pushbutton on pin 2 and print its state to Serial.
+
+int pushButton = 2;
+
+void setup()
+{
+  Serial.begin(9600);
+  pinMode(pushButton, INPUT);
+}
+
+void loop()
+{
+  int buttonState = digitalRead(pushButton);
+  Serial.println(buttonState);
+  delay(50);
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-tone',
+    name: 'Tone',
+    category: 'arduino',
+    blurb: 'Play a fixed tone on a piezo buzzer using the tone() function.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['piezo', 'piezo', 0, -140],
+        ],
+        [
+          ['uno', 'D8', 'piezo', 'terminal1', '4'],
+          ['piezo', 'terminal2', 'uno', 'GND', '0'],
+        ],
+        `// Play a 440 Hz (concert A) tone on pin 8.
+
+void setup()
+{
+  tone(8, 440);
+}
+
+void loop()
+{
+  // Tone plays continuously in the background
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-lcd-i2c',
+    name: '2 wire LCD',
+    category: 'arduino',
+    blurb: 'Drive a 16 × 2 character LCD using a 2-wire I2C interface.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['lcd', 'lcd-16x2-i2c', 0, -140],
+        ],
+        [
+          ['uno', '5V', 'lcd', 'VCC', '1'],
+          ['uno', 'GND', 'lcd', 'GND', '0'],
+          ['uno', 'A4', 'lcd', 'SDA', '3'],
+          ['uno', 'A5', 'lcd', 'SCL', '2'],
+        ],
+        `// Drive an I2C LCD using SDA (A4) and SCL (A5).
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+void setup()
+{
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("Hello, World!");
+  lcd.setCursor(0, 1);
+  lcd.print("I2C 2-Wire LCD");
+}
+
+void loop()
+{
+  lcd.setCursor(11, 1);
+  lcd.print(millis() / 1000);
+  delay(500);
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-analog-in-out-serial',
+    name: 'Analog In, Serial Out',
+    category: 'arduino',
+    blurb: 'Read an analog sensor, map the value to PWM output, and stream both to the serial monitor.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['pot', 'potentiometer', -200, -150, { resistance: 10000 }],
+          ['r', 'resistor', 60, -150, { resistance: 220 }],
+          ['led', 'led', 220, -150, { color: 'blue' }],
+        ],
+        [
+          ['uno', '5V', 'pot', 'terminal1', '1'],
+          ['pot', 'wiper', 'uno', 'A0', '5'],
+          ['pot', 'terminal2', 'uno', 'GND', '0'],
+          ['uno', 'D9', 'r', 'a', '4'],
+          ['r', 'b', 'led', 'anode', '4'],
+          ['led', 'cathode', 'uno', 'GND', '0'],
+        ],
+        `// Read an analog input, map it to PWM output, and print to Serial.
+
+const int analogInPin = A0;
+const int analogOutPin = 9;
+
+int sensorValue = 0;
+int outputValue = 0;
+
+void setup()
+{
+  Serial.begin(9600);
+}
+
+void loop()
+{
+  sensorValue = analogRead(analogInPin);
+  outputValue = map(sensorValue, 0, 1023, 0, 255);
+  analogWrite(analogOutPin, outputValue);
+
+  Serial.print("sensor = ");
+  Serial.print(sensorValue);
+  Serial.print("\\t output = ");
+  Serial.println(outputValue);
+
+  delay(20);
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-calibration',
+    name: 'Calibration',
+    category: 'arduino',
+    blurb: 'Calibrate an analog sensor min and max range during startup and scale future readings against it.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['ldr', 'photoresistor', -220, -150],
+          ['rd', 'resistor', -220, -30, { resistance: 10000 }],
+          ['r', 'resistor', 60, -150, { resistance: 220 }],
+          ['led', 'led', 220, -150, { color: 'red' }],
+        ],
+        [
+          ['uno', '5V', 'ldr', 'terminal1', '1'],
+          ['ldr', 'terminal2', 'rd', 'a', '5'],
+          ['ldr', 'terminal2', 'uno', 'A0', '5'],
+          ['rd', 'b', 'uno', 'GND', '0'],
+          ['uno', 'D9', 'r', 'a', '4'],
+          ['r', 'b', 'led', 'anode', '4'],
+          ['led', 'cathode', 'uno', 'GND', '0'],
+        ],
+        `// Calibrate sensor min/max during the first 5 seconds of startup.
+
+const int sensorPin = A0;
+const int ledPin = 9;
+
+int sensorValue = 0;
+int sensorMin = 1023;
+int sensorMax = 0;
+
+void setup()
+{
+  pinMode(13, OUTPUT);
+  digitalWrite(13, HIGH);
+
+  // Calibrate during the first 5 seconds
+  while (millis() < 5000) {
+    sensorValue = analogRead(sensorPin);
+    if (sensorValue > sensorMax) {
+      sensorMax = sensorValue;
+    }
+    if (sensorValue < sensorMin) {
+      sensorMin = sensorValue;
+    }
+  }
+
+  digitalWrite(13, LOW);
+}
+
+void loop()
+{
+  sensorValue = analogRead(sensorPin);
+  sensorValue = map(sensorValue, sensorMin, sensorMax, 0, 255);
+  sensorValue = constrain(sensorValue, 0, 255);
+  analogWrite(ledPin, sensorValue);
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-smoothing',
+    name: 'Smoothing',
+    category: 'arduino',
+    blurb: 'Calculate a running average of analog readings over time to smooth out sensor noise.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['pot', 'potentiometer', -160, -150, { resistance: 10000 }],
+        ],
+        [
+          ['uno', '5V', 'pot', 'terminal1', '1'],
+          ['pot', 'wiper', 'uno', 'A0', '5'],
+          ['pot', 'terminal2', 'uno', 'GND', '0'],
+        ],
+        `// Running average filter over 10 readings to smooth noise.
+
+const int numReadings = 10;
+
+int readings[numReadings];
+int readIndex = 0;
+int total = 0;
+int average = 0;
+
+int inputPin = A0;
+
+void setup()
+{
+  Serial.begin(9600);
+  for (int thisReading = 0; thisReading < numReadings; thisReading++) {
+    readings[thisReading] = 0;
+  }
+}
+
+void loop()
+{
+  total = total - readings[readIndex];
+  readings[readIndex] = analogRead(inputPin);
+  total = total + readings[readIndex];
+  readIndex = readIndex + 1;
+
+  if (readIndex >= numReadings) {
+    readIndex = 0;
+  }
+
+  average = total / numReadings;
+  Serial.println(average);
+  delay(20);
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-read-analog-voltage',
+    name: 'Read Analog Voltage',
+    category: 'arduino',
+    blurb: 'Read an analog pin, convert the ADC value into an actual voltage, and print it to serial.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['pot', 'potentiometer', -160, -150, { resistance: 10000 }],
+        ],
+        [
+          ['uno', '5V', 'pot', 'terminal1', '1'],
+          ['pot', 'wiper', 'uno', 'A0', '5'],
+          ['pot', 'terminal2', 'uno', 'GND', '0'],
+        ],
+        `// Read analog pin A0 and convert value to voltage (0–5V).
+
+void setup()
+{
+  Serial.begin(9600);
+}
+
+void loop()
+{
+  int sensorValue = analogRead(A0);
+  float voltage = sensorValue * (5.0 / 1023.0);
+  Serial.print("Voltage: ");
+  Serial.print(voltage);
+  Serial.println(" V");
+  delay(100);
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-blink-without-delay',
+    name: 'Blink Without Delay',
+    category: 'arduino',
+    blurb: 'Blink an LED using millis() timing instead of delay() to keep the loop non-blocking.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['r', 'resistor', -60, -120, { resistance: 220 }],
+          ['led', 'led', 120, -120, { color: 'green' }],
+        ],
+        [
+          ['uno', 'D13', 'r', 'a', '4'],
+          ['r', 'b', 'led', 'anode', '4'],
+          ['led', 'cathode', 'uno', 'GND', '0'],
+        ],
+        `// Blink an LED without using delay().
+
+const int ledPin = 13;
+int ledState = LOW;
+
+unsigned long previousMillis = 0;
+const long interval = 1000;
+
+void setup()
+{
+  pinMode(ledPin, OUTPUT);
+}
+
+void loop()
+{
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+
+    if (ledState == LOW) {
+      ledState = HIGH;
+    } else {
+      ledState = LOW;
+    }
+
+    digitalWrite(ledPin, ledState);
+  }
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-input-pullup-serial',
+    name: 'Input Serial Pullup',
+    category: 'arduino',
+    blurb: 'Read a button wired with the internal pull-up resistor and print its state to serial.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['btn', 'pushbutton', -180, -140],
+          ['r', 'resistor', 60, -140, { resistance: 220 }],
+          ['led', 'led', 220, -140, { color: 'red' }],
+        ],
+        [
+          ['uno', 'D2', 'btn', '1a', '5'],
+          ['btn', '2a', 'uno', 'GND', '0'],
+          ['uno', 'D13', 'r', 'a', '4'],
+          ['r', 'b', 'led', 'anode', '4'],
+          ['led', 'cathode', 'uno', 'GND', '0'],
+        ],
+        `// Read a pushbutton with the internal pull-up resistor (INPUT_PULLUP).
+
+void setup()
+{
+  Serial.begin(9600);
+  pinMode(2, INPUT_PULLUP);
+  pinMode(13, OUTPUT);
+}
+
+void loop()
+{
+  int sensorVal = digitalRead(2);
+  Serial.println(sensorVal);
+
+  // Active LOW: button press connects pin 2 to ground
+  if (sensorVal == HIGH) {
+    digitalWrite(13, LOW);
+  } else {
+    digitalWrite(13, HIGH);
+  }
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-moisture',
+    name: 'Moisture',
+    category: 'arduino',
+    blurb: 'Read a soil moisture sensor and display the level across a 5-LED bar graph on a mini breadboard.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 0],
+          ['bb', 'breadboard-mini', 25, -10],
+          ['led1', 'led', -15, -65, { color: 'red' }],
+          ['led2', 'led', 5, -65, { color: 'red' }],
+          ['led3', 'led', 25, -65, { color: 'yellow' }],
+          ['led4', 'led', 45, -65, { color: 'green' }],
+          ['led5', 'led', 65, -65, { color: 'blue' }],
+          ['r1', 'resistor', -30, -90, { resistance: 220 }],
+          ['soil', 'soil-moisture', 35, 260],
+        ],
+        [
+          // Uno digital pins to 5 LEDs on breadboard
+          ['uno', 'D13', 'led1', 'anode', '1'],
+          ['uno', 'D12', 'led2', 'anode', '6'],
+          ['uno', 'D11', 'led3', 'anode', '3'],
+          ['uno', 'D10', 'led4', 'anode', '2'],
+          ['uno', 'D9', 'led5', 'anode', '4'],
+          // Common ground bus through 220 ohm current-limiting resistor
+          ['led1', 'cathode', 'led2', 'cathode', '5'],
+          ['led2', 'cathode', 'led3', 'cathode', '5'],
+          ['led3', 'cathode', 'led4', 'cathode', '5'],
+          ['led4', 'cathode', 'led5', 'cathode', '5'],
+          ['led1', 'cathode', 'r1', 'a', '2'],
+          ['r1', 'b', 'uno', 'GND', '0'],
+          // Soil moisture sensor wiring
+          ['uno', '5V', 'soil', 'VCC', '6'],
+          ['uno', 'GND', 'soil', 'GND', '0'],
+          ['uno', 'A0', 'soil', 'SIG', '2'],
+        ],
+        `// Soil Moisture Sensor with 5-LED graph indicator
+
+int moisture = 0;
+
+void setup()
+{
+  pinMode(A0, INPUT);
+  Serial.begin(9600);
+  pinMode(13, OUTPUT);
+  pinMode(12, OUTPUT);
+  pinMode(11, OUTPUT);
+  pinMode(10, OUTPUT);
+  pinMode(9, OUTPUT);
+}
+
+void loop()
+{
+  // Read soil moisture sensor on analog pin A0
+  moisture = analogRead(A0);
+  Serial.print("Moisture: ");
+  Serial.println(moisture);
+
+  // 5 LEDs bar-graph display based on moisture level:
+  digitalWrite(13, moisture > 100 ? HIGH : LOW);
+  digitalWrite(12, moisture > 300 ? HIGH : LOW);
+  digitalWrite(11, moisture > 500 ? HIGH : LOW);
+  digitalWrite(10, moisture > 700 ? HIGH : LOW);
+  digitalWrite(9, moisture > 850 ? HIGH : LOW);
+
+  delay(50);
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-voltage-meter',
+    name: 'Voltage Meter',
+    category: 'arduino',
+    blurb: 'Measure an external DC voltage through a voltage divider and display the reading on the serial monitor.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['r1', 'resistor', -180, -150, { resistance: 10000 }],
+          ['r2', 'resistor', -180, -30, { resistance: 10000 }],
+          ['pot', 'potentiometer', 180, -150, { resistance: 10000 }],
+        ],
+        [
+          ['uno', '5V', 'pot', 'terminal1', '1'],
+          ['pot', 'terminal2', 'uno', 'GND', '0'],
+          ['pot', 'wiper', 'r1', 'a', '3'],
+          ['r1', 'b', 'r2', 'a', '5'],
+          ['r1', 'b', 'uno', 'A0', '5'],
+          ['r2', 'b', 'uno', 'GND', '0'],
+        ],
+        `// DC Voltage Meter with 2:1 voltage divider.
+
+const int voltPin = A0;
+const float R1 = 10000.0;
+const float R2 = 10000.0;
+
+void setup()
+{
+  Serial.begin(9600);
+}
+
+void loop()
+{
+  int raw = analogRead(voltPin);
+  float vPin = raw * (5.0 / 1023.0);
+  float vTotal = vPin * ((R1 + R2) / R2);
+
+  Serial.print("Measured: ");
+  Serial.print(vTotal, 2);
+  Serial.println(" V");
+  delay(250);
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-ir-recv',
+    name: 'Infrared Receiver',
+    category: 'arduino',
+    blurb: 'Read and decode infrared remote signals using an IR receiver module.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['recv', 'ir-receiver', -180, -140],
+          ['remote', 'ir-remote', 200, -140],
+          ['r', 'resistor', 40, 20, { resistance: 220 }],
+          ['led', 'led', 180, 20, { color: 'red' }],
+        ],
+        [
+          ['uno', '5V', 'recv', 'VCC', '1'],
+          ['uno', 'GND', 'recv', 'GND', '0'],
+          ['recv', 'OUT', 'uno', 'D11', '5'],
+          ['uno', 'D13', 'r', 'a', '4'],
+          ['r', 'b', 'led', 'anode', '4'],
+          ['led', 'cathode', 'uno', 'GND', '0'],
+        ],
+        `// Decode IR remote signals with an IR receiver.
+#include <IRremote.h>
+
+const int RECV_PIN = 11;
+IRrecv irrecv(RECV_PIN);
+decode_results results;
+
+void setup()
+{
+  Serial.begin(9600);
+  irrecv.enableIRIn();
+  pinMode(13, OUTPUT);
+}
+
+void loop()
+{
+  if (irrecv.decode(&results)) {
+    Serial.print("IR Code: 0x");
+    Serial.println(results.value, HEX);
+    digitalWrite(13, HIGH);
+    delay(50);
+    digitalWrite(13, LOW);
+    irrecv.resume();
+  }
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-tone-multiple',
+    name: 'Tone Multiple',
+    category: 'arduino',
+    blurb: 'Play tones across multiple piezo buzzers on separate pins in sequence.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['piezo1', 'piezo', -180, -140],
+          ['piezo2', 'piezo', 180, -140],
+        ],
+        [
+          ['uno', 'D8', 'piezo1', 'terminal1', '4'],
+          ['piezo1', 'terminal2', 'uno', 'GND', '0'],
+          ['uno', 'D9', 'piezo2', 'terminal1', '3'],
+          ['piezo2', 'terminal2', 'uno', 'GND', '0'],
+        ],
+        `// Play tones on multiple piezo buzzers in sequence.
+
+const int buzzer1 = 8;
+const int buzzer2 = 9;
+
+void setup()
+{
+  // tone pins configured automatically
+}
+
+void loop()
+{
+  tone(buzzer1, 440, 200);
+  delay(300);
+  tone(buzzer2, 880, 200);
+  delay(300);
+  tone(buzzer1, 523, 200);
+  delay(300);
+  tone(buzzer2, 1046, 200);
+  delay(500);
+}
+`,
+      ),
+  },
+  {
+    id: 'ard-tone-pitch',
+    name: 'Tone Pitch Follower',
+    category: 'arduino',
+    blurb: 'Vary the pitch of a piezo buzzer in real time based on light level from a photoresistor.',
+    build: () =>
+      build(
+        [
+          ['uno', 'uno-r3', 0, 240],
+          ['ldr', 'photoresistor', -220, -140],
+          ['rd', 'resistor', -220, -20, { resistance: 10000 }],
+          ['piezo', 'piezo', 180, -140],
+        ],
+        [
+          ['uno', '5V', 'ldr', 'terminal1', '1'],
+          ['ldr', 'terminal2', 'rd', 'a', '5'],
+          ['ldr', 'terminal2', 'uno', 'A0', '5'],
+          ['rd', 'b', 'uno', 'GND', '0'],
+          ['uno', 'D9', 'piezo', 'terminal1', '4'],
+          ['piezo', 'terminal2', 'uno', 'GND', '0'],
+        ],
+        `// Vary the pitch of a tone based on analog sensor input.
+
+const int sensorPin = A0;
+const int piezoPin = 9;
+
+void setup()
+{
+  // Sensor and tone setup
+}
+
+void loop()
+{
+  int sensorReading = analogRead(sensorPin);
+  int thisPitch = map(sensorReading, 0, 1023, 120, 1500);
+  tone(piezoPin, thisPitch, 10);
+  delay(10);
+}
+`,
+      ),
+  },
 ];
 
 // ─── Circuit assemblies ──────────────────────────────────────────────────────
@@ -1596,6 +2603,267 @@ while True:
     index = int((heading + 22) / 45) % 8
     display.show(arrows[index])
     sleep(100)
+`,
+      ),
+  },
+  {
+    id: 'mb-breadboard',
+    name: 'Breadboard',
+    category: 'microbit',
+    blurb: 'A micro:bit wired to a breadboard controlling an external LED circuit.',
+    build: () =>
+      build(
+        [
+          ['mb', 'microbit', -180, 0],
+          ['bb', 'breadboard-small', 220, 0],
+          ['r', 'resistor', 160, -40, { resistance: 220 }],
+          ['led', 'led', 260, -40, { color: 'yellow' }],
+        ],
+        [
+          ['mb', '0', 'r', 'a', '1'],
+          ['r', 'b', 'led', 'anode', '1'],
+          ['led', 'cathode', 'mb', 'GND', '0'],
+        ],
+        undefined,
+        `from microbit import *
+
+while True:
+    pin0.write_digital(1)
+    sleep(500)
+    pin0.write_digital(0)
+    sleep(500)
+`,
+      ),
+  },
+  {
+    id: 'mb-alarm',
+    name: 'Alarm',
+    category: 'microbit',
+    blurb: 'An alarm that sounds the buzzer and flashes the display when a button is pressed.',
+    build: () =>
+      build(
+        [
+          ['mb', 'microbit', -120, 0],
+          ['piezo', 'piezo', 220, 0],
+        ],
+        [
+          ['mb', '0', 'piezo', 'terminal1', '1'],
+          ['mb', 'GND', 'piezo', 'terminal2', '0'],
+        ],
+        undefined,
+        `from microbit import *
+import music
+
+while True:
+    if button_a.is_pressed():
+        display.show(Image.SKULL)
+        music.pitch(880, 200)
+        music.pitch(440, 200)
+    else:
+        display.show(Image.HAPPY)
+        sleep(50)
+`,
+      ),
+  },
+  {
+    id: 'mb-analog',
+    name: 'Analog',
+    category: 'microbit',
+    blurb: 'Reads an analog voltage on pin 0 and visualizes the value on the 5x5 LED display.',
+    build: () =>
+      build(
+        [
+          ['mb', 'microbit', -120, 0],
+          ['pot', 'potentiometer', 200, 0, { resistance: 10000 }],
+        ],
+        [
+          ['mb', '3V', 'pot', 'terminal2', '1'],
+          ['mb', 'GND', 'pot', 'terminal1', '0'],
+          ['pot', 'wiper', 'mb', '0', '2'],
+        ],
+        undefined,
+        `from microbit import *
+
+while True:
+    val = pin0.read_analog()
+    level = int(val / 205)
+    display.clear()
+    for y in range(5 - level, 5):
+        for x in range(5):
+            display.set_pixel(x, y, 9)
+    sleep(50)
+`,
+      ),
+  },
+  {
+    id: 'mb-gestures',
+    name: 'Gestures',
+    category: 'microbit',
+    blurb: 'Detects shake, tilt, and motion gestures using the onboard accelerometer.',
+    build: () =>
+      build(
+        [['mb', 'microbit', 0, 0]],
+        [],
+        undefined,
+        `from microbit import *
+
+while True:
+    gesture = accelerometer.current_gesture()
+    if gesture == "shake":
+        display.show(Image.CONFUSED)
+    elif gesture == "up":
+        display.show(Image.ARROW_N)
+    elif gesture == "down":
+        display.show(Image.ARROW_S)
+    elif gesture == "left":
+        display.show(Image.ARROW_W)
+    elif gesture == "right":
+        display.show(Image.ARROW_E)
+    elif gesture == "face up":
+        display.show(Image.HAPPY)
+    elif gesture == "face down":
+        display.show(Image.ASLEEP)
+    sleep(100)
+`,
+      ),
+  },
+  {
+    id: 'mb-light',
+    name: 'Light',
+    category: 'microbit',
+    blurb: 'Reads ambient light using the LED matrix and turns on a night-light icon in the dark.',
+    build: () =>
+      build(
+        [['mb', 'microbit', 0, 0]],
+        [],
+        undefined,
+        `from microbit import *
+
+while True:
+    light = display.read_light_level()
+    if light < 80:
+        display.show(Image.SUN)
+    else:
+        display.clear()
+    sleep(100)
+`,
+      ),
+  },
+  {
+    id: 'mb-moisture',
+    name: 'Moisture',
+    category: 'microbit',
+    blurb: 'Reads a soil moisture sensor on pin 0 and shows happy or thirsty icons.',
+    build: () =>
+      build(
+        [
+          ['mb', 'microbit', -140, 0],
+          ['soil', 'soil-moisture', 180, 0],
+        ],
+        [
+          ['mb', '3V', 'soil', 'VCC', '1'],
+          ['mb', 'GND', 'soil', 'GND', '0'],
+          ['soil', 'SIG', 'mb', '0', '2'],
+        ],
+        undefined,
+        `from microbit import *
+
+while True:
+    moisture = pin0.read_analog()
+    if moisture > 400:
+        display.show(Image.HAPPY)
+    else:
+        display.show(Image.SAD)
+    sleep(200)
+`,
+      ),
+  },
+  {
+    id: 'mb-radio',
+    name: 'Radio',
+    category: 'microbit',
+    blurb: 'Two micro:bits sharing messages over wireless radio — press Button A on either board to send a heart!',
+    build: () =>
+      build(
+        [
+          ['mb1', 'microbit', -180, 0],
+          ['mb2', 'microbit', 180, 0],
+        ],
+        [],
+        undefined,
+        `from microbit import *
+import radio
+
+radio.on()
+radio.config(group=1)
+
+# Press Button A on either micro:bit to send; the other board receives it and displays a heart!
+while True:
+    if button_a.was_pressed():
+        radio.send('heart')
+        display.show(Image.ARROW_E)
+        sleep(400)
+        display.clear()
+    msg = radio.receive()
+    if msg == 'heart':
+        display.show(Image.HEART)
+        sleep(1000)
+        display.clear()
+    sleep(50)
+`,
+      ),
+  },
+  {
+    id: 'mb-servo',
+    name: 'Servo',
+    category: 'microbit',
+    blurb: 'Positions a positional micro servo by sending PWM angles from pin 0.',
+    build: () =>
+      build(
+        [
+          ['mb', 'microbit', -160, 0],
+          ['servo', 'micro-servo', 180, 0],
+          ['bat', 'battery-pack-4aa', 20, 180],
+        ],
+        [
+          ['mb', '0', 'servo', 'signal', '2'],
+          ['bat', '+', 'servo', 'power', '1'],
+          ['bat', '-', 'servo', 'gnd', '0'],
+          ['mb', 'GND', 'bat', '-', '0'],
+        ],
+        undefined,
+        `from microbit import *
+
+pin0.set_analog_period(20)
+
+while True:
+    pin0.write_analog(26)
+    sleep(1000)
+    pin0.write_analog(77)
+    sleep(1000)
+    pin0.write_analog(128)
+    sleep(1000)
+`,
+      ),
+  },
+  {
+    id: 'mb-blank',
+    name: 'micro:bit (blank)',
+    category: 'microbit',
+    blurb: 'A clean micro:bit board ready for free-form programming and circuit building.',
+    build: () =>
+      build(
+        [['mb', 'microbit', 0, 0]],
+        [],
+        undefined,
+        `from microbit import *
+
+# Write your MicroPython code here!
+while True:
+    display.show(Image.HAPPY)
+    sleep(1000)
+    display.clear()
+    sleep(500)
 `,
       ),
   },

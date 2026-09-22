@@ -21,6 +21,7 @@ export interface MicrobitHandle {
 }
 
 export const MICROBIT_KEY = 'microbit';
+const MB_RADIO_BUS = 'mb_radio_bus';
 
 /**
  * micro:bit v2.
@@ -40,6 +41,31 @@ defineDevice('microbit', (): Device => {
     stamp(c, ctx) {
       const handle: MicrobitHandle = { board, interp, netToPin };
       ctx.shared.set(MICROBIT_KEY, handle);
+
+      // Register board in shared radio bus for multi-microbit wireless communication
+      let radioBus = ctx.shared.get(MB_RADIO_BUS) as Set<MicrobitBoard> | undefined;
+      if (!radioBus) {
+        radioBus = new Set();
+        ctx.shared.set(MB_RADIO_BUS, radioBus);
+      }
+      radioBus.add(board);
+
+      board.onRadioSend = (msg, group) => {
+        const bus = ctx.shared.get(MB_RADIO_BUS) as Set<MicrobitBoard> | undefined;
+        let delivered = false;
+        if (bus && bus.size > 1) {
+          for (const other of bus) {
+            if (other !== board && other.radioOn && other.radioGroup === group) {
+              other.radioQueue.push(msg);
+              delivered = true;
+            }
+          }
+        }
+        if (!delivered) {
+          // Loopback if single board or no other receiver
+          board.radioQueue.push(msg);
+        }
+      };
 
       const source = String(ctx.props.__python ?? '');
       if (source !== loadedSource) {
@@ -109,6 +135,7 @@ defineDevice('microbit', (): Device => {
         tiltX: ctx.s.tiltX ?? 0,
         tiltY: ctx.s.tiltY ?? 0,
         gesture: board.gesture,
+        lightLevel: board.lightLevel,
         powered,
         running: !interp.finished && !interp.parseErrors.length,
         error: interp.runtimeError ? interp.runtimeError.message : '',
@@ -133,6 +160,9 @@ defineDevice('microbit', (): Device => {
           break;
         case 'shake':
           board.shake();
+          break;
+        case 'light':
+          board.lightLevel = clamp(Number(value), 0, 255);
           break;
         case 'tilt': {
           // The art sends a screen-space delta; x rolls, y pitches.
