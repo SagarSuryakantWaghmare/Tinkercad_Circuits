@@ -130,6 +130,8 @@ export function CanvasRoot() {
 
   // ── pointer state machine ──────────────────────────────────────────────────
   const downRef = useRef<{
+    /** Which pointer owns this gesture; a release by any other is not ours. */
+    pointerId: number;
     screen: Vec2;
     world: Vec2;
     moved: boolean;
@@ -178,6 +180,7 @@ export function CanvasRoot() {
 
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
     downRef.current = {
+      pointerId: e.pointerId,
       screen: screenOf(e),
       world,
       moved: false,
@@ -246,6 +249,7 @@ export function CanvasRoot() {
       (id) => !selection.includes(id),
     );
     downRef.current = {
+      pointerId: e.pointerId,
       screen: screenOf(e),
       world,
       moved: false,
@@ -371,8 +375,12 @@ export function CanvasRoot() {
     }
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e: React.PointerEvent) => {
     const mode = ed.mode;
+    // A second finger, or a stray button, releasing over the canvas is not the
+    // end of the gesture in progress — acting on it would commit a drag or
+    // start a wire that the user never finished.
+    if (downRef.current && e.pointerId !== downRef.current.pointerId) return;
 
     if (mode.kind === 'pan') {
       ed.setMode({ kind: 'idle' });
@@ -419,6 +427,22 @@ export function CanvasRoot() {
       }
       return;
     }
+  };
+
+  /**
+   * The gesture was taken away rather than completed — a touch the browser
+   * turned into a scroll, or a pointer that left the window. A press that was
+   * interrupted is not a click, so this tears the drag down without the
+   * release path's side effects: no wire is started from a socket that was
+   * only ever pressed.
+   */
+  const onPointerCancel = (e: React.PointerEvent) => {
+    if (downRef.current && e.pointerId !== downRef.current.pointerId) return;
+    if (ed.mode.kind === 'dragParts') commit();
+    downRef.current = null;
+    setSnapPreview([]);
+    // A wire being routed has no pointer down to lose, so it survives.
+    if (ed.mode.kind !== 'drawWire') ed.setMode({ kind: 'idle' });
   };
 
   function finishWire(from: WireAnchor, to: WireAnchor, waypoints: Vec2[]) {
@@ -731,7 +755,7 @@ export function CanvasRoot() {
       onPointerDown={onBackgroundDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
+      onPointerCancel={onPointerCancel}
       onContextMenu={(e) => {
         e.preventDefault();
         const el = (e.target as Element).closest('[data-part],[data-wire]');
