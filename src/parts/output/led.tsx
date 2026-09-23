@@ -138,7 +138,8 @@ function RgbLedArt({ state }: ArtProps<RgbProps>) {
   return (
     <g>
       <Leg x1={-15} y1={4} x2={-15} y2={18} />
-      <Leg x1={-5} y1={4} x2={-5} y2={26} />
+      {/* 28, a whole pitch below the others, so all four legs reach holes. */}
+      <Leg x1={-5} y1={4} x2={-5} y2={28} />
       <Leg x1={5} y1={4} x2={5} y2={18} />
       <Leg x1={15} y1={4} x2={15} y2={18} />
       {lit > 0.01 && (
@@ -167,7 +168,7 @@ export const RgbLed = definePart<RgbProps>({
   model: 'led-rgb',
   terminals: [
     { name: 'red', type: 'breadboard_male', x: -15, y: 18, dir: [0, 1] },
-    { name: 'common', type: 'breadboard_male', x: -5, y: 26, dir: [0, 1] },
+    { name: 'common', type: 'breadboard_male', x: -5, y: 28, dir: [0, 1] },
     { name: 'green', type: 'breadboard_male', x: 5, y: 18, dir: [0, 1] },
     { name: 'blue', type: 'breadboard_male', x: 15, y: 18, dir: [0, 1] },
   ],
@@ -202,7 +203,8 @@ function RgbLedCaArt({ state }: ArtProps<RgbCaProps>) {
     <g>
       {/* Anode is the long leg (second from the left on a CA part). */}
       <Leg x1={-15} y1={4} x2={-15} y2={18} />
-      <Leg x1={-5} y1={4} x2={-5} y2={26} />
+      {/* 28, a whole pitch below the others, so all four legs reach holes. */}
+      <Leg x1={-5} y1={4} x2={-5} y2={28} />
       <Leg x1={5} y1={4} x2={5} y2={18} />
       <Leg x1={15} y1={4} x2={15} y2={18} />
       {lit > 0.01 && (
@@ -230,7 +232,7 @@ export const RgbLedCa = definePart<RgbCaProps>({
   model: 'led-rgb',
   terminals: [
     { name: 'R', type: 'breadboard_male', x: -15, y: 18, dir: [0, 1] },
-    { name: 'anode', type: 'breadboard_male', x: -5, y: 26, dir: [0, 1], role: 'power' },
+    { name: 'anode', type: 'breadboard_male', x: -5, y: 28, dir: [0, 1], role: 'power' },
     { name: 'G', type: 'breadboard_male', x: 5, y: 18, dir: [0, 1] },
     { name: 'B', type: 'breadboard_male', x: 15, y: 18, dir: [0, 1] },
   ],

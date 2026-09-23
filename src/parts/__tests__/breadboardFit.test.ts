@@ -22,8 +22,6 @@ import { PITCH } from '@/lib/units';
  * add to it.
  */
 const KNOWN_UNFITTED = new Set([
-  'led-rgb', // common pin sits 8 from the colour pins, needs 10
-  'led-rgb-ca',
   'slide-switch-mini', // legs on an 8 pitch
   'rocker-switch', // terminals 28 apart
   'pushbutton-30mm', // 68 x 72 between corners
