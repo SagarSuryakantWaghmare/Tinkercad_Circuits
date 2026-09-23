@@ -1,6 +1,7 @@
 'use client';
 
 import { useDesignStore } from '@/state/designStore';
+import { rotationStepFor } from '@/canvas/snapping';
 import { useEditorStore } from '@/state/editorStore';
 import { useSimStore } from '@/state/simStore';
 import { WIRE_COLORS } from '@/lib/tokens';
@@ -37,7 +38,10 @@ export function Toolbar() {
     transact('Rotate', (d) => {
       for (const id of ed.selectedParts) {
         const p = d.parts[id];
-        if (p) p.rotation = (p.rotation + 90) % 360;
+        // The same step the R key and the context menu use: 90 degrees once a
+        // part can socket, 30 otherwise. Hardcoding 90 here meant the button
+        // and the shortcut turned the same selection by different amounts.
+        if (p) p.rotation = (p.rotation + rotationStepFor(p)) % 360;
       }
     });
 
