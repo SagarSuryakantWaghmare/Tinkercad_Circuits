@@ -11,6 +11,28 @@ import { StarterThumb } from './StarterThumb';
 import { IconSearch } from '../icons';
 import { contentBounds } from '../useHotkeys';
 
+/**
+ * The headed sections of the "All" list.
+ *
+ * Grouped by a part's primary category only. A part may also declare
+ * altCategories so that filtering to either one finds it — but honouring
+ * those here put the same part under two headings of one list, so the 74
+ * series ICs were each listed twice while the count beside them, taken from
+ * the ungrouped pool, said once.
+ */
+export function groupByCategory(parts: PartDef<never>[]) {
+  const map = new Map<string, PartDef<never>[]>();
+  for (const p of parts) {
+    const arr = map.get(p.category) ?? [];
+    arr.push(p);
+    map.set(p.category, arr);
+  }
+  return CATEGORIES.filter((c) => map.has(c.id)).map((c) => ({
+    label: c.label,
+    items: map.get(c.id)!,
+  }));
+}
+
 export function ComponentPanel() {
   const view = useEditorStore((s) => s.panelView);
   const setView = useEditorStore((s) => s.setPanelView);
@@ -70,18 +92,7 @@ export function ComponentPanel() {
 
   const groupedParts = useMemo(() => {
     if (view === 'starters' || category !== 'all' || search.trim()) return null;
-    const map = new Map<string, PartDef<never>[]>();
-    for (const p of parts) {
-      for (const cat of categoriesOf(p)) {
-        const arr = map.get(cat) ?? [];
-        arr.push(p);
-        map.set(cat, arr);
-      }
-    }
-    return CATEGORIES.filter((c) => map.has(c.id)).map((c) => ({
-      label: c.label,
-      items: map.get(c.id)!,
-    }));
+    return groupByCategory(parts);
   }, [view, parts, category, search]);
 
   // Starters list
