@@ -409,6 +409,10 @@ export const Oscilloscope = definePart<ScopeProps>({
     const vdiv = Number(props.voltsPerDiv) || 1;
     const ch1 = (state?.ch1 as number[] | undefined) ?? [];
     const ch2 = (state?.ch2 as number[] | undefined) ?? [];
+    // How much of the graticule the captured samples are entitled to. Drawing
+    // a part-window across the full width would put the time axis out by
+    // whatever fraction was missing.
+    const fill = Math.max(0, Math.min(1, Number(state?.fill ?? 1)));
 
     const trace = (samples: number[]) => {
       if (samples.length < 2) return '';
@@ -422,7 +426,7 @@ export const Oscilloscope = definePart<ScopeProps>({
           pen = false;
           continue;
         }
-        const x = -W / 2 + (i / (samples.length - 1)) * W;
+        const x = -W / 2 + (i / (samples.length - 1)) * W * fill;
         const y = clamp(-(v / vdiv) * (H / 8), -H / 2, H / 2);
         if (!Number.isFinite(y)) {
           pen = false;

@@ -129,9 +129,14 @@ defineDevice('function-generator', (): Device => ({
 
 /** Samples per trace shown on screen. */
 const SCOPE_POINTS = 400;
-/** Deep ring so a slow time-base still has enough history to draw the full
- *  display window without wrapping into stale data. */
-const SCOPE_CAP = 8192;
+/**
+ * Deep enough that the slowest time base still has a whole window of history.
+ *
+ * The scope forces the fine solver step, so the 0.5 s/div setting's 5 second
+ * window is 50 000 samples. At 8192 the ring held 0.82 s, and the display
+ * quietly drew that under a graticule claiming five seconds.
+ */
+const SCOPE_CAP = 65536;
 
 /**
  * Where the visible window should start, given a ring of samples.
@@ -237,6 +242,7 @@ defineDevice('oscilloscope', (): Device => {
           ch2: [] as number[],
           vpp1: 0,
           vpp2: 0,
+          fill: 0,
           timePerDiv: num(ctx.props.timePerDiv, 0.001),
           voltsPerDiv: num(ctx.props.voltsPerDiv, 1),
         };
@@ -298,6 +304,12 @@ defineDevice('oscilloscope', (): Device => {
         ch2: b,
         vpp1: Math.max(0, a1 - b1),
         vpp2: Math.max(0, a2 - b2),
+        // What fraction of the requested window these samples actually span.
+        // Short of a full window — just after a restart, or right after
+        // switching to a slower base — the trace must occupy only that much
+        // of the graticule instead of being stretched across all ten
+        // divisions, which made the time axis read several times too slow.
+        fill: Math.max(0, Math.min(1, visibleSpan / span)),
         timePerDiv: num(ctx.props.timePerDiv, 0.001),
         voltsPerDiv: num(ctx.props.voltsPerDiv, 1),
       };
