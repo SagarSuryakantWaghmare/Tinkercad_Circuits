@@ -133,6 +133,67 @@ const SCOPE_POINTS = 400;
  *  display window without wrapping into stale data. */
 const SCOPE_CAP = 8192;
 
+/**
+ * Where the visible window should start, given a ring of samples.
+ *
+ * Anchoring the window to the newest sample is what makes the trace tear: the
+ * solver advances further in one animation frame than a fast time base is
+ * wide, so consecutive frames show slices of the waveform that do not overlap
+ * at all, and a steady sine reads as noise. A real scope triggers instead —
+ * it finds the same point on the waveform every sweep and draws from there.
+ *
+ * Returns the timestamp of the most recent rising crossing of the midpoint of
+ * the signal's swing that still leaves a full window of samples after it, or
+ * null when there is nothing to lock onto (a flat or DC trace), in which case
+ * the caller should free-run.
+ */
+export function findTrigger(
+  ch: Float32Array | number[],
+  ts: Float64Array | number[],
+  head: number,
+  count: number,
+  cap: number,
+  notAfter: number,
+): number | null {
+  if (count < 3) return null;
+  const oldest = (head - count + cap) % cap;
+
+  let hi = -Infinity;
+  let lo = Infinity;
+  for (let i = 0; i < count; i++) {
+    const v = ch[(oldest + i) % cap];
+    if (v > hi) hi = v;
+    if (v < lo) lo = v;
+  }
+  const swing = hi - lo;
+  // Nothing is crossing anything: DC, or noise too small to be a signal.
+  if (!(swing > 1e-6)) return null;
+  const level = (hi + lo) / 2;
+  // A band the signal must fall below before a crossing counts, so ripple
+  // sitting on the level does not fire a trigger on every other sample.
+  const hyst = swing * 0.05;
+
+  // Sweep forward, keeping the last rising crossing that still leaves a whole
+  // window after it. The arming is latched rather than compared against the
+  // immediately preceding sample: at a fine solver step consecutive samples
+  // differ by a tiny fraction of the swing, so the sample before a crossing is
+  // only just under the level and would never clear a hysteresis band.
+  let armed = false;
+  let latest: number | null = null;
+  for (let i = 0; i < count; i++) {
+    const j = (oldest + i) % cap;
+    const v = ch[j];
+    if (v < level - hyst) {
+      armed = true;
+    } else if (armed && v >= level) {
+      if (ts[j] > notAfter) break; // timestamps only increase; nothing later fits
+      latest = ts[j];
+      armed = false;
+    }
+  }
+  return latest;
+}
+
 defineDevice('oscilloscope', (): Device => {
   const ch1 = new Float32Array(SCOPE_CAP);
   const ch2 = new Float32Array(SCOPE_CAP);
@@ -185,11 +246,18 @@ defineDevice('oscilloscope', (): Device => {
       const tNow = ts[newest];
       const oldestNeeded = (head - count + SCOPE_CAP) % SCOPE_CAP;
       const tOldest = ts[oldestNeeded];
+      // Lock the window to a repeatable point on the waveform. Without this
+      // the sweep is anchored to whatever the newest sample happens to be,
+      // which moves by a frame's worth of solver time — more than a fast time
+      // base is wide — so the trace never lands twice in the same place.
+      const trigger = findTrigger(ch1, ts, head, count, SCOPE_CAP, tNow - span);
       // If the requested window predates our history, start at the oldest
       // sample instead of clamping every column to it (which draws a long
       // flat leader before the real trace).
-      const tStart = Math.max(tNow - span, tOldest);
-      const visibleSpan = tNow - tStart || span;
+      const tStart = Math.max(trigger ?? tNow - span, tOldest);
+      // A triggered sweep always has a whole window after it; only a short
+      // history shows less than one.
+      const visibleSpan = Math.min(span, tNow - tStart) || span;
 
       // Resample the ring onto SCOPE_POINTS evenly spaced along the display
       // window. Target time sweeps left-to-right; the previous implementation
