@@ -26,9 +26,24 @@ export function Toolbar() {
   const future = useDesignStore((s) => s.future.length);
   const transact = useDesignStore((s) => s.transact);
 
-  const ed = useEditorStore();
+  // Narrow selectors, not the whole store: editorStore also holds pan, zoom,
+  // mode and the hover targets, every one of which is written on each
+  // pointermove of a pan, a drag, a marquee or a wire. Subscribing to all of
+  // it re-rendered the toolbar's thirty-odd buttons and swatches at pointer
+  // rate, competing with the canvas for the same frame.
+  const handTool = useEditorStore((s) => s.handTool);
+  const componentView = useEditorStore((s) => s.componentView);
+  const notesVisible = useEditorStore((s) => s.notesVisible);
+  const wireColor = useEditorStore((s) => s.wireColor);
+  const selectedParts = useEditorStore((s) => s.selectedParts);
+  const selectedWires = useEditorStore((s) => s.selectedWires);
+  const setHandTool = useEditorStore((s) => s.setHandTool);
+  const setComponentView = useEditorStore((s) => s.setComponentView);
+  const setWireColor = useEditorStore((s) => s.setWireColor);
+  const toggleNotes = useEditorStore((s) => s.toggleNotes);
+  const clearSelection = useEditorStore((s) => s.clearSelection);
   const running = useSimStore((s) => s.runState === 'running' || s.runState === 'paused');
-  const hasSelection = ed.selectedParts.length + ed.selectedWires.length > 0;
+  const hasSelection = selectedParts.length + selectedWires.length > 0;
   // Editing the design while the sim is running would rebuild the netlist
   // mid-run, which is fine for wire tweaks but usually not what the user
   // intends when they hit Delete or Rotate. Grey those affordances.
@@ -36,7 +51,7 @@ export function Toolbar() {
 
   const rotate = () =>
     transact('Rotate', (d) => {
-      for (const id of ed.selectedParts) {
+      for (const id of selectedParts) {
         const p = d.parts[id];
         // The same step the R key and the context menu use: 90 degrees once a
         // part can socket, 30 otherwise. Hardcoding 90 here meant the button
@@ -47,7 +62,7 @@ export function Toolbar() {
 
   const mirror = () =>
     transact('Mirror', (d) => {
-      for (const id of ed.selectedParts) {
+      for (const id of selectedParts) {
         const p = d.parts[id];
         if (p) p.mirrored = !p.mirrored;
       }
@@ -55,7 +70,7 @@ export function Toolbar() {
 
   const remove = () => {
     transact('Delete', (d) => {
-      for (const id of ed.selectedParts) {
+      for (const id of selectedParts) {
         delete d.parts[id];
         for (const wid in d.wires) {
           const w = d.wires[wid];
@@ -66,9 +81,9 @@ export function Toolbar() {
             delete d.wires[wid];
         }
       }
-      for (const id of ed.selectedWires) delete d.wires[id];
+      for (const id of selectedWires) delete d.wires[id];
     });
-    ed.clearSelection();
+    clearSelection();
   };
 
   return (
@@ -98,19 +113,19 @@ export function Toolbar() {
       >
         <TBtn
           title="Select tool (V) — click to select or drag components"
-          active={!ed.handTool}
-          onClick={() => ed.setHandTool(false)}
+          active={!handTool}
+          onClick={() => setHandTool(false)}
         >
           <IconCursor />
         </TBtn>
         <TBtn
           title="Pan / hand tool (H) — drag the canvas"
-          active={ed.handTool}
-          prominent={ed.handTool}
-          onClick={() => ed.setHandTool(!ed.handTool)}
+          active={handTool}
+          prominent={handTool}
+          onClick={() => setHandTool(!handTool)}
         >
           <IconHand />
-          {ed.handTool && (
+          {handTool && (
             <span className="ml-1 text-[10px] font-bold uppercase leading-none tracking-wide">
               Pan
             </span>
@@ -122,14 +137,14 @@ export function Toolbar() {
 
       <TBtn
         title="Rotate (R)"
-        disabled={editDisabled || !ed.selectedParts.length}
+        disabled={editDisabled || !selectedParts.length}
         onClick={rotate}
       >
         <IconRotate />
       </TBtn>
       <TBtn
         title="Mirror"
-        disabled={editDisabled || !ed.selectedParts.length}
+        disabled={editDisabled || !selectedParts.length}
         onClick={mirror}
       >
         <IconMirror />
@@ -150,13 +165,13 @@ export function Toolbar() {
           mapping visible. */}
       <TBtn
         title="Send to back ( [ )"
-        disabled={editDisabled || !ed.selectedParts.length}
+        disabled={editDisabled || !selectedParts.length}
         onClick={() =>
           transact('Send to back', (d) => {
             let lo = Infinity;
             for (const k in d.parts) lo = Math.min(lo, d.parts[k].z);
             let step = 0;
-            for (const id of ed.selectedParts)
+            for (const id of selectedParts)
               if (d.parts[id]) d.parts[id].z = lo - 1 - step++;
           })
         }
@@ -165,13 +180,13 @@ export function Toolbar() {
       </TBtn>
       <TBtn
         title="Bring to front ( ] )"
-        disabled={editDisabled || !ed.selectedParts.length}
+        disabled={editDisabled || !selectedParts.length}
         onClick={() =>
           transact('Bring to front', (d) => {
             let hi = -Infinity;
             for (const k in d.parts) hi = Math.max(hi, d.parts[k].z);
             let step = 0;
-            for (const id of ed.selectedParts)
+            for (const id of selectedParts)
               if (d.parts[id]) d.parts[id].z = hi + 1 + step++;
           })
         }
@@ -188,10 +203,10 @@ export function Toolbar() {
         <IconNote />
       </TBtn>
       <TBtn
-        title={ed.notesVisible ? 'Hide notes (Shift+N)' : 'Show notes (Shift+N)'}
-        onClick={ed.toggleNotes}
+        title={notesVisible ? 'Hide notes (Shift+N)' : 'Show notes (Shift+N)'}
+        onClick={toggleNotes}
       >
-        {ed.notesVisible ? <IconEye /> : <IconEyeOff />}
+        {notesVisible ? <IconEye /> : <IconEyeOff />}
       </TBtn>
 
       <Divider />
@@ -203,17 +218,17 @@ export function Toolbar() {
             key={c.key}
             title={`${c.name} (${c.key})`}
             aria-label={`Wire colour ${c.name}`}
-            aria-pressed={ed.wireColor === c.key}
+            aria-pressed={wireColor === c.key}
             onClick={() => {
-              ed.setWireColor(c.key);
-              if (ed.selectedWires.length) {
+              setWireColor(c.key);
+              if (selectedWires.length) {
                 transact('Wire colour', (d) => {
-                  for (const id of ed.selectedWires) if (d.wires[id]) d.wires[id].color = c.key;
+                  for (const id of selectedWires) if (d.wires[id]) d.wires[id].color = c.key;
                 });
               }
             }}
             className={`h-[15px] w-[15px] rounded-full border transition ${
-              ed.wireColor === c.key
+              wireColor === c.key
                 ? 'border-sky-500 ring-2 ring-sky-200'
                 : 'border-neutral-300 hover:scale-110'
             }`}
@@ -240,9 +255,9 @@ export function Toolbar() {
         {(['top', 'wires', 'schematic'] as const).map((v) => (
           <button
             key={v}
-            onClick={() => ed.setComponentView(v)}
+            onClick={() => setComponentView(v)}
             className={`rounded px-2 py-1 text-[11.5px] font-medium capitalize transition ${
-              ed.componentView === v
+              componentView === v
                 ? 'bg-sky-50 text-sky-700'
                 : 'text-neutral-600 hover:bg-neutral-100'
             }`}
