@@ -1,9 +1,42 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 import { useDesignStore } from '@/state/designStore';
 import { IconUsers } from '../icons';
+
+/**
+ * A single 15 s tick shared by every mounted pill. It lives outside the
+ * component and is read through useSyncExternalStore so the prerender and the
+ * hydrating client agree on the first paint — reading the clock during render
+ * would give the two different answers and trip a hydration mismatch.
+ */
+let tick = Date.now();
+let timer: ReturnType<typeof setInterval> | null = null;
+const listeners = new Set<() => void>();
+
+function subscribe(onStoreChange: () => void) {
+  listeners.add(onStoreChange);
+  if (timer === null) {
+    tick = Date.now();
+    timer = setInterval(() => {
+      tick = Date.now();
+      for (const listener of listeners) listener();
+    }, 15_000);
+  }
+  return () => {
+    listeners.delete(onStoreChange);
+    if (listeners.size === 0 && timer !== null) {
+      clearInterval(timer);
+      timer = null;
+    }
+  };
+}
+
+const getSnapshot = () => tick;
+// The prerender has no useful clock, so it renders the same "just now" the
+// client shows on its first paint and only then swaps in the real age.
+const getServerSnapshot = (): number | null => null;
 
 /**
  * Session and autosave status pill. There is no real multi-user backend, so
@@ -12,15 +45,10 @@ import { IconUsers } from '../icons';
  */
 export function SessionStatus() {
   const updatedAt = useDesignStore((s) => s.design.updatedAt);
-  const [now, setNow] = useState(() => Date.now());
+  const now = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 15_000);
-    return () => clearInterval(id);
-  }, []);
-
-  const age = Math.max(0, Math.round((now - updatedAt) / 1000));
-  const label = ageLabel(age);
+  const label =
+    now === null ? 'just now' : ageLabel(Math.max(0, Math.round((now - updatedAt) / 1000)));
 
   return (
     <div

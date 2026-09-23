@@ -9,7 +9,7 @@ interface MotorProps extends Record<string, string | number> {
   ratedVoltage: number;
 }
 
-function MotorArt({ state }: ArtProps<MotorProps>) {
+function MotorArt({ state, hideRotor }: ArtProps<MotorProps> & { hideRotor?: boolean }) {
   const rpm = Number(state?.rpm ?? 0);
   const angle = Number(state?.angle ?? 0);
   const spinning = Math.abs(rpm) > 1;
@@ -23,12 +23,14 @@ function MotorArt({ state }: ArtProps<MotorProps>) {
       {/* end bell + shaft */}
       <rect x={38} y={-22} width={12} height={44} rx={4} fill="#8E949A" />
       <rect x={50} y={-4} width={22} height={8} rx={3} fill="#6E7479" />
-      {/* rotor mark so rotation is visible */}
-      <g transform={`rotate(${angle} 72 0)`}>
-        <circle cx={72} cy={0} r={11} fill="#D5D9DD" stroke="#9AA0A6" />
-        <rect x={70.5} y={-11} width={3} height={11} rx={1.2} fill="#5C6166" />
-      </g>
-      {spinning && (
+      {/* rotor mark so rotation is visible (hidden when encoder or prop handles its own rotor visual) */}
+      {!hideRotor && (
+        <g transform={`rotate(${angle} 72 0)`}>
+          <circle cx={72} cy={0} r={11} fill="#D5D9DD" stroke="#9AA0A6" />
+          <rect x={70.5} y={-11} width={3} height={11} rx={1.2} fill="#5C6166" />
+        </g>
+      )}
+      {!hideRotor && spinning && (
         <path
           d={`M60,-18 A18,18 0 0,${rpm > 0 ? 1 : 0} 84,-18`}
           fill="none"
@@ -38,9 +40,11 @@ function MotorArt({ state }: ArtProps<MotorProps>) {
           opacity={0.8}
         />
       )}
-      {/* terminals */}
-      <Leg x1={-52} y1={-14} x2={-70} y2={-14} w={3.5} color="#C11F1F" />
-      <Leg x1={-52} y1={14} x2={-70} y2={14} w={3.5} color="#171919" />
+      {/* insulated wire leads */}
+      <line x1={-52} y1={-14} x2={-70} y2={-14} stroke="#D32F2F" strokeWidth={5} strokeLinecap="round" />
+      <line x1={-52} y1={-14} x2={-70} y2={-14} stroke="#EF5350" strokeWidth={2} strokeLinecap="round" opacity={0.6} />
+      <line x1={-52} y1={14} x2={-70} y2={14} stroke="#222426" strokeWidth={5} strokeLinecap="round" />
+      <line x1={-52} y1={14} x2={-70} y2={14} stroke="#42464A" strokeWidth={2} strokeLinecap="round" opacity={0.6} />
       {state && (
         <Silk x={-6} y={0} size={10} fill="#4A4F55" weight={700}>
           {`${Math.round(Math.abs(rpm))} rpm`}
@@ -73,12 +77,101 @@ function makeMotor(id: string, name: string, keywords: string[], basic = false) 
 }
 
 export const DcMotor = makeMotor('dc-motor', 'DC Motor', ['motor', 'dc', 'spin', 'rotate'], true);
-export const Gearmotor = makeMotor('gearmotor', 'Hobby Gearmotor', [
-  'gearmotor',
-  'geared',
-  'motor',
-  'tt motor',
-]);
+
+function GearmotorArt({ state }: ArtProps<MotorProps>) {
+  const rpm = Number(state?.rpm ?? 0);
+  const angle = Number(state?.angle ?? 0);
+  const spinning = Math.abs(rpm) > 1;
+
+  return (
+    <g>
+      <BoardShadow w={52} h={112} rx={4} />
+
+      {/* Side axle wings / horizontal mounting bar */}
+      <rect x={-44} y={-24} width={88} height={7} rx={1.5} fill="#F5F6F8" stroke="#DCE1E7" opacity={0.95} />
+
+      {/* Top output shaft / peg */}
+      <g transform={`rotate(${angle} 0 -52)`}>
+        <rect x={-2.5} y={-58} width={5} height={12} rx={0.8} fill="#E5BD00" stroke="#C2A000" strokeWidth={0.5} />
+      </g>
+
+      {/* Yellow gearbox body */}
+      {/* Top chamfer step */}
+      <rect x={-24} y={-48} width={48} height={4} fill="#DEB800" />
+      {/* Main rectangular box */}
+      <rect x={-24} y={-44} width={48} height={60} rx={1} fill="#FCD300" stroke="#D8B200" strokeWidth={0.8} />
+
+      {/* Right locator notch */}
+      <rect x={24} y={-2} width={2.5} height={7} rx={0.5} fill="#E5BD00" />
+
+      {/* Lower transition section */}
+      <path d="M-24,16 L24,16 L22,26 L-22,26 Z" fill="#DEB800" />
+      <rect x={-22} y={26} width={44} height={10} rx={1} fill="#FCD300" stroke="#D8B200" strokeWidth={0.8} />
+      <circle cx={-23} cy={31} r={1.2} fill="#DEB800" />
+      <circle cx={23} cy={31} r={1.2} fill="#DEB800" />
+
+      {/* DC Motor Assembly */}
+      {/* Translucent clamp bracket */}
+      <path
+        d="M-20,36 L20,36 C23,46 23,54 20,60 L-20,60 C-23,54 -23,46 -20,36 Z"
+        fill="#E8EEF5"
+        opacity={0.45}
+        stroke="#C6CCD4"
+        strokeWidth={0.8}
+      />
+      {/* Metallic motor can */}
+      <rect x={-17} y={36} width={34} height={15} fill="#E2E6EA" stroke="#B4BAC2" strokeWidth={0.6} />
+      {/* Motor end bell (black bottom) */}
+      <rect x={-17} y={51} width={34} height={7} rx={0.8} fill="#2E3134" />
+      {/* Rear bracket clip */}
+      <rect x={-4} y={48} width={8} height={10} fill="#1E2022" />
+      {/* Rear spindle */}
+      <rect x={-1.5} y={58} width={3} height={14} rx={0.8} fill="#9FA5AB" stroke="#7A8086" strokeWidth={0.5} />
+
+      {/* Wire leads / solder tabs on the left */}
+      <rect x={-26} y={39} width={9} height={3} rx={1} fill="#222426" />
+      <circle cx={-26} cy={40.5} r={2} fill="#111213" />
+      <rect x={-26} y={45} width={9} height={3} rx={1} fill="#D32F2F" />
+      <circle cx={-26} cy={46.5} r={2} fill="#B71C1C" />
+
+      {/* Spinning effect & RPM readout */}
+      {spinning && (
+        <path
+          d="M-8,-52 A10,10 0 0,1 8,-52"
+          fill="none"
+          stroke={C.select}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          opacity={0.8}
+        />
+      )}
+      {state && (
+        <Silk x={0} y={-10} size={7} fill="#7A6000" weight={700}>
+          {`${Math.round(Math.abs(rpm))} rpm`}
+        </Silk>
+      )}
+    </g>
+  );
+}
+
+export const Gearmotor = definePart<MotorProps>({
+  id: 'gearmotor',
+  name: 'Hobby Gearmotor',
+  category: 'output',
+  keywords: ['gearmotor', 'geared', 'motor', 'tt motor', 'yellow motor'],
+  size: { w: 96, h: 140 },
+  origin: { x: 48, y: 70 },
+  model: 'dc-motor',
+  terminals: [
+    { name: 'terminal1', type: 'wire', x: -26, y: 40.5, dir: [-1, 0] },
+    { name: 'terminal2', type: 'wire', x: -26, y: 46.5, dir: [-1, 0] },
+  ],
+  props: [
+    { key: 'ratedVoltage', label: 'Rated voltage', kind: 'number', unit: 'V', min: 1, max: 24 },
+  ],
+  defaults: { ratedVoltage: 6 },
+  Art: GearmotorArt,
+});
 
 // Hobby motor with a propeller fitted to the shaft. Same electrical model as
 // the plain DC motor; only the art differs, adding a rotor blade that spins
@@ -89,7 +182,7 @@ function PropMotorArt(p: ArtProps<MotorProps>) {
   const spinning = Math.abs(rpm) > 50;
   return (
     <g>
-      <MotorArt {...p} />
+      <MotorArt {...p} hideRotor />
       {/* Propeller hub sits just past the motor shaft. */}
       <g transform={`translate(94,0) rotate(${angle})`}>
         <ellipse cx={0} cy={0} rx={22} ry={3.2} fill="#E8EAEC" stroke="#8E949A" opacity={spinning ? 0.55 : 0.95} />
@@ -103,13 +196,13 @@ function PropMotorArt(p: ArtProps<MotorProps>) {
   );
 }
 
-export const HobbyMotorProp = definePart<MotorProps>({
-  id: 'hobby-motor-prop',
-  name: 'Hobby Motor with Propeller',
+export const PropellerMotor = definePart<MotorProps>({
+  id: 'prop-motor',
+  name: 'DC Motor with Propeller',
   category: 'output',
-  keywords: ['motor', 'propeller', 'fan', 'hobby', 'dc', 'spin'],
-  size: { w: 200, h: 96 },
-  origin: { x: 100, y: 48 },
+  keywords: ['motor', 'propeller', 'fan', 'blade', 'spin', 'thrust'],
+  size: { w: 188, h: 80 },
+  origin: { x: 76, y: 40 },
   model: 'dc-motor',
   terminals: [
     { name: 'terminal1', type: 'wire', x: -70, y: -14, dir: [-1, 0] },
@@ -121,6 +214,7 @@ export const HobbyMotorProp = definePart<MotorProps>({
   defaults: { ratedVoltage: 6 },
   Art: PropMotorArt,
 });
+export const HobbyMotorProp = PropellerMotor;
 
 // Tinkercad ships a DC motor with a back-of-the-shaft optical encoder. It
 // looks like a regular DC motor but has two extra output pins (A/B channels
@@ -132,36 +226,40 @@ function EncoderMotorArt(p: ArtProps<MotorProps>) {
   const spinning = Math.abs(rpm) > 1;
   return (
     <g>
-      <MotorArt {...p} />
-      {/* Encoder disk on the tail end of the shaft. */}
-      <g transform="translate(76,0)">
-        <circle cx={0} cy={0} r={9} fill="#2B2E31" stroke="#17191B" />
+      <MotorArt {...p} hideRotor />
+      {/* Encoder disk on the shaft */}
+      <g transform="translate(62,0)">
+        <circle cx={0} cy={0} r={8.5} fill="#2B2E31" stroke="#17191B" />
         <g transform={`rotate(${Number(p.state?.angle ?? 0) * 2} 0 0)`}>
           {Array.from({ length: 8 }, (_, i) => (
             <rect
               key={i}
-              x={-1.4}
-              y={-8}
-              width={2.8}
-              height={4}
+              x={-1.2}
+              y={-7.5}
+              width={2.4}
+              height={3.8}
               transform={`rotate(${i * 45} 0 0)`}
               fill="#E8EAEC"
             />
           ))}
         </g>
         {spinning && (
-          <circle cx={0} cy={0} r={12} fill="none" stroke={C.select} strokeWidth={1.4} opacity={0.4} />
+          <circle cx={0} cy={0} r={11} fill="none" stroke={C.select} strokeWidth={1.4} opacity={0.4} />
         )}
       </g>
-      {/* Encoder header: A / B / VCC / GND on the far right. */}
-      {['A', 'B', 'VCC', 'GND'].map((label, i) => (
-        <g key={label} transform={`translate(72,${-24 + i * 16})`}>
-          <Leg x1={0} y1={0} x2={12} y2={0} w={3} color={C.metal} />
-          <Silk x={16} y={0} size={5.5} fill="#4A4F55" anchor="start" weight={600}>
-            {label}
-          </Silk>
-        </g>
-      ))}
+      {/* Encoder connector pins & labels: A / B / VCC / GND cleanly on the right with zero overlap */}
+      {['A', 'B', 'VCC', 'GND'].map((label, i) => {
+        const y = -24 + i * 16;
+        return (
+          <g key={label}>
+            {/* Connector pin tab to terminal */}
+            <rect x={76} y={y - 2.5} width={14} height={5} rx={2} fill="#B9BEC4" stroke="#8E949A" strokeWidth={0.5} />
+            <Silk x={98} y={y} size={6.5} fill="#4A4F55" anchor="start" weight={700}>
+              {label}
+            </Silk>
+          </g>
+        );
+      })}
     </g>
   );
 }
@@ -428,12 +526,19 @@ export const VibrationMotor = definePart<MotorProps>({
     const wobble = buzz > 0.02 ? Math.sin(Number(state?.angle ?? 0) * 0.7) * 1.6 * buzz : 0;
     return (
       <g transform={`translate(${wobble},${-wobble})`}>
-        <circle cx={0} cy={0} r={24} fill="#B9BEC4" stroke="#8E949A" />
-        <circle cx={0} cy={0} r={17} fill="#CDD2D7" />
-        <circle cx={0} cy={0} r={6} fill="#8E949A" />
-        <path d="M-8,-14 A16,16 0 0,1 8,-14" fill="none" stroke="#8E949A" strokeWidth={5} />
-        <Leg x1={-24} y1={-8} x2={-44} y2={-8} w={3} color="#C11F1F" />
-        <Leg x1={-24} y1={8} x2={-44} y2={8} w={3} color="#171919" />
+        <BoardShadow w={48} h={48} rx={24} />
+        {/* Main black coin motor body */}
+        <circle cx={0} cy={0} r={22} fill="#232629" stroke="#151719" strokeWidth={1} />
+        <circle cx={0} cy={0} r={18} fill="#2F3337" stroke="#1F2124" strokeWidth={0.8} />
+        <circle cx={0} cy={0} r={8} fill="#44494E" stroke="#32363A" strokeWidth={0.8} />
+        <path d="M-6,-12 A14,14 0 0,1 6,-12" fill="none" stroke="#666C72" strokeWidth={2.5} strokeLinecap="round" opacity={0.6} />
+        {/* Solder lead exit tab */}
+        <rect x={-22} y={-11} width={5} height={22} rx={1.5} fill="#181A1C" />
+        {/* Flexible insulated lead wires */}
+        <path d="M-19,-6 C-27,-6 -34,-8 -44,-8" stroke="#D32F2F" strokeWidth={3.8} strokeLinecap="round" fill="none" />
+        <path d="M-19,-6 C-27,-6 -34,-8 -44,-8" stroke="#EF5350" strokeWidth={1.4} strokeLinecap="round" fill="none" opacity={0.6} />
+        <path d="M-19,6 C-27,6 -34,8 -44,8" stroke="#1E5FA8" strokeWidth={3.8} strokeLinecap="round" fill="none" />
+        <path d="M-19,6 C-27,6 -34,8 -44,8" stroke="#4285F4" strokeWidth={1.4} strokeLinecap="round" fill="none" opacity={0.6} />
         {buzz > 0.05 &&
           [20, 26, 32].map((r, i) => (
             <circle key={r} cx={0} cy={0} r={r + i} fill="none" stroke={C.select} strokeWidth={1.2} opacity={0.45 * buzz} />

@@ -309,6 +309,88 @@ export function TargetLine({
   );
 }
 
+/**
+ * PIR sensor's field of view: a detection cone projecting from the sensor lens
+ * with a draggable target dot to test motion detection.
+ */
+export function PirTargetField({
+  x = 0,
+  y = -8,
+  targetX = 0,
+  targetY = -80,
+  detected = false,
+  onChange,
+}: {
+  x?: number;
+  y?: number;
+  targetX?: number;
+  targetY?: number;
+  detected?: boolean;
+  onChange: (pos: { x: number; y: number; detected: boolean }) => void;
+}) {
+  const r = 110;
+  const angle = (35 * Math.PI) / 180;
+  const x1 = Math.sin(-angle) * r;
+  const y1 = -Math.cos(-angle) * r;
+  const x2 = Math.sin(angle) * r;
+  const y2 = -Math.cos(angle) * r;
+
+  const drag = (e: ReactPointerEvent) => {
+    let curX = targetX;
+    let curY = targetY;
+    beginValueDrag(e, (dx, dy) => {
+      curX += dx;
+      curY += dy;
+      const dist = Math.hypot(curX - x, curY - y);
+      const rad = Math.atan2(curX - x, -(curY - y));
+      const inCone = dist <= r && dist >= 8 && Math.abs(rad) <= angle;
+      onChange({ x: curX, y: curY, detected: inCone });
+    });
+  };
+
+  return (
+    <g>
+      {/* Detection field cone */}
+      <path
+        d={`M${x},${y} L${x + x1},${y + y1} A${r},${r} 0 0,1 ${x + x2},${y + y2} Z`}
+        fill={detected ? '#4CAF50' : '#81C784'}
+        opacity={detected ? 0.28 : 0.15}
+        stroke={detected ? '#2E7D32' : '#66BB6A'}
+        strokeWidth={1}
+        strokeDasharray="4 3"
+      />
+      {/* Dashed line connecting sensor to target */}
+      <line
+        x1={x}
+        y1={y}
+        x2={targetX}
+        y2={targetY}
+        stroke={detected ? '#2E7D32' : '#78909C'}
+        strokeWidth={1.2}
+        strokeDasharray="3 3"
+      />
+      {/* Draggable target dot */}
+      <circle
+        cx={targetX}
+        cy={targetY}
+        r={7}
+        fill={detected ? '#2E7D32' : '#00897B'}
+        stroke="#FFFFFF"
+        strokeWidth={1.5}
+      />
+      {/* Large transparent grab handle */}
+      <circle
+        cx={targetX}
+        cy={targetY}
+        r={20}
+        fill="transparent"
+        style={{ cursor: 'grab' }}
+        onPointerDown={drag}
+      />
+    </g>
+  );
+}
+
 // ── small glyphs used as slider end-caps ─────────────────────────────────────
 
 export const SunIcon = (

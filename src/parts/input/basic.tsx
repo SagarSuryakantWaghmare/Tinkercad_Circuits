@@ -27,17 +27,19 @@ function PushbuttonArt({ state, simulating, interact }: ArtProps<Record<string, 
           strokeLinecap="round"
         />
       ))}
-      <rect x={-15} y={-13} width={30} height={26} rx={2.5} fill="#DCE0E5" stroke="#ACB2B8" strokeWidth={0.8} />
-      <circle cx={-11} cy={-9} r={1.5} fill="#9BA1A8" />
-      <circle cx={11} cy={-9} r={1.5} fill="#9BA1A8" />
-      <circle cx={-11} cy={9} r={1.5} fill="#9BA1A8" />
-      <circle cx={11} cy={9} r={1.5} fill="#9BA1A8" />
-      <circle cx={0} cy={0} r={9} fill="#242628" stroke="#141517" strokeWidth={0.8} />
+      <rect x={-15} y={-13} width={30} height={26} rx={2.5} fill="#242628" stroke="#141517" strokeWidth={1} />
+      <circle cx={-11} cy={-9} r={1.2} fill="#5A6066" />
+      <circle cx={11} cy={-9} r={1.2} fill="#5A6066" />
+      <circle cx={-11} cy={9} r={1.2} fill="#5A6066" />
+      <circle cx={11} cy={9} r={1.2} fill="#5A6066" />
+      <circle cx={0} cy={0} r={9} fill="#C4C9CE" stroke="#8E949A" strokeWidth={0.8} />
       <circle
         cx={0}
         cy={0}
         r={pressed ? 6.5 : 7.5}
-        fill={pressed ? '#161718' : '#313538'}
+        fill={pressed ? '#A81C1C' : '#D32F2F'}
+        stroke="#8E1414"
+        strokeWidth={0.5}
       />
       {simulating && (
         <circle

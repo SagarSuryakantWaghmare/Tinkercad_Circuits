@@ -132,8 +132,8 @@ export interface ArtProps<P = Record<string, PropValue>> {
   state: DeviceOut | null;
   selected: boolean;
   simulating: boolean;
-  /** Called by interactive art (buttons, pot knobs) during simulation. */
-  interact?: (event: string, value?: number | boolean) => void;
+  /** Called by interactive art (buttons, pot knobs, target coordinates) during simulation. */
+  interact?: (event: string, value?: number | boolean | Record<string, unknown>) => void;
   /**
    * Change one of this instance's properties from its own art. Some controls
    * belong on the part rather than in the inspector — a meter's range buttons,

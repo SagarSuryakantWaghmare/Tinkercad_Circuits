@@ -189,8 +189,10 @@ defineDevice('potentiometer', (): Device => ({
     const total = Math.max(num(ctx.props.resistance, 10000), 1);
     const f = clamp(ctx.s.wiper ?? 0.5, 0, 1);
     // A minimum of a few ohms on each leg keeps the end stops well conditioned.
-    c.stampResistance(ctx.node('terminal1'), ctx.node('wiper'), Math.max(total * f, 1));
-    c.stampResistance(ctx.node('wiper'), ctx.node('terminal2'), Math.max(total * (1 - f), 1));
+    // At f = 0 (0%), wiper connects to terminal2 (GND in standard wiring) -> 0V.
+    // At f = 1 (100%), wiper connects to terminal1 (5V in standard wiring) -> 5V.
+    c.stampResistance(ctx.node('terminal1'), ctx.node('wiper'), Math.max(total * (1 - f), 1));
+    c.stampResistance(ctx.node('wiper'), ctx.node('terminal2'), Math.max(total * f, 1));
   },
   interact(event, value, ctx) {
     if (event === 'set') ctx.s.wiper = clamp(Number(value), 0, 1);

@@ -567,13 +567,21 @@ function buildRadio(board: MicrobitBoard): PyModule {
   }));
   radio.attrs.set('reset', new PyNative('reset', () => ((board.radioQueue = []), null)));
   radio.attrs.set('send', new PyNative('send', (a) => {
-    // With one board in the design a message loops back to the sender, which
-    // is the only behaviour that can be observed here.
-    board.radioQueue.push(pyStr(a[0]));
+    const msg = pyStr(a[0]);
+    if (board.onRadioSend) {
+      board.onRadioSend(msg, board.radioGroup);
+    } else {
+      board.radioQueue.push(msg);
+    }
     return null;
   }));
   radio.attrs.set('send_bytes', new PyNative('send_bytes', (a) => {
-    board.radioQueue.push(pyStr(a[0]));
+    const msg = pyStr(a[0]);
+    if (board.onRadioSend) {
+      board.onRadioSend(msg, board.radioGroup);
+    } else {
+      board.radioQueue.push(msg);
+    }
     return null;
   }));
   radio.attrs.set('receive', new PyNative('receive', () => board.radioQueue.shift() ?? null));

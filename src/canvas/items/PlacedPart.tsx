@@ -18,7 +18,7 @@ interface Props {
   onPointerDown: (e: React.PointerEvent, partId: string) => void;
   onPointerEnter: (partId: string) => void;
   onPointerLeave: () => void;
-  onInteract: (partId: string, event: string, value?: number | boolean) => void;
+  onInteract: (partId: string, event: string, value?: number | boolean | Record<string, unknown>) => void;
   onSetProp: (partId: string, key: string, value: PropValue) => void;
 }
 

@@ -167,7 +167,7 @@ export class Simulation {
       return { ...props, __source: this.design.code.text };
     }
     if (def?.model === 'microbit') {
-      return { ...props, __python: this.design.code.python };
+      return { ...props, __python: this.design.code.python || (this.design.code.language === 'micropython' ? this.design.code.text : '') };
     }
     return props;
   }

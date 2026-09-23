@@ -96,6 +96,10 @@ function NoteItemInner({
           strokeWidth={selected ? 2 : 1.2}
           style={{ cursor: 'move' }}
           onPointerDown={onBodyPointerDown}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            startEditing();
+          }}
         />
         <foreignObject x={8} y={7} width={Math.max(20, W - 16)} height={Math.max(20, H - 14)}>
           {editing ? (
@@ -109,9 +113,11 @@ function NoteItemInner({
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') {
+                  e.stopPropagation();
                   setDraftText(note.text);
                   setEditing(false);
                 } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  e.stopPropagation();
                   onChange(draftText);
                   setEditing(false);
                 }
@@ -123,6 +129,10 @@ function NoteItemInner({
           ) : (
             <div
               onPointerDown={onBodyPointerDown}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                startEditing();
+              }}
               className="h-full w-full overflow-hidden whitespace-pre-wrap break-words text-[11px] leading-snug text-neutral-800"
               style={{ cursor: 'text' }}
             >
