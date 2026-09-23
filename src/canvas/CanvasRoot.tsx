@@ -621,10 +621,16 @@ export function CanvasRoot() {
 
   const onSetProp = useCallback(
     (partId: string, key: string, value: PropValue) => {
-      transact('Change property', (d) => {
-        const p = d.parts[partId];
-        if (p) p.props[key] = value;
-      });
+      // Keyed per part and property so one knob's travel is a single undo
+      // step, without folding in an edit to anything else.
+      transact(
+        'Change property',
+        (d) => {
+          const p = d.parts[partId];
+          if (p) p.props[key] = value;
+        },
+        `prop:${partId}:${key}`,
+      );
     },
     [transact],
   );

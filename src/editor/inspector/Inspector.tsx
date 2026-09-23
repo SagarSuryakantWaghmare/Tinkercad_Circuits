@@ -52,10 +52,16 @@ export function Inspector() {
   if (!def) return null;
 
   const setProp = (key: string, value: PropValue) =>
-    transact('Change property', (d) => {
-      const p = d.parts[inst.id];
-      if (p) p.props[key] = value;
-    });
+    transact(
+      'Change property',
+      (d) => {
+        const p = d.parts[inst.id];
+        if (p) p.props[key] = value;
+      },
+      // Dragging a slider fires this per input event; keyed so the whole drag
+      // is one undo step rather than a couple of hundred.
+      `prop:${inst.id}:${key}`,
+    );
 
   return (
     <div className="pointer-events-auto w-[236px] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-[0_8px_28px_rgba(15,23,42,0.14)]">
@@ -112,10 +118,15 @@ export function Inspector() {
             value={inst.name ?? ''}
             placeholder={def.name}
             onChange={(e) =>
-              transact('Rename component', (d) => {
-                const p = d.parts[inst.id];
-                if (p) p.name = e.target.value || undefined;
-              })
+              transact(
+                'Rename component',
+                (d) => {
+                  const p = d.parts[inst.id];
+                  if (p) p.name = e.target.value || undefined;
+                },
+                // A burst of typing is one undo step, not one per keystroke.
+                `name:${inst.id}`,
+              )
             }
             className="w-full rounded border border-neutral-300 px-2 py-1 text-[12px] outline-none focus:border-sky-500"
           />

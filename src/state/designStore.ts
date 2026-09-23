@@ -16,6 +16,13 @@ enableMapSet();
 
 const HISTORY_LIMIT = 120;
 
+/**
+ * How long a run of edits sharing a coalesce key folds into one undo step.
+ * Long enough to cover a continuous drag or a burst of typing, short enough
+ * that going back to the same control a moment later is its own step.
+ */
+const COALESCE_MS = 700;
+
 interface HistoryEntry {
   design: Design;
   label: string;
@@ -29,6 +36,9 @@ interface DesignStore {
   txDepth: number;
   txLabel: string | null;
   txSnapshot: Design | null;
+  /** Coalesce key of the last committed edit, and when it landed. */
+  lastCoalesceKey: string | null;
+  lastCoalesceAt: number;
   /** Bumped on every committed mutation; cheap dependency for memoised derivations. */
   revision: number;
 
@@ -36,7 +46,7 @@ interface DesignStore {
    * Apply a mutation. Recorded as a single undo step unless already inside a
    * transaction, in which case it folds into the enclosing one.
    */
-  transact: (label: string, fn: (d: Design) => void) => void;
+  transact: (label: string, fn: (d: Design) => void, coalesceKey?: string) => void;
   /** Begin a coalescing transaction (pointerdown → pointerup drags). */
   begin: (label: string) => void;
   /** Commit the open transaction. Discards it if nothing actually changed. */
@@ -62,9 +72,11 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
   txDepth: 0,
   txLabel: null,
   txSnapshot: null,
+  lastCoalesceKey: null,
+  lastCoalesceAt: 0,
   revision: 0,
 
-  transact: (label, fn) => {
+  transact: (label, fn, coalesceKey) => {
     const s = get();
     if (s.txDepth > 0) {
       // Inside an open transaction: mutate without touching history.
@@ -79,11 +91,27 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
       d.updatedAt = Date.now();
     });
     if (next === s.design) return;
+
+    // A continuous control — a slider, a knob, a name being typed — fires one
+    // of these per input event. Pushed individually, a single drag of the
+    // 0..255 slider is about 200 entries against a 120 entry ring, so the
+    // whole of the rest of the session's history falls off the end. Edits
+    // that carry the same key in quick succession therefore fold into the
+    // entry the run started with, which is the state undo should return to.
+    const now = Date.now();
+    const folds =
+      coalesceKey !== undefined &&
+      coalesceKey === s.lastCoalesceKey &&
+      now - s.lastCoalesceAt < COALESCE_MS &&
+      s.past.length > 0;
+
     set({
       design: next,
-      past: [...s.past, { design: s.design, label }].slice(-HISTORY_LIMIT),
+      past: folds ? s.past : [...s.past, { design: s.design, label }].slice(-HISTORY_LIMIT),
       future: [],
       revision: s.revision + 1,
+      lastCoalesceKey: coalesceKey ?? null,
+      lastCoalesceAt: now,
     });
   },
 
@@ -109,6 +137,7 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
       txDepth: 0,
       txLabel: null,
       txSnapshot: null,
+      lastCoalesceKey: null,
       past: changed
         ? [...s.past, { design: before, label: s.txLabel ?? 'Edit' }].slice(-HISTORY_LIMIT)
         : s.past,
@@ -126,6 +155,7 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
     if (s.txDepth === 0) return;
     set({
       design: s.txSnapshot ?? s.design,
+      lastCoalesceKey: null,
       txDepth: 0,
       txLabel: null,
       txSnapshot: null,
@@ -140,6 +170,7 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
     if (!prev) return;
     set({
       design: prev.design,
+      lastCoalesceKey: null,
       past: s.past.slice(0, -1),
       future: [{ design: s.design, label: prev.label }, ...s.future].slice(0, HISTORY_LIMIT),
       revision: s.revision + 1,
@@ -153,6 +184,7 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
     if (!next) return;
     set({
       design: next.design,
+      lastCoalesceKey: null,
       past: [...s.past, { design: s.design, label: next.label }].slice(-HISTORY_LIMIT),
       future: s.future.slice(1),
       revision: s.revision + 1,
@@ -170,6 +202,7 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
       txDepth: 0,
       txLabel: null,
       txSnapshot: null,
+      lastCoalesceKey: null,
       revision: s.revision + 1,
     })),
 
@@ -181,6 +214,7 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
       txDepth: 0,
       txLabel: null,
       txSnapshot: null,
+      lastCoalesceKey: null,
       revision: s.revision + 1,
     })),
 
