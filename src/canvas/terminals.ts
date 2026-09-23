@@ -87,13 +87,24 @@ export interface PickTerminalOptions {
 }
 
 /**
+ * How much further from the cursor a board hole is allowed to be, in world
+ * units, before a component pin is preferred to it.
+ *
+ * A leg seated in a hole sits exactly on top of it, and there the leg is what
+ * the user means — so holes need to lose that tie. But the bias has to stay
+ * small: a hole being pointed at directly must still beat a leg a whole pitch
+ * away in the next column, because that column is a different net and wiring
+ * to it instead would be silently wrong.
+ */
+const SUBSTRATE_BIAS = 2;
+
+/**
  * Nearest connectable terminal to a world point, or null.
  *
  * Two rules keep this predictable on a crowded board. Sockets are matched
  * against the tighter {@link SOCKET_HIT_R} so neighbouring holes cannot both
- * claim the same point, and a component pin always beats a board hole rather
- * than competing with it on distance — a leg plugged into a breadboard sits
- * right on top of the hole it occupies, and the leg is what the user means.
+ * claim the same point, and board holes carry {@link SUBSTRATE_BIAS} so a leg
+ * sitting in one wins the tie without letting a distant leg win outright.
  */
 export function pickTerminal(
   design: Design,
@@ -103,26 +114,23 @@ export function pickTerminal(
 ): WorldTerminal | null {
   const { exclude, only } = options;
   let best: WorldTerminal | null = null;
-  let bestRank = Infinity;
-  let bestDist = Infinity;
+  let bestScore = Infinity;
 
   for (const id in design.parts) {
     if (only !== undefined && id !== only) continue;
     const inst = design.parts[id];
     const def = getPartDef(inst.type);
     if (!def) continue;
-    const rank = def.substrate ? 1 : 0;
-    // A closer hole can never displace a pin already found.
-    if (rank > bestRank) continue;
+    const bias = def.substrate ? SUBSTRATE_BIAS : 0;
     for (const t of worldTerminals(inst)) {
       if (exclude && exclude.partId === id && exclude.terminal === t.def.name) continue;
       const limit =
         t.def.type === 'breadboard_female' ? Math.min(radius, SOCKET_HIT_R) : radius;
       const d = Math.hypot(t.pos.x - at.x, t.pos.y - at.y);
       if (d > limit) continue;
-      if (rank < bestRank || d < bestDist) {
-        bestRank = rank;
-        bestDist = d;
+      const score = d + bias;
+      if (score < bestScore) {
+        bestScore = score;
         best = t;
       }
     }

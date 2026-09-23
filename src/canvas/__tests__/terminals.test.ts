@@ -65,13 +65,29 @@ describe('pickTerminal', () => {
     expect(pickTerminal(design, hole, R)?.partId).toBe('res');
   });
 
-  it('prefers a pin a few units away over a hole dead under the cursor', () => {
-    // Substrates used to lose ties by a flat +2 score penalty, which a hole at
-    // distance 0 still beat a pin 3 units off with.
+  it('does not reach past the hole under the cursor to a leg in the next column', () => {
+    // Columns are separate nets. A leg seated one column over is PITCH away,
+    // which is inside the generous radius a component pin gets, so preferring
+    // pins unconditionally would wire to that component instead of to the
+    // hole being pointed at — a different net, and a silently wrong circuit.
     const { design, hole } = scene();
-    const res = design.parts.res;
-    design.parts.res = part('res', 'resistor', res.x + 3, res.y);
-    expect(pickTerminal(design, hole, R)?.partId).toBe('res');
+    const board = design.parts.board;
+    const neighbour = worldTerminals(board).find(
+      (t) =>
+        t.def.type === 'breadboard_female' &&
+        t.def.group !== undefined &&
+        Math.abs(t.pos.x - (hole.x + PITCH)) < 0.01 &&
+        Math.abs(t.pos.y - hole.y) < 0.01,
+    )!;
+    expect(neighbour).toBeDefined();
+
+    const seated = worldTerminals(design.parts.res).find((t) => t.def.name === 'a')!;
+    expect(Math.hypot(seated.pos.x - hole.x, seated.pos.y - hole.y)).toBeLessThan(0.01);
+    expect(Math.hypot(seated.pos.x - neighbour.pos.x, seated.pos.y - neighbour.pos.y)).toBe(PITCH);
+
+    const hit = pickTerminal(design, neighbour.pos, R);
+    expect(hit?.partId).toBe('board');
+    expect(hit?.def.group).toBe(neighbour.def.group);
   });
 
   it('excludes the terminal a wire is already being drawn from', () => {
