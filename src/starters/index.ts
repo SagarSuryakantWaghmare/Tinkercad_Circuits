@@ -1411,8 +1411,12 @@ void loop()
         [
           ['uno', '5V', 'bb', 'w1', '1'],
           ['uno', 'GND', 'bb', 'x1', '0'],
-          ['bb', 'w30', 'bb', 'y30', '1'],
-          ['bb', 'x30', 'bb', 'z30', '0'],
+          // Carry each rail across to its twin on the far side: w and z are
+          // both the + strips, x and y both the -. The last hole on a
+          // 30 column board is 25, not 30 — the strips run in fives with a
+          // gap, so they hold 25 holes rather than one per column.
+          ['bb', 'w25', 'bb', 'z25', '1'],
+          ['bb', 'x25', 'bb', 'y25', '0'],
         ],
         `// Arduino + Breadboard prototype template.
 
