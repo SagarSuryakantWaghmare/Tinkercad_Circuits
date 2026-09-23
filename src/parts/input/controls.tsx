@@ -594,9 +594,9 @@ export const SlideSwitchMini = definePart({
   socketable: true,
   model: 'slideswitch',
   terminals: [
-    { name: '1', type: 'breadboard_male', x: -8, y: 26, dir: [0, 1] },
+    { name: '1', type: 'breadboard_male', x: -10, y: 26, dir: [0, 1] },
     { name: 'common', type: 'breadboard_male', x: 0, y: 26, dir: [0, 1] },
-    { name: '2', type: 'breadboard_male', x: 8, y: 26, dir: [0, 1] },
+    { name: '2', type: 'breadboard_male', x: 10, y: 26, dir: [0, 1] },
   ],
   props: [],
   defaults: {},
@@ -606,10 +606,11 @@ export const SlideSwitchMini = definePart({
     const label = pos === 0 ? '1' : pos === 2 ? '2' : 'OFF';
     return (
       <g>
-        {[-8, 0, 8].map((x) => (
+        {/* A whole pitch apart, so all three pins can reach holes at once. */}
+        {[-10, 0, 10].map((x) => (
           <Leg key={x} x1={x} y1={16} x2={x} y2={26} />
         ))}
-        <rect x={-10} y={-22} width={20} height={40} rx={2} fill="#B9BEC4" stroke="#8E949A" />
+        <rect x={-12} y={-22} width={24} height={40} rx={2} fill="#B9BEC4" stroke="#8E949A" />
         <rect x={-6} y={-18} width={12} height={32} rx={1.5} fill="#2B2E30" />
         <rect
           x={-5}
@@ -776,10 +777,10 @@ export const Pushbutton30 = definePart({
   socketable: true,
   model: 'pushbutton',
   terminals: [
-    { name: '1a', type: 'breadboard_male', x: -34, y: -36, dir: [0, -1], group: 'L' },
-    { name: '2a', type: 'breadboard_male', x: 34, y: -36, dir: [0, -1], group: 'R' },
-    { name: '1b', type: 'breadboard_male', x: -34, y: 36, dir: [0, 1], group: 'L' },
-    { name: '2b', type: 'breadboard_male', x: 34, y: 36, dir: [0, 1], group: 'R' },
+    { name: '1a', type: 'breadboard_male', x: -35, y: -35, dir: [0, -1], group: 'L' },
+    { name: '2a', type: 'breadboard_male', x: 35, y: -35, dir: [0, -1], group: 'R' },
+    { name: '1b', type: 'breadboard_male', x: -35, y: 35, dir: [0, 1], group: 'L' },
+    { name: '2b', type: 'breadboard_male', x: 35, y: 35, dir: [0, 1], group: 'R' },
   ],
   props: [],
   defaults: {},
@@ -787,7 +788,8 @@ export const Pushbutton30 = definePart({
     const pressed = !!state?.pressed;
     return (
       <g>
-        {[[-34, -36], [34, -36], [-34, 36], [34, 36]].map(([x, y]) => (
+        {/* 70 apart on both axes, so all four corner pins reach holes. */}
+        {[[-35, -35], [35, -35], [-35, 35], [35, 35]].map(([x, y]) => (
           <path
             key={`${x},${y}`}
             d={`M${x},${y > 0 ? 22 : -22} L${x},${y}`}
@@ -835,8 +837,8 @@ export const RockerSwitch = definePart({
   socketable: true,
   model: 'toggle-switch',
   terminals: [
-    { name: 'terminal1', type: 'breadboard_male', x: -14, y: 30, dir: [0, 1] },
-    { name: 'terminal2', type: 'breadboard_male', x: 14, y: 30, dir: [0, 1] },
+    { name: 'terminal1', type: 'breadboard_male', x: -15, y: 30, dir: [0, 1] },
+    { name: 'terminal2', type: 'breadboard_male', x: 15, y: 30, dir: [0, 1] },
   ],
   props: [],
   defaults: {},
@@ -866,8 +868,9 @@ export const RockerSwitch = definePart({
         <Silk x={14} y={0} size={9} fill="#C9CED3" weight={800}>
           O
         </Silk>
-        <Leg x1={-14} y1={20} x2={-14} y2={30} />
-        <Leg x1={14} y1={20} x2={14} y2={30} />
+        {/* 30 apart: three whole pitches, so both terminals reach holes. */}
+        <Leg x1={-15} y1={20} x2={-15} y2={30} />
+        <Leg x1={15} y1={20} x2={15} y2={30} />
         {simulating && (
           <rect
             x={-30}

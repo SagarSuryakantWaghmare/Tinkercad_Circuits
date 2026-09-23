@@ -22,9 +22,6 @@ import { PITCH } from '@/lib/units';
  * add to it.
  */
 const KNOWN_UNFITTED = new Set([
-  'slide-switch-mini', // legs on an 8 pitch
-  'rocker-switch', // terminals 28 apart
-  'pushbutton-30mm', // 68 x 72 between corners
   'seven-segment-4', // rows 96 apart; every board row gap is a multiple of 10
   'seven-segment-clock',
 ]);
