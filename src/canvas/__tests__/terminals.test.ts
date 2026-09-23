@@ -1,3 +1,4 @@
+import { produce } from 'immer';
 import { describe, expect, it } from 'vitest';
 
 import { pickTerminal, worldTerminals } from '../terminals';
@@ -115,5 +116,36 @@ describe('pickTerminal', () => {
     expect(
       pickTerminal(design, { x: hole.x, y: hole.y + off }, R, { only: 'board' }),
     ).toBeNull();
+  });
+});
+
+describe('worldTerminals caching', () => {
+  it('serves a part that did not move from cache', () => {
+    // Every edit goes through immer, which leaves an untouched part at its
+    // existing identity. That is what makes the cache work at all: dragging a
+    // component must not re-place all 830 holes of the board behind it.
+    const { design } = scene();
+    const before = worldTerminals(design.parts.board);
+
+    const next = produce(design, (d) => {
+      d.parts.res.x += 5;
+    });
+
+    expect(next.parts.board).toBe(design.parts.board);
+    expect(worldTerminals(next.parts.board)).toBe(before);
+  });
+
+  it('recomputes a part that did move', () => {
+    const { design } = scene();
+    const before = worldTerminals(design.parts.res);
+    const beforeX = before.find((t) => t.def.name === 'a')!.pos.x;
+
+    const next = produce(design, (d) => {
+      d.parts.res.x += 5;
+    });
+
+    const after = worldTerminals(next.parts.res);
+    expect(after).not.toBe(before);
+    expect(after.find((t) => t.def.name === 'a')!.pos.x).toBe(beforeX + 5);
   });
 });

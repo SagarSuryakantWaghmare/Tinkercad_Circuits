@@ -341,16 +341,21 @@ export function CanvasRoot() {
       const groupIds = [...ids, ...passengers];
       const moving = new Set(groupIds);
 
+      // Both the snap and the preview below need every socket in the design —
+      // 830 of them on a full breadboard — so the list is built once per frame
+      // and shared. It is built from the committed design rather than from the
+      // draft inside the transact below: the parts that own these sockets are
+      // by definition the ones not moving this frame, so the two agree, and
+      // immer mints a fresh draft proxy per frame that would miss the terminal
+      // cache on every single one of those holes.
+      const sockets = collectSockets(useDesignStore.getState().design, moving);
+
       let previewHoles: Vec2[] = [];
       transact('Move', (dd) => {
         // Snap using the primary (first) part, then apply the same delta to all
         // so a multi-selection keeps its internal spacing.
         const lead = dd.parts[ids[0]];
         if (!lead) return;
-        // Both the snap and the preview below need every socket in the design.
-        // A full breadboard has 830 of them, so the list is built once here
-        // and shared rather than rebuilt twice on every frame of the drag.
-        const sockets = collectSockets(dd, moving);
         const snapped = snapPlacement(
           dd,
           lead,
