@@ -18,48 +18,64 @@ export interface ResolvedWire {
 }
 
 /**
- * A wire is painted twice with the identical path — a wide halo underneath and
- * the coloured core on top — which is exactly how the live product draws them.
- * The halo is what turns blue on selection.
+ * The path a wire is drawn along. Both layers below share it, so it is built
+ * once by whoever owns the wire list rather than twice here.
  */
-function WireItemInner({
-  wire,
+export function wirePath(wire: ResolvedWire): string {
+  if (wire.kind === 'jumper') {
+    // A Dupont lead is a straight span between its ends; only the waypoints
+    // the user placed bend it.
+    const pts = [wire.a.pos, ...wire.waypoints, wire.b.pos];
+    return pts.map((p, i) => `${i ? 'L' : 'M'}${p.x},${p.y}`).join(' ');
+  }
+  return roundedPath(routePolyline(wire.a, wire.b, wire.waypoints));
+}
+
+/**
+ * The wide backing stroke under a wire, and what turns blue on selection.
+ *
+ * Every halo is painted in one pass before any core, which is what keeps a
+ * crossing readable: drawn per wire, a wire laid down later chopped a
+ * five-unit grey notch out of the coloured core of one already there.
+ */
+export const WireHalo = memo(function WireHalo({
+  d,
   selected,
   hovered,
+}: {
+  d: string;
+  selected: boolean;
+  hovered: boolean;
+}) {
+  return (
+    <path
+      d={d}
+      fill="none"
+      stroke={selected ? C.select : hovered ? C.hover : C.wireShadow}
+      strokeWidth={WIRE_HALO_W}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      opacity={selected || hovered ? 1 : 0.9}
+    />
+  );
+});
+
+/** The coloured core of a wire, plus the fat invisible stroke that grabs it. */
+export const WireCore = memo(function WireCore({
+  wire,
+  d,
   onPointerDown,
   onPointerEnter,
   onPointerLeave,
 }: {
   wire: ResolvedWire;
-  selected: boolean;
-  hovered: boolean;
+  d: string;
   onPointerDown: (e: React.PointerEvent, id: string) => void;
   onPointerEnter: (id: string) => void;
   onPointerLeave: () => void;
 }) {
-  const d = useMemo(() => {
-    if (wire.kind === 'jumper') {
-      // A Dupont lead is a straight span between its ends; only the waypoints
-      // the user placed bend it.
-      const pts = [wire.a.pos, ...wire.waypoints, wire.b.pos];
-      return pts.map((p, i) => `${i ? 'L' : 'M'}${p.x},${p.y}`).join(' ');
-    }
-    return roundedPath(routePolyline(wire.a, wire.b, wire.waypoints));
-  }, [wire.a, wire.b, wire.waypoints, wire.kind]);
-
-  const halo = selected ? C.select : hovered ? C.hover : C.wireShadow;
-
   return (
     <g data-wire={wire.id}>
-      <path
-        d={d}
-        fill="none"
-        stroke={halo}
-        strokeWidth={WIRE_HALO_W}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity={selected || hovered ? 1 : 0.9}
-      />
       <path
         d={d}
         fill="none"
@@ -83,9 +99,7 @@ function WireItemInner({
       />
     </g>
   );
-}
-
-export const WireItem = memo(WireItemInner);
+});
 
 /** The in-progress wire drawn while the user is routing. */
 export function DraftWire({

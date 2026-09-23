@@ -18,7 +18,13 @@ import {
 import { C } from '@/lib/tokens';
 import { GRID_VISIBLE_ZOOM, PITCH, TERMINAL_HIT_R } from '@/lib/units';
 import { PlacedPart } from './items/PlacedPart';
-import { DraftWire, WireItem, type ResolvedWire } from './items/WireItem';
+import {
+  DraftWire,
+  WireCore,
+  WireHalo,
+  wirePath,
+  type ResolvedWire,
+} from './items/WireItem';
 import { NoteItem } from './items/NoteItem';
 import { indexTerminals, pickTerminal, worldTerminals } from './terminals';
 import {
@@ -59,7 +65,8 @@ export function CanvasRoot() {
     [design.parts],
   );
 
-  const wires: ResolvedWire[] = useMemo(() => {
+  /** Each wire resolved to live anchors, with the path both layers draw. */
+  const wires: { wire: ResolvedWire; d: string }[] = useMemo(() => {
     // Resolve each end to a live terminal; an end whose part has been deleted
     // stays in the document but draws dashed rather than disappearing.
     const anchorOf = (end: WireEnd) => {
@@ -75,7 +82,7 @@ export function CanvasRoot() {
     return Object.values(design.wires).map((w) => {
       const a = anchorOf(w.a);
       const b = anchorOf(w.b);
-      return {
+      const resolved: ResolvedWire = {
         id: w.id,
         a,
         b,
@@ -84,6 +91,8 @@ export function CanvasRoot() {
         dangling: !a.resolved || !b.resolved,
         kind: w.type,
       };
+      // Routed once here, then handed to both the halo and the core layer.
+      return { wire: resolved, d: wirePath(resolved) };
     });
   }, [design.wires, terminalIndex]);
 
@@ -822,14 +831,28 @@ export function CanvasRoot() {
           ))}
         </g>
 
-        {/* 5 — wires */}
+        {/*
+          4 — wire halos, then 5 — wire cores. Two passes, not one group per
+          wire: a halo is twice the width of a core, so painting each wire
+          whole meant a wire drawn later cut a grey notch through the colour
+          of every wire already crossing it.
+        */}
         <g>
-          {wires.map((w) => (
-            <WireItem
-              key={w.id}
-              wire={w}
-              selected={ed.selectedWires.includes(w.id)}
+          {wires.map(({ wire, d }) => (
+            <WireHalo
+              key={wire.id}
+              d={d}
+              selected={ed.selectedWires.includes(wire.id)}
               hovered={false}
+            />
+          ))}
+        </g>
+        <g>
+          {wires.map(({ wire, d }) => (
+            <WireCore
+              key={wire.id}
+              wire={wire}
+              d={d}
               onPointerDown={(e, id) => {
                 e.stopPropagation();
                 ed.select({ wires: [id], additive: e.shiftKey });
