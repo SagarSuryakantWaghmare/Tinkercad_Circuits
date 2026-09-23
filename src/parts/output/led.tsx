@@ -24,8 +24,9 @@ function LedArt({ props, state }: ArtProps<LedProps>) {
 
   return (
     <g>
-      {/* leads: anode is the long one */}
-      <Leg x1={-5} y1={4} x2={-5} y2={22} />
+      {/* leads: anode is the long one. The tips are PITCH apart in y so both
+          legs can reach holes on the same board lattice. */}
+      <Leg x1={-5} y1={4} x2={-5} y2={24} />
       <Leg x1={5} y1={4} x2={5} y2={14} />
 
       {/* glow, painted under the lens so the dome still reads as glass */}
@@ -90,7 +91,9 @@ export const Led = definePart<LedProps>({
   model: 'led',
   terminals: [
     { name: 'cathode', type: 'breadboard_male', x: 5, y: 14, dir: [0, 1] },
-    { name: 'anode', type: 'breadboard_male', x: -5, y: 22, dir: [0, 1] },
+    // 24, not 22: the gap to the cathode has to be a whole PITCH or only one
+    // of the two legs can ever sit in a hole.
+    { name: 'anode', type: 'breadboard_male', x: -5, y: 24, dir: [0, 1] },
   ],
   props: [{ key: 'color', label: 'Colour', kind: 'color', options: COLOR_OPTIONS }],
   defaults: { color: 'red' },
