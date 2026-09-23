@@ -153,6 +153,14 @@ export function CanvasRoot() {
     }
     if (e.button !== 0) return;
 
+    // A press that arrives mid-route belongs to the wire, not to a new
+    // gesture: onPointerMove has already resolved what is under the cursor
+    // into mode.toward, and the release below finishes on it or drops a bend
+    // point. Without this the press would restart the wire from whatever it
+    // landed on — and a wire begun at a socket, which enters this mode with
+    // the pointer already up, could never be finished at all.
+    if (ed.mode.kind === 'drawWire') return;
+
     // Placing a part chosen in the panel.
     if (ed.pendingPart) {
       placePart(ed.pendingPart, worldOf(e));
@@ -182,6 +190,14 @@ export function CanvasRoot() {
   const onPartDown = (e: React.PointerEvent, partId: string) => {
     if (e.button !== 0) return;
     e.stopPropagation();
+    // A press that arrives mid-route belongs to the wire, not to a new
+    // gesture: onPointerMove has already resolved what is under the cursor
+    // into mode.toward, and the release below finishes on it or drops a bend
+    // point. Without this the press would restart the wire from whatever it
+    // landed on — and a wire begun at a socket, which enters this mode with
+    // the pointer already up, could never be finished at all.
+    if (ed.mode.kind === 'drawWire') return;
+
     const world = worldOf(e);
 
     // A pending part drops wherever you click, including on top of a board.
