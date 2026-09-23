@@ -78,3 +78,44 @@ describe('findTrigger', () => {
     expect(Math.min(phase, 1 - phase)).toBeLessThan(0.02);
   });
 });
+
+describe('findTrigger level window', () => {
+  const STEP2 = 1e-4;
+  const CAP2 = 65536;
+
+  /**
+   * A 555's timing capacitor: charges from 0 once, then oscillates between a
+   * third and two thirds of the rail. The startup ramp stays in the ring long
+   * after it stops being relevant.
+   */
+  function fiveFiveFive(n: number) {
+    const ch = new Float32Array(CAP2);
+    const ts = new Float64Array(CAP2);
+    const lo = 5 / 3;
+    const hi = 10 / 3;
+    for (let i = 0; i < n; i++) {
+      const t = i * STEP2;
+      const settled = t > 0.05;
+      ch[i % CAP2] = settled
+        ? (lo + hi) / 2 + ((hi - lo) / 2) * Math.sin(2 * Math.PI * 20 * t)
+        : (hi * t) / 0.05;
+      ts[i % CAP2] = t;
+    }
+    return { ch, ts, head: n % CAP2, count: Math.min(n, CAP2), tNow: (n - 1) * STEP2 };
+  }
+
+  it('keeps triggering once the startup transient is old news', () => {
+    const span = 0.05;
+    const seen: number[] = [];
+    for (let frame = 0; frame < 5; frame++) {
+      const { ch, ts, head, count, tNow } = fiveFiveFive(6000 + frame * 167);
+      const trig = findTrigger(ch, ts, head, count, CAP2, tNow - span, tNow - 4 * span);
+      expect(trig).not.toBeNull();
+      seen.push(trig!);
+    }
+    // Each frame must find its own edge rather than being stuck on one old
+    // timestamp, which is what a level taken from the whole ring produced.
+    expect(new Set(seen).size).toBeGreaterThan(1);
+    for (const t of seen) expect(t).toBeGreaterThan(0.05);
+  });
+});

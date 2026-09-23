@@ -159,13 +159,24 @@ export function findTrigger(
   count: number,
   cap: number,
   notAfter: number,
+  since = -Infinity,
 ): number | null {
   if (count < 3) return null;
   const oldest = (head - count + cap) % cap;
 
+  // Only recent history decides the level. Taken across the whole ring, a
+  // startup transient drags it away from where the waveform actually sits:
+  // a 555's timing capacitor settles into the top two thirds of its initial
+  // charge, so a level set from that first ramp sits below everything the
+  // steady wave reaches, the arming never re-arms, and the sweep freezes on
+  // one ancient timestamp until the transient scrolls out — 6.5 seconds at
+  // the ring's present size.
+  let first = 0;
+  while (first < count - 2 && ts[(oldest + first) % cap] < since) first++;
+
   let hi = -Infinity;
   let lo = Infinity;
-  for (let i = 0; i < count; i++) {
+  for (let i = first; i < count; i++) {
     const v = ch[(oldest + i) % cap];
     if (v > hi) hi = v;
     if (v < lo) lo = v;
@@ -185,7 +196,7 @@ export function findTrigger(
   // only just under the level and would never clear a hysteresis band.
   let armed = false;
   let latest: number | null = null;
-  for (let i = 0; i < count; i++) {
+  for (let i = first; i < count; i++) {
     const j = (oldest + i) % cap;
     const v = ch[j];
     if (v < level - hyst) {
@@ -256,7 +267,11 @@ defineDevice('oscilloscope', (): Device => {
       // the sweep is anchored to whatever the newest sample happens to be,
       // which moves by a frame's worth of solver time — more than a fast time
       // base is wide — so the trace never lands twice in the same place.
-      const trigger = findTrigger(ch1, ts, head, count, SCOPE_CAP, tNow - span);
+      // Four windows of history: the search runs from there up to one window
+      // back, so there is room to fall below the level and rise through it
+      // again even when a cycle is as long as the window — while still being
+      // recent enough that an old transient cannot set the level.
+      const trigger = findTrigger(ch1, ts, head, count, SCOPE_CAP, tNow - span, tNow - 4 * span);
       // If the requested window predates our history, start at the oldest
       // sample instead of clamping every column to it (which draws a long
       // flat leader before the real trace).
