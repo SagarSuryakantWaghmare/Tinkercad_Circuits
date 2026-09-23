@@ -17,6 +17,7 @@ import {
 } from '@/lib/geometry';
 import { C } from '@/lib/tokens';
 import { GRID_VISIBLE_ZOOM, PITCH, TERMINAL_HIT_R } from '@/lib/units';
+import { GlowDefs } from '@/parts/emissive';
 import { PlacedPart } from './items/PlacedPart';
 import {
   DraftWire,
@@ -805,6 +806,8 @@ export function CanvasRoot() {
       </defs>
 
       <g data-scene transform={`scale(${zoom},${zoom}) translate(${pan.x},${pan.y})`}>
+        {/* Inside the scene, because the exporters clone only this group. */}
+        <GlowDefs />
         {/* 0 — grid */}
         {showGrid && (
           <rect

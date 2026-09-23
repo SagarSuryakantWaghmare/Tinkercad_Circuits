@@ -1,6 +1,7 @@
 import { definePart } from '../registry';
 import type { ArtProps, PartDef } from '../types';
 import { LED_COLORS } from '@/lib/tokens';
+import { HOT_GLOW, bloom, emissionHue, glowId, haloAlpha, litAlpha } from '../emissive';
 import { Leg } from '../primitives';
 
 interface LedProps extends Record<string, string | number> {
@@ -18,9 +19,16 @@ const COLOR_OPTIONS = Object.keys(LED_COLORS).map((k) => ({
  * solved forward current.
  */
 function LedArt({ props, state }: ArtProps<LedProps>) {
-  const c = LED_COLORS[String(props.color)] ?? LED_COLORS.red;
-  const brightness = clamp01(Number(state?.brightness ?? 0));
+  const key = String(props.color) in LED_COLORS ? String(props.color) : 'red';
+  const c = LED_COLORS[key];
+  const e = clamp01(Number(state?.brightness ?? 0));
   const burnt = !!state?.burnt;
+  const lit = e > 0.004 && !burnt;
+
+  // The halo grows as well as brightens; a bright LED washes further across
+  // the board than a dim one rather than just being a denser disc.
+  const haloR = 13 + 24 * e;
+  const hot = bloom(e);
 
   return (
     <g>
@@ -29,11 +37,13 @@ function LedArt({ props, state }: ArtProps<LedProps>) {
       <Leg x1={-5} y1={4} x2={-5} y2={24} />
       <Leg x1={5} y1={4} x2={5} y2={14} />
 
-      {/* glow, painted under the lens so the dome still reads as glass */}
-      {brightness > 0.01 && !burnt && (
+      {/* Bloom onto the board, under the package. One smooth ramp rather than
+          a pair of flat discs, which showed their own edges as two rings and
+          never got past a pale wash however hard the LED was driven. */}
+      {lit && (
         <>
-          <circle cx={0} cy={-4} r={26} fill={c.glow} opacity={0.16 * brightness} />
-          <circle cx={0} cy={-4} r={17} fill={c.glow} opacity={0.3 * brightness} />
+          <circle cx={0} cy={-4} r={haloR} fill={`url(#${glowId(key)})`} opacity={haloAlpha(e)} />
+          <circle cx={0} cy={-4} r={haloR * 0.45} fill={`url(#${HOT_GLOW})`} opacity={0.55 * hot} />
         </>
       )}
 
@@ -44,27 +54,40 @@ function LedArt({ props, state }: ArtProps<LedProps>) {
         stroke="rgba(0,0,0,0.25)"
         strokeWidth={0.5}
       />
-      {/* body: circle with a flat on the cathode side */}
+      {/*
+        The lens, as a D: a 5 mm LED's cathode side is a chord cut out of the
+        dome. It used to be a full circle with a grey tab laid over the top
+        right, which sat entirely outside the circle at every height and read
+        as a chip broken off the package.
+      */}
       <path
-        d="M-10,-4 A10,10 0 0,1 10,-4 L10,2 L-10,2 Z"
-        fill={burnt ? '#3A3230' : c.body}
-        opacity={0.95}
-      />
-      <circle
-        cx={0}
-        cy={-4}
-        r={10}
+        d="M8,-10 A10,10 0 1,0 8,2 Z"
         fill={burnt ? '#2A2422' : c.body}
         stroke="rgba(0,0,0,0.22)"
         strokeWidth={0.6}
       />
-      {/* flat cathode edge */}
-      <path d="M7.2,-11 L7.2,3 L10.5,3 L10.5,-11 Z" fill="rgba(0,0,0,0.14)" />
-      {/* lens highlight */}
-      <ellipse cx={-3} cy={-7.5} rx={3.6} ry={2.6} fill="#FFFFFF" opacity={burnt ? 0.1 : 0.5} />
-      {brightness > 0.01 && !burnt && (
-        <circle cx={0} cy={-4} r={7} fill={c.glow} opacity={0.55 + 0.45 * brightness} />
+
+      {/* Emission across the whole lens, not a disc inside it — a smaller
+          disc left a ring of unlit body between the lit centre and the halo. */}
+      {lit && (
+        <>
+          <circle cx={0} cy={-4} r={10} fill={c.glow} opacity={litAlpha(e)} />
+          <circle cx={0} cy={-4} r={9} fill={`url(#${glowId(key)})`} opacity={e} />
+        </>
       )}
+
+      {/* Glass specular, over the emission rather than under it: drawn first
+          it was painted out by the lit lens, so a fully lit LED lost the one
+          cue that it was a rounded dome and read as a flat sticker. */}
+      <ellipse
+        cx={-3}
+        cy={-7.5}
+        rx={3.6}
+        ry={2.6}
+        fill="#FFFFFF"
+        opacity={burnt ? 0.1 : 0.42 + 0.3 * hot}
+      />
+
       {burnt && (
         <path
           d="M-6,-10 L-2,-4 L-6,2 M6,-10 L2,-4 L6,2"
@@ -134,7 +157,14 @@ function RgbLedArt({ state }: ArtProps<RgbProps>) {
   const g = clamp01(Number(state?.g ?? 0));
   const b = clamp01(Number(state?.b ?? 0));
   const lit = Math.max(r, g, b);
-  const hex = `rgb(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)})`;
+  // The channel values are intensities, not paint. Used as a fill directly a
+  // dim mix is nearly black, so turning the part on at 2 % dropped the lens
+  // from near-white to dark grey — brighter reading as darker. The hue is
+  // normalised and the intensity carried by alpha, the way light composites.
+  const hue = emissionHue(r, g, b);
+  const on = lit > 0.004;
+  const hot = bloom(lit);
+  const haloR = 14 + 22 * lit;
   return (
     <g>
       <Leg x1={-15} y1={4} x2={-15} y2={18} />
@@ -142,15 +172,21 @@ function RgbLedArt({ state }: ArtProps<RgbProps>) {
       <Leg x1={-5} y1={4} x2={-5} y2={28} />
       <Leg x1={5} y1={4} x2={5} y2={18} />
       <Leg x1={15} y1={4} x2={15} y2={18} />
-      {lit > 0.01 && (
+      {on && (
         <>
-          <circle cx={0} cy={-4} r={28} fill={hex} opacity={0.18 * lit} />
-          <circle cx={0} cy={-4} r={18} fill={hex} opacity={0.32 * lit} />
+          <circle cx={0} cy={-4} r={haloR} fill={hue} opacity={0.10 * haloAlpha(lit)} />
+          <circle cx={0} cy={-4} r={haloR * 0.72} fill={hue} opacity={0.16 * haloAlpha(lit)} />
+          <circle cx={0} cy={-4} r={haloR * 0.46} fill={hue} opacity={0.22 * haloAlpha(lit)} />
         </>
       )}
       <path d="M-12,2 L12,2 L12,5 L-12,5 Z" fill="#E4E4E4" stroke="rgba(0,0,0,0.2)" strokeWidth={0.5} />
       <circle cx={0} cy={-4} r={11} fill="#EDEDED" stroke="rgba(0,0,0,0.2)" strokeWidth={0.6} opacity={0.9} />
-      {lit > 0.01 && <circle cx={0} cy={-4} r={7.5} fill={hex} opacity={0.6 + 0.4 * lit} />}
+      {on && (
+        <>
+          <circle cx={0} cy={-4} r={11} fill={hue} opacity={litAlpha(lit)} />
+          <circle cx={0} cy={-4} r={5.5} fill={`url(#${HOT_GLOW})`} opacity={0.8 * hot} />
+        </>
+      )}
       <ellipse cx={-3.5} cy={-8} rx={3.6} ry={2.6} fill="#FFFFFF" opacity={0.55} />
     </g>
   );
@@ -198,7 +234,14 @@ function RgbLedCaArt({ state }: ArtProps<RgbCaProps>) {
   const g = clamp01(Number(state?.g ?? 0));
   const b = clamp01(Number(state?.b ?? 0));
   const lit = Math.max(r, g, b);
-  const hex = `rgb(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)})`;
+  // The channel values are intensities, not paint. Used as a fill directly a
+  // dim mix is nearly black, so turning the part on at 2 % dropped the lens
+  // from near-white to dark grey — brighter reading as darker. The hue is
+  // normalised and the intensity carried by alpha, the way light composites.
+  const hue = emissionHue(r, g, b);
+  const on = lit > 0.004;
+  const hot = bloom(lit);
+  const haloR = 14 + 22 * lit;
   return (
     <g>
       {/* Anode is the long leg (second from the left on a CA part). */}
@@ -207,15 +250,21 @@ function RgbLedCaArt({ state }: ArtProps<RgbCaProps>) {
       <Leg x1={-5} y1={4} x2={-5} y2={28} />
       <Leg x1={5} y1={4} x2={5} y2={18} />
       <Leg x1={15} y1={4} x2={15} y2={18} />
-      {lit > 0.01 && (
+      {on && (
         <>
-          <circle cx={0} cy={-4} r={28} fill={hex} opacity={0.18 * lit} />
-          <circle cx={0} cy={-4} r={18} fill={hex} opacity={0.32 * lit} />
+          <circle cx={0} cy={-4} r={haloR} fill={hue} opacity={0.10 * haloAlpha(lit)} />
+          <circle cx={0} cy={-4} r={haloR * 0.72} fill={hue} opacity={0.16 * haloAlpha(lit)} />
+          <circle cx={0} cy={-4} r={haloR * 0.46} fill={hue} opacity={0.22 * haloAlpha(lit)} />
         </>
       )}
       <path d="M-12,2 L12,2 L12,5 L-12,5 Z" fill="#E4E4E4" stroke="rgba(0,0,0,0.2)" strokeWidth={0.5} />
       <circle cx={0} cy={-4} r={11} fill="#EDEDED" stroke="rgba(0,0,0,0.2)" strokeWidth={0.6} opacity={0.9} />
-      {lit > 0.01 && <circle cx={0} cy={-4} r={7.5} fill={hex} opacity={0.6 + 0.4 * lit} />}
+      {on && (
+        <>
+          <circle cx={0} cy={-4} r={11} fill={hue} opacity={litAlpha(lit)} />
+          <circle cx={0} cy={-4} r={5.5} fill={`url(#${HOT_GLOW})`} opacity={0.8 * hot} />
+        </>
+      )}
       <ellipse cx={-3.5} cy={-8} rx={3.6} ry={2.6} fill="#FFFFFF" opacity={0.55} />
     </g>
   );
