@@ -28,6 +28,18 @@ export const TERMINAL_STUB = 25;
 /** Radius of a terminal's invisible hit target. */
 export const TERMINAL_HIT_R = 7;
 
+/**
+ * Hit radius for a 0.1 inch socket — a breadboard hole or a header pin.
+ *
+ * This has to stay below half a pitch. The generous radius a free-standing
+ * pin gets is wider than the 10-unit hole spacing, so on a board every point
+ * lands inside some hole's target: the whole surface reads as one terminal,
+ * there is no body left to grab, and a press meant to drag the board starts a
+ * wire instead. Keeping sockets under PITCH / 2 leaves dead space between the
+ * holes to pick the board up by.
+ */
+export const SOCKET_HIT_R = 4;
+
 export const ZOOM_MIN = 0.08;
 export const ZOOM_MAX = 6;
 export const ZOOM_DEFAULT = 1;

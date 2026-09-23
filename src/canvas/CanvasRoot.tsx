@@ -21,7 +21,13 @@ import { PlacedPart } from './items/PlacedPart';
 import { DraftWire, WireItem, type ResolvedWire } from './items/WireItem';
 import { NoteItem } from './items/NoteItem';
 import { indexTerminals, pickTerminal, worldTerminals } from './terminals';
-import { partsRidingHosts, rotationStepFor, snapPlacement, targetHoles } from './snapping';
+import {
+  collectSockets,
+  partsRidingHosts,
+  rotationStepFor,
+  snapPlacement,
+  targetHoles,
+} from './snapping';
 import { simBus } from '@/sim/bus';
 import { ContextMenu, type MenuItem } from '@/editor/ContextMenu';
 import { contentBounds, selectionBounds } from '@/editor/useHotkeys';
@@ -128,6 +134,8 @@ export function CanvasRoot() {
     world: Vec2;
     moved: boolean;
     passengers?: string[];
+    /** Socket pressed but not yet committed to — see {@link onPartDown}. */
+    pendingWire?: { partId: string; terminal: string };
   } | null>(null);
   const [snapPreview, setSnapPreview] = useState<Vec2[]>([]);
 
@@ -175,11 +183,27 @@ export function CanvasRoot() {
       return;
     }
 
-    // A terminal under the cursor wins over the body — that's how you start a wire.
-    const term = pickTerminal(design, world, TERMINAL_HIT_R * 1.6);
-    if (term) return startWire(e, term.partId, term.def.name);
+    // A terminal of *this* part under the cursor wins over its body — that's
+    // how you start a wire. Scoping the search to the part being pressed is
+    // what stops a neighbour's pin, or a hole of the board underneath, from
+    // stealing the press and drawing a wire when the user meant to drag.
+    const term = pickTerminal(design, world, TERMINAL_HIT_R * 1.6, { only: partId });
 
-    if (running) return; // parts are immovable while the sim runs
+    // A free-standing pin drags a wire straight out, which is the gesture
+    // people expect from a component leg. A 0.1 inch socket cannot afford
+    // that: holes sit closer together than any usable hit target, so treating
+    // every press as a wire leaves a breadboard with no body to pick it up by.
+    // There the gesture is decided on release instead — moving drags the
+    // board, releasing without moving starts the wire.
+    const socketPress = term?.def.type === 'breadboard_female';
+    if (term && !socketPress) return startWire(e, term.partId, term.def.name);
+
+    if (running) {
+      // Parts are immovable while the sim runs, so there is no drag to tell
+      // the press apart from — a socket press can only mean a wire.
+      if (term) startWire(e, term.partId, term.def.name);
+      return;
+    }
 
     const already = ed.selectedParts.includes(partId);
     if (!already) {
@@ -197,7 +221,13 @@ export function CanvasRoot() {
     const passengers = Array.from(partsRidingHosts(design, new Set(selection))).filter(
       (id) => !selection.includes(id),
     );
-    downRef.current = { screen: screenOf(e), world, moved: false, passengers };
+    downRef.current = {
+      screen: screenOf(e),
+      world,
+      moved: false,
+      passengers,
+      pendingWire: socketPress && term ? { partId: term.partId, terminal: term.def.name } : undefined,
+    };
     begin('Move');
     ed.setMode({ kind: 'dragParts', origin: world, moved: false });
   };
@@ -239,8 +269,7 @@ export function CanvasRoot() {
     if (mode.kind === 'drawWire') {
       const world = worldOf(e);
       const t = pickTerminal(design, world, TERMINAL_HIT_R * 1.6, {
-        partId: mode.from.partId,
-        terminal: mode.from.terminal,
+        exclude: { partId: mode.from.partId, terminal: mode.from.terminal },
       });
       ed.setMode({
         ...mode,
@@ -256,6 +285,7 @@ export function CanvasRoot() {
       const s = screenOf(e);
       if (!d.moved && Math.hypot(s.x - d.screen.x, s.y - d.screen.y) < DRAG_THRESHOLD) return;
       d.moved = true;
+      d.pendingWire = undefined; // travelled far enough to be a drag
 
       const world = worldOf(e);
       const dx = world.x - mode.origin.x;
@@ -271,11 +301,16 @@ export function CanvasRoot() {
         // so a multi-selection keeps its internal spacing.
         const lead = dd.parts[ids[0]];
         if (!lead) return;
+        // Both the snap and the preview below need every socket in the design.
+        // A full breadboard has 830 of them, so the list is built once here
+        // and shared rather than rebuilt twice on every frame of the drag.
+        const sockets = collectSockets(dd, moving);
         const snapped = snapPlacement(
           dd,
           lead,
           { x: lead.x + dx, y: lead.y + dy },
           moving,
+          sockets,
         );
         const adx = snapped.x - lead.x;
         const ady = snapped.y - lead.y;
@@ -287,7 +322,7 @@ export function CanvasRoot() {
         }
         // Sample target holes for the primary at its new position so the
         // user sees which sockets a leg is about to drop into.
-        previewHoles = targetHoles(dd, lead, { x: lead.x, y: lead.y }, moving);
+        previewHoles = targetHoles(dd, lead, { x: lead.x, y: lead.y }, moving, sockets);
       });
       setSnapPreview(previewHoles);
       ed.setMode({ kind: 'dragParts', origin: { x: mode.origin.x + dx, y: mode.origin.y + dy }, moved: true });
@@ -314,10 +349,23 @@ export function CanvasRoot() {
     }
 
     if (mode.kind === 'dragParts') {
-      commit();
-      ed.setMode({ kind: 'idle' });
+      const d = downRef.current;
+      commit(); // a drag that never moved leaves no history entry
       downRef.current = null;
       setSnapPreview([]);
+      const socket = d?.pendingWire && !d.moved ? d.pendingWire : null;
+      const t = socket && terminalIndex.get(`${socket.partId}:${socket.terminal}`);
+      if (t) {
+        ed.setMode({
+          kind: 'drawWire',
+          from: { partId: t.partId, terminal: t.def.name, pos: t.pos, dir: t.dir },
+          points: [],
+          cursor: t.pos,
+          toward: null,
+        });
+      } else {
+        ed.setMode({ kind: 'idle' });
+      }
       return;
     }
 

@@ -8,6 +8,21 @@ import { worldTerminals } from './terminals';
 /** How close a leg must be to a hole before it drops in, in world units. */
 const SOCKET_RADIUS = PITCH * 0.62;
 
+/**
+ * How far a leg may sit from a hole and still count as plugged into it.
+ *
+ * snapPlacement drops a leg exactly onto a hole, but parts placed by a starter
+ * or carried through a rotation can end up a fraction of a unit out, so the
+ * test has to be a tolerance. Every caller shares it: deciding which parts a
+ * breadboard carries when it is dragged has to agree with deciding which legs
+ * are electrically in a row, or a component lights up in the circuit yet gets
+ * left behind when the board moves.
+ */
+const SOCKET_FIT_TOL = 1.5;
+
+const fitsSocket = (a: Vec2, b: Vec2) =>
+  Math.abs(a.x - b.x) < SOCKET_FIT_TOL && Math.abs(a.y - b.y) < SOCKET_FIT_TOL;
+
 export interface SnapResult {
   x: number;
   y: number;
@@ -28,12 +43,15 @@ export function snapPlacement(
   inst: PartInstance,
   proposed: Vec2,
   ignoreIds: Set<string> = new Set(),
+  prebuiltSockets?: Vec2[],
 ): SnapResult {
   const def = getPartDef(inst.type);
   const gridded = { x: snap(proposed.x, SNAP), y: snap(proposed.y, SNAP) };
   if (!def?.socketable) return { ...gridded, socketed: false };
 
-  const sockets = collectSockets(design, ignoreIds.size ? ignoreIds : new Set([inst.id]));
+  const sockets =
+    prebuiltSockets ??
+    collectSockets(design, ignoreIds.size ? ignoreIds : new Set([inst.id]));
   if (sockets.length === 0) return { ...gridded, socketed: false };
 
   const legs = terminalsOf(def, inst.props as never).filter(
@@ -67,8 +85,14 @@ export function snapPlacement(
   };
 }
 
-/** All female terminals in the design, as bare world points. */
-function collectSockets(design: Design, exclude: Set<string>): Vec2[] {
+/**
+ * All female terminals in the design, as bare world points.
+ *
+ * A full breadboard carries 830 of them, and a drag frame needs the same list
+ * for both the snap and the target-hole preview — so callers on the drag path
+ * build it once and hand it to both rather than paying for it twice.
+ */
+export function collectSockets(design: Design, exclude: Set<string>): Vec2[] {
   const out: Vec2[] = [];
   for (const id in design.parts) {
     if (exclude.has(id)) continue;
@@ -113,10 +137,7 @@ export function socketedConnections(
     if (holes.length === 0) continue;
     for (const leg of legs) {
       for (const hole of holes) {
-        if (
-          Math.abs(hole.pos.x - leg.pos.x) < 1.5 &&
-          Math.abs(hole.pos.y - leg.pos.y) < 1.5
-        ) {
+        if (fitsSocket(hole.pos, leg.pos)) {
           out.push({ leg: leg.def.name, partId: otherId, terminal: hole.def.name });
         }
       }
@@ -133,7 +154,9 @@ export function socketedConnections(
  */
 export function partsRidingHosts(design: Design, hostIds: Set<string>): Set<string> {
   const out = new Set<string>();
-  const holes = new Map<string, string>(); // "x|y" → hostId
+  // Holes bucketed by a coarse grid, so a leg only tests the handful of holes
+  // that could possibly be within tolerance instead of all 300 on a board.
+  const holes = new Map<string, Vec2[]>();
 
   for (const id of hostIds) {
     const inst = design.parts[id];
@@ -142,7 +165,10 @@ export function partsRidingHosts(design: Design, hostIds: Set<string>): Set<stri
     for (const t of terminalsOf(def, inst.props as never)) {
       if (t.type !== 'breadboard_female') continue;
       const p = localToWorld({ x: t.x, y: t.y }, { x: inst.x, y: inst.y }, inst.rotation, inst.mirrored);
-      holes.set(cellKey(p.x, p.y), id);
+      const key = bucketKey(p.x, p.y);
+      const bucket = holes.get(key);
+      if (bucket) bucket.push(p);
+      else holes.set(key, [p]);
     }
   }
   if (holes.size === 0) return out;
@@ -155,7 +181,7 @@ export function partsRidingHosts(design: Design, hostIds: Set<string>): Set<stri
     for (const t of terminalsOf(def, inst.props as never)) {
       if (t.type !== 'breadboard_male') continue;
       const p = localToWorld({ x: t.x, y: t.y }, { x: inst.x, y: inst.y }, inst.rotation, inst.mirrored);
-      if (holes.has(cellKey(p.x, p.y))) {
+      if (anyHoleNear(holes, p)) {
         out.add(partId);
         break;
       }
@@ -174,10 +200,11 @@ export function targetHoles(
   inst: PartInstance,
   proposed: Vec2,
   ignoreIds: Set<string>,
+  prebuiltSockets?: Vec2[],
 ): Vec2[] {
   const def = getPartDef(inst.type);
   if (!def?.socketable) return [];
-  const sockets = collectSockets(design, ignoreIds);
+  const sockets = prebuiltSockets ?? collectSockets(design, ignoreIds);
   if (sockets.length === 0) return [];
   const legs = terminalsOf(def, inst.props as never).filter((t) => t.type === 'breadboard_male');
   const out: Vec2[] = [];
@@ -193,8 +220,26 @@ export function targetHoles(
   return out;
 }
 
-function cellKey(x: number, y: number) {
-  return `${Math.round(x)}|${Math.round(y)}`;
+/**
+ * Bucket edge for the hole index. Anything at least twice the fit tolerance
+ * works, because then a matching hole can only ever be one bucket away.
+ */
+const BUCKET = 4;
+
+const bucketKey = (x: number, y: number) =>
+  `${Math.floor(x / BUCKET)}|${Math.floor(y / BUCKET)}`;
+
+function anyHoleNear(holes: Map<string, Vec2[]>, p: Vec2): boolean {
+  const bx = Math.floor(p.x / BUCKET);
+  const by = Math.floor(p.y / BUCKET);
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      const bucket = holes.get(`${bx + dx}|${by + dy}`);
+      if (!bucket) continue;
+      for (const hole of bucket) if (fitsSocket(hole, p)) return true;
+    }
+  }
+  return false;
 }
 
 /** Rotation step for a part: 90° once it can socket, 30° otherwise. */

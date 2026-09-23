@@ -184,29 +184,38 @@ function BreadboardArt({ cols, rails }: { cols: number; rails: boolean }) {
         );
       })}
 
-      {/* row letters + column numbers */}
+      {/*
+        Row letters down both edges, as they are printed on a real board, so
+        a hole can be read off from whichever side is nearer.
+      */}
       <g>
-        {UPPER.map((r, i) => (
-          <Silk key={r} x={-w / 2 + 6} y={ROW_Y_UPPER[i]} size={6} fill={C.bbLabel} weight={500}>
-            {r}
-          </Silk>
+        {[-w / 2 + 6, w / 2 - 6].map((lx) => (
+          <g key={lx}>
+            {UPPER.map((r, i) => (
+              <Silk key={r} x={lx} y={ROW_Y_UPPER[i]} size={6} fill={C.bbLabel} weight={500}>
+                {r}
+              </Silk>
+            ))}
+            {LOWER.map((r, i) => (
+              <Silk key={r} x={lx} y={ROW_Y_LOWER[i]} size={6} fill={C.bbLabel} weight={500}>
+                {r}
+              </Silk>
+            ))}
+          </g>
         ))}
-        {LOWER.map((r, i) => (
-          <Silk key={r} x={-w / 2 + 6} y={ROW_Y_LOWER[i]} size={6} fill={C.bbLabel} weight={500}>
-            {r}
-          </Silk>
-        ))}
+        {/*
+          Column numbers sit in the centre channel. Printed either side of it
+          they cleared the row e/f holes by 0.15 units — close enough to read
+          as though the digits were touching the holes at any useful zoom —
+          and the channel is empty anyway, so one centred run is both legible
+          and half the clutter.
+        */}
         {Array.from({ length: cols }, (_, i) => i + 1)
           .filter((c) => c === 1 || c % 5 === 0)
           .map((c) => (
-            <g key={`n${c}`}>
-              <Silk x={colX(cols, c)} y={-8.5} size={5.5} fill={C.bbLabel} weight={500}>
-                {c}
-              </Silk>
-              <Silk x={colX(cols, c)} y={8.5} size={5.5} fill={C.bbLabel} weight={500}>
-                {c}
-              </Silk>
-            </g>
+            <Silk key={`n${c}`} x={colX(cols, c)} y={0} size={5.5} fill={C.bbLabel} weight={500}>
+              {c}
+            </Silk>
           ))}
       </g>
     </g>

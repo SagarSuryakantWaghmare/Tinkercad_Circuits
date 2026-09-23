@@ -1,4 +1,5 @@
 import { localToWorld, rotate, type Vec2 } from '@/lib/geometry';
+import { SOCKET_HIT_R } from '@/lib/units';
 import { getPartDef } from '@/parts/registry';
 import { terminalsOf, type TerminalDef } from '@/parts/types';
 import type { Design, PartInstance } from '@/state/design';
@@ -60,31 +61,54 @@ export function indexTerminals(design: Design): Map<string, WorldTerminal> {
 export const terminalKey = (partId: string, terminal: string) =>
   `${partId}:${terminal}`;
 
+export interface PickTerminalOptions {
+  /** Skip this terminal — the end a wire is already being drawn from. */
+  exclude?: { partId: string; terminal: string };
+  /**
+   * Restrict the search to one part. Pass the part under the cursor so a
+   * press on its body can never start a wire from a neighbour, or from the
+   * board it is plugged into.
+   */
+  only?: string;
+}
+
 /**
- * Nearest connectable terminal to a world point, within `radius`.
- * Substrate parts (breadboards) lose ties so a leg sitting in a hole still
- * prefers the leg when both are under the cursor.
+ * Nearest connectable terminal to a world point, or null.
+ *
+ * Two rules keep this predictable on a crowded board. Sockets are matched
+ * against the tighter {@link SOCKET_HIT_R} so neighbouring holes cannot both
+ * claim the same point, and a component pin always beats a board hole rather
+ * than competing with it on distance — a leg plugged into a breadboard sits
+ * right on top of the hole it occupies, and the leg is what the user means.
  */
 export function pickTerminal(
   design: Design,
   at: Vec2,
   radius: number,
-  exclude?: { partId: string; terminal: string },
+  options: PickTerminalOptions = {},
 ): WorldTerminal | null {
+  const { exclude, only } = options;
   let best: WorldTerminal | null = null;
-  let bestScore = Infinity;
+  let bestRank = Infinity;
+  let bestDist = Infinity;
 
   for (const id in design.parts) {
+    if (only !== undefined && id !== only) continue;
     const inst = design.parts[id];
     const def = getPartDef(inst.type);
     if (!def) continue;
+    const rank = def.substrate ? 1 : 0;
+    // A closer hole can never displace a pin already found.
+    if (rank > bestRank) continue;
     for (const t of worldTerminals(inst)) {
       if (exclude && exclude.partId === id && exclude.terminal === t.def.name) continue;
+      const limit =
+        t.def.type === 'breadboard_female' ? Math.min(radius, SOCKET_HIT_R) : radius;
       const d = Math.hypot(t.pos.x - at.x, t.pos.y - at.y);
-      if (d > radius) continue;
-      const score = d + (def.substrate ? 2 : 0);
-      if (score < bestScore) {
-        bestScore = score;
+      if (d > limit) continue;
+      if (rank < bestRank || d < bestDist) {
+        bestRank = rank;
+        bestDist = d;
         best = t;
       }
     }
