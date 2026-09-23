@@ -99,13 +99,11 @@ export function collectSockets(design: Design, exclude: Set<string>): Vec2[] {
     const inst = design.parts[id];
     const def = getPartDef(inst.type);
     if (!def) continue;
-    const list = terminalsOf(def, inst.props as never);
-    if (!list.some((t) => t.type === 'breadboard_female')) continue;
-    for (const t of list) {
-      if (t.type !== 'breadboard_female') continue;
-      out.push(
-        localToWorld({ x: t.x, y: t.y }, { x: inst.x, y: inst.y }, inst.rotation, inst.mirrored),
-      );
+    // Goes through worldTerminals rather than placing the points here, so a
+    // board that has not moved this frame is served from its cache.
+    for (const t of worldTerminals(inst)) {
+      if (t.def.type !== 'breadboard_female') continue;
+      out.push(t.pos);
     }
   }
   return out;

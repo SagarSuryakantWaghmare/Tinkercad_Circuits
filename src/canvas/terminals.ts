@@ -13,12 +13,24 @@ export interface WorldTerminal {
   dir: [number, number];
 }
 
+/**
+ * Placing a part's terminals in world space costs a rotate and a translate
+ * each, and a full breadboard carries 830 of them. Every edit runs through
+ * immer, which leaves untouched parts at their existing identity, so a part
+ * that did not move can be keyed on directly: dragging a component across a
+ * board now re-places only the component's own legs per frame instead of
+ * every hole on the board as well.
+ */
+const worldCache = new WeakMap<PartInstance, WorldTerminal[]>();
+
 /** All terminals of one placed part, in world space. */
 export function worldTerminals(inst: PartInstance): WorldTerminal[] {
+  const cached = worldCache.get(inst);
+  if (cached) return cached;
   const def = getPartDef(inst.type);
   if (!def) return [];
   const list = terminalsOf(def, inst.props as never);
-  return list.map((t) => {
+  const placed = list.map((t) => {
     const pos = localToWorld(
       { x: t.x, y: t.y },
       { x: inst.x, y: inst.y },
@@ -34,6 +46,8 @@ export function worldTerminals(inst: PartInstance): WorldTerminal[] {
       dir: [round(r.x), round(r.y)] as [number, number],
     };
   });
+  worldCache.set(inst, placed);
+  return placed;
 }
 
 /** One named terminal of a placed part, in world space. */
