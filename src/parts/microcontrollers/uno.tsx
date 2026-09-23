@@ -151,13 +151,22 @@ function UnoArt({ state }: ArtProps<Record<string, never>>) {
       <HeaderStrip x={POWER_X0} y={BOT_Y} count={POWER.length} />
       <HeaderStrip x={ANALOG_X0} y={BOT_Y} count={ANALOG.length} />
 
-      {/* pin labels, rotated to run along the pin as on the real silkscreen */}
+      {/*
+        Pin labels, rotated to run along the pin as on the real silkscreen.
+        The top row is anchored 30 from its header rather than 15: rotating by
+        -90 with a start anchor makes the text grow upward, i.e. back toward
+        that header, so at 15 everything longer than ten units — six of the
+        seven label widths, RESET worst at nearly seven over — was printed
+        across the black shroud and its sockets. The bottom row grows away
+        from its own header, so 15 is right there, and the two rows end up
+        about the same distance clear of their shrouds.
+      */}
       <g>
         {DIG_HI.map((n, i) => (
           <Silk
             key={n}
             x={DIG_HI_X0 + i * 10}
-            y={TOP_Y + 15}
+            y={TOP_Y + 30}
             size={5.6}
             rotate={-90}
             anchor="start"
@@ -170,7 +179,7 @@ function UnoArt({ state }: ArtProps<Record<string, never>>) {
           <Silk
             key={n}
             x={DIG_LO_X0 + i * 10}
-            y={TOP_Y + 15}
+            y={TOP_Y + 30}
             size={5.6}
             rotate={-90}
             anchor="start"
