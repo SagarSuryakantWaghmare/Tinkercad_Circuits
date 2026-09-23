@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDesignStore } from '@/state/designStore';
 import { useEditorStore } from '@/state/editorStore';
+import { useShallow } from 'zustand/react/shallow';
+
 import { useSimStore } from '@/state/simStore';
 import type { CodeLanguage, CodeMode } from '@/state/design';
 import { TextEditor } from './TextEditor';
@@ -37,6 +39,9 @@ import {
 
 type Tab = 'serial' | 'plotter' | 'errors' | 'vars';
 
+/** Shared empty scope, so a run with nothing paused keeps the same value. */
+const NO_SCOPE: string[] = [];
+
 export function CodePanel({
   onSendSerial,
   onSetBreakpoints,
@@ -53,7 +58,25 @@ export function CodePanel({
   const code = useDesignStore((s) => s.design.code);
   const transact = useDesignStore((s) => s.transact);
   const errors = useSimStore((s) => s.errors);
-  const snapshot = useSimStore((s) => s.snapshot);
+  // Only the paused-MCU details, not the whole snapshot. The snapshot object
+  // is replaced on every simulated frame, so subscribing to it re-rendered
+  // this panel — CodeMirror and the Blockly host included — 60 times a second
+  // throughout any run. While nothing is paused both values below are
+  // constants, so the panel stops re-rendering entirely.
+  const { pausedLine, pausedScope } = useSimStore(
+    useShallow((s) => {
+      for (const id in s.snapshot.parts) {
+        const p = s.snapshot.parts[id];
+        if (p.paused) {
+          return {
+            pausedLine: Number(p.line),
+            pausedScope: (p.pausedScope as string[] | undefined) ?? NO_SCOPE,
+          };
+        }
+      }
+      return { pausedLine: null as number | null, pausedScope: NO_SCOPE };
+    }),
+  );
   const running = useSimStore((s) => s.runState === 'running');
 
   // Which languages the design can be programmed in, from the boards present.
@@ -107,11 +130,9 @@ export function CodePanel({
     transact('Code view', (d) => void (d.code.mode = mode));
   };
 
-  const mcuPaused = Object.values(snapshot.parts).find((p) => p.paused);
-  const pausedLine = mcuPaused ? Number(mcuPaused.line) : null;
   // Each entry arrives as "name\0value" so a value containing an equals sign
   // or a comma still splits cleanly.
-  const scopeRows = ((mcuPaused?.pausedScope as string[] | undefined) ?? []).map((row) => {
+  const scopeRows = pausedScope.map((row) => {
     const i = row.indexOf('\u0000');
     return { name: row.slice(0, i), value: row.slice(i + 1) };
   });

@@ -322,9 +322,35 @@ export class Simulation {
       parts,
       netV,
       terminalNet,
-      serial: h ? [...h.board.serialTx] : [],
+      serial: this.publishedSerial(h),
       warnings: this.warnings.slice(-4),
     });
+  }
+
+  /**
+   * The serial transcript to hand out, copied so the frame cannot mutate what
+   * the simulation is still writing to — but only re-copied when it changed.
+   *
+   * Rebuilding it every frame handed subscribers a new array 60 times a second
+   * even while nothing was printed, so the serial monitor re-rendered (and
+   * re-copied up to 2000 lines) continuously through any run. serialWritten
+   * counts lines ever produced and serialTx is only appended to or trimmed
+   * from the front, so that counter alone identifies the contents.
+   */
+  private serialSnapshot: string[] = [];
+  private serialSnapshotKey = -1;
+
+  private publishedSerial(h: { board: { serialTx: string[]; serialWritten: number } } | null | undefined): string[] {
+    if (!h) {
+      if (this.serialSnapshot.length) this.serialSnapshot = [];
+      this.serialSnapshotKey = -1;
+      return this.serialSnapshot;
+    }
+    if (h.board.serialWritten !== this.serialSnapshotKey) {
+      this.serialSnapshotKey = h.board.serialWritten;
+      this.serialSnapshot = [...h.board.serialTx];
+    }
+    return this.serialSnapshot;
   }
 
   private reportDiagnostics() {
