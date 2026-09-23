@@ -143,7 +143,10 @@ export function roundedPath(points: Vec2[], r: number = WIRE_CORNER_R): string {
     const sweep = cross > 0 ? 1 : 0;
 
     d += `L${f(start.x)},${f(start.y)}`;
-    d += `A${r},${r} 0 0,${sweep} ${f(end.x)},${f(end.y)}`;
+    // rr, not r: the arc was cut back to fit the shorter leg, and naming the
+    // uncut radius makes the renderer sweep a shallow arc between the two
+    // endpoints instead of a quarter turn, which draws as a kinked elbow.
+    d += `A${f(rr)},${f(rr)} 0 0,${sweep} ${f(end.x)},${f(end.y)}`;
   }
 
   const last = points[points.length - 1];
