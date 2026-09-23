@@ -54,7 +54,7 @@ function SevenSeg4Art({ props, state }: ArtProps<Seg4Props>) {
         <rect
           key={`t${i}`}
           x={-25 + i * 10 - 1.6}
-          y={-SEG4_H / 2 - 13}
+          y={-SEG4_H / 2 - 12}
           width={3.2}
           height={14}
           fill={C.metal}
@@ -64,7 +64,7 @@ function SevenSeg4Art({ props, state }: ArtProps<Seg4Props>) {
         <rect
           key={`b${i}`}
           x={-25 + i * 10 - 1.6}
-          y={SEG4_H / 2 - 1}
+          y={SEG4_H / 2 - 2}
           width={3.2}
           height={14}
           fill={C.metal}
@@ -102,11 +102,14 @@ function SevenSeg4Art({ props, state }: ArtProps<Seg4Props>) {
 
 function seg4Terminals(): TerminalDef[] {
   const t: TerminalDef[] = [];
+  // 12 clear of the body, not 10: that puts the two rows 100 apart, ten whole
+  // pitches, so they land on rows either side of the centre channel the way a
+  // DIP package does. At 96 only one row could ever be in holes.
   TOP_PINS.forEach((name, i) => {
-    t.push({ name, type: 'breadboard_male', x: -25 + i * 10, y: -SEG4_H / 2 - 10, dir: [0, -1] });
+    t.push({ name, type: 'breadboard_male', x: -25 + i * 10, y: -SEG4_H / 2 - 12, dir: [0, -1] });
   });
   BOTTOM_PINS.forEach((name, i) => {
-    t.push({ name, type: 'breadboard_male', x: -25 + i * 10, y: SEG4_H / 2 + 10, dir: [0, 1] });
+    t.push({ name, type: 'breadboard_male', x: -25 + i * 10, y: SEG4_H / 2 + 12, dir: [0, 1] });
   });
   return t;
 }

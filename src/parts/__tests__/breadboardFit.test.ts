@@ -15,17 +15,6 @@ import { PITCH } from '@/lib/units';
  * both axes, is the shape the rest should match.
  */
 
-/**
- * Parts known not to fit yet. Each one is a real defect — plugging it into a
- * board silently half-connects it — kept here so the rule can be enforced for
- * everything else while they are fixed one at a time. Shrink this list; never
- * add to it.
- */
-const KNOWN_UNFITTED = new Set([
-  'seven-segment-4', // rows 96 apart; every board row gap is a multiple of 10
-  'seven-segment-clock',
-]);
-
 const offLattice = (v: number) => {
   const m = Math.abs(v % PITCH);
   return Math.min(m, PITCH - m) > 1e-6;
@@ -37,19 +26,11 @@ describe('socketable parts fit the breadboard lattice', () => {
     const legs = terminalsOf(def, {} as never).filter((t) => t.type === 'breadboard_male');
     if (legs.length < 2) continue;
 
-    const known = KNOWN_UNFITTED.has(def.id);
-    it(`${def.id} seats every leg in a hole${known ? ' (known bad)' : ''}`, () => {
+    it(`${def.id} seats every leg in a hole`, () => {
       const [first, ...rest] = legs;
       const strays = rest
         .filter((t) => offLattice(t.x - first.x) || offLattice(t.y - first.y))
         .map((t) => `${t.name} sits (${t.x - first.x},${t.y - first.y}) from ${first.name}`);
-
-      if (known) {
-        // Pinned so the list cannot rot: fixing a part fails here until it is
-        // taken off KNOWN_UNFITTED.
-        expect(strays.length).toBeGreaterThan(0);
-        return;
-      }
       expect(strays).toEqual([]);
     });
   }
