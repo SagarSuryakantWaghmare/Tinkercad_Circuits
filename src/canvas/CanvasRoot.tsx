@@ -161,12 +161,20 @@ export function CanvasRoot() {
     }
 
     const world = worldOf(e);
-    // Clicking a terminal on empty-ish space still starts a wire.
+    // A terminal near the press is remembered but not acted on yet. Pressing
+    // empty canvas and dragging is a rubber-band selection, and a pin's hit
+    // target is wide enough that committing to a wire here would ring every
+    // pin with a zone where a selection could not be started. Which gesture
+    // it was is settled on release.
     const term = pickTerminal(design, world, TERMINAL_HIT_R * 1.6);
-    if (term) return startWire(e, term.partId, term.def.name);
 
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
-    downRef.current = { screen: screenOf(e), world, moved: false };
+    downRef.current = {
+      screen: screenOf(e),
+      world,
+      moved: false,
+      pendingWire: term ? { partId: term.partId, terminal: term.def.name } : undefined,
+    };
     ed.setMode({ kind: 'marquee', from: world, to: world, additive: e.shiftKey });
     if (!e.shiftKey) ed.clearSelection();
   };
@@ -231,6 +239,24 @@ export function CanvasRoot() {
     begin('Move');
     ed.setMode({ kind: 'dragParts', origin: world, moved: false });
   };
+
+  /**
+   * Enter wire-drawing mode from a terminal decided on release rather than on
+   * press. Returns false if the terminal has gone (its part was deleted
+   * mid-gesture), leaving the caller to fall back to idle.
+   */
+  function beginWireAt(partId: string, terminal: string): boolean {
+    const t = terminalIndex.get(`${partId}:${terminal}`);
+    if (!t) return false;
+    ed.setMode({
+      kind: 'drawWire',
+      from: { partId, terminal, pos: t.pos, dir: t.dir },
+      points: [],
+      cursor: t.pos,
+      toward: null,
+    });
+    return true;
+  }
 
   function startWire(e: React.PointerEvent, partId: string, terminal: string) {
     const t = terminalIndex.get(`${partId}:${terminal}`);
@@ -338,13 +364,20 @@ export function CanvasRoot() {
     }
 
     if (mode.kind === 'marquee') {
+      const d = downRef.current;
       const r = rectFromPoints(mode.from, mode.to);
+      downRef.current = null;
       if (r.w > 2 || r.h > 2) {
         const hitParts = partIds.filter((id) => rectsIntersect(r, boundsOf(design.parts[id])));
         ed.select({ parts: hitParts, additive: mode.additive });
+        ed.setMode({ kind: 'idle' });
+        return;
       }
-      ed.setMode({ kind: 'idle' });
-      downRef.current = null;
+      // Never grew into a rubber band, so this was a click. If it landed near
+      // a terminal, that is what it was aimed at.
+      if (!d?.pendingWire || !beginWireAt(d.pendingWire.partId, d.pendingWire.terminal)) {
+        ed.setMode({ kind: 'idle' });
+      }
       return;
     }
 
@@ -354,16 +387,7 @@ export function CanvasRoot() {
       downRef.current = null;
       setSnapPreview([]);
       const socket = d?.pendingWire && !d.moved ? d.pendingWire : null;
-      const t = socket && terminalIndex.get(`${socket.partId}:${socket.terminal}`);
-      if (t) {
-        ed.setMode({
-          kind: 'drawWire',
-          from: { partId: t.partId, terminal: t.def.name, pos: t.pos, dir: t.dir },
-          points: [],
-          cursor: t.pos,
-          toward: null,
-        });
-      } else {
+      if (!socket || !beginWireAt(socket.partId, socket.terminal)) {
         ed.setMode({ kind: 'idle' });
       }
       return;
