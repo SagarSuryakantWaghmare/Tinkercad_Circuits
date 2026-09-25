@@ -110,7 +110,8 @@ export function CanvasRoot() {
   }, []);
 
   const screenOf = useCallback((e: { clientX: number; clientY: number }): Vec2 => {
-    const r = svgRef.current!.getBoundingClientRect();
+    const r = svgRef.current?.getBoundingClientRect();
+    if (!r) return { x: e.clientX, y: e.clientY };
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   }, []);
 
@@ -534,10 +535,16 @@ export function CanvasRoot() {
 
   // ── notes ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const onNewNote = () => {
+    const onNewNote = (e?: Event) => {
+      const custom = e as CustomEvent<{ clientX?: number; clientY?: number } | undefined> | undefined;
       const st = useEditorStore.getState();
-      // Drop it near the middle of what the user is looking at.
-      const at = st.toWorld({ x: st.viewport.w / 2, y: st.viewport.h / 2 });
+      const pos = custom?.detail;
+      let at: Vec2;
+      if (pos && typeof pos.clientX === 'number' && typeof pos.clientY === 'number') {
+        at = st.toWorld(screenOf({ clientX: pos.clientX, clientY: pos.clientY }));
+      } else {
+        at = st.toWorld({ x: st.viewport.w / 2, y: st.viewport.h / 2 });
+      }
       let created = '';
       useDesignStore.getState().transact('Add note', (d) => {
         const id = `n_${Math.random().toString(36).slice(2, 10)}`;
@@ -550,7 +557,7 @@ export function CanvasRoot() {
     };
     window.addEventListener('circuitlab:new-note', onNewNote);
     return () => window.removeEventListener('circuitlab:new-note', onNewNote);
-  }, []);
+  }, [screenOf]);
 
   const onNoteDown = (e: React.PointerEvent, id: string) => {
     e.stopPropagation();
@@ -636,19 +643,74 @@ export function CanvasRoot() {
     [transact],
   );
 
+  // ── long-press on touch to open context menu ──────────────────────────────
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressStartRef = useRef<Vec2 | null>(null);
+
+  const startLongPress = (e: React.PointerEvent) => {
+    if (e.pointerType !== 'touch' && e.button !== 0) return;
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+    longPressStartRef.current = { x: clientX, y: clientY };
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+
+    const el = (e.target as Element).closest?.('[data-part],[data-wire]');
+    const partId = el?.getAttribute('data-part');
+    const wireId = el?.getAttribute('data-wire');
+
+    longPressTimerRef.current = setTimeout(() => {
+      if (partId && !useEditorStore.getState().selectedParts.includes(partId)) {
+        useEditorStore.getState().select({ parts: [partId] });
+      } else if (wireId && !useEditorStore.getState().selectedWires.includes(wireId)) {
+        useEditorStore.getState().select({ wires: [wireId] });
+      }
+      setMenu({ x: clientX, y: clientY });
+      if (useEditorStore.getState().mode.kind === 'dragParts') {
+        commit();
+      }
+      useEditorStore.getState().setMode({ kind: 'idle' });
+      downRef.current = null;
+    }, 500);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressStartRef.current = null;
+  };
+
+  const checkMoveLongPress = (e: React.PointerEvent) => {
+    if (longPressStartRef.current) {
+      const dist = Math.hypot(
+        e.clientX - longPressStartRef.current.x,
+        e.clientY - longPressStartRef.current.y,
+      );
+      if (dist > 10) {
+        cancelLongPress();
+      }
+    }
+  };
+
   // ── right-click menu ───────────────────────────────────────────────────────
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const menuRef = useRef<{ x: number; y: number } | null>(null);
+  menuRef.current = menu;
 
   const menuItems = useMemo((): MenuItem[] => {
     const sel = ed.selectedParts;
     const has = sel.length > 0 || ed.selectedWires.length > 0;
-    const mutate = (label: string, fn: (p: PartInstance) => void) => () =>
+    const mutate = (label: string, fn: (p: PartInstance) => void) => () => {
+      const currentSel = useEditorStore.getState().selectedParts;
+      if (!currentSel.length) return;
       transact(label, (d) => {
-        for (const id of sel) {
+        for (const id of currentSel) {
           const p = d.parts[id];
           if (p) fn(p);
         }
       });
+    };
 
     return [
       {
@@ -656,11 +718,13 @@ export function CanvasRoot() {
         hint: 'Ctrl D',
         disabled: !sel.length,
         onSelect: () => {
+          const currentSel = useEditorStore.getState().selectedParts;
+          if (!currentSel.length) return;
           const created: string[] = [];
           transact('Duplicate', (d) => {
             let z = 0;
             for (const k in d.parts) z = Math.max(z, d.parts[k].z);
-            for (const id of sel) {
+            for (const id of currentSel) {
               const p = d.parts[id];
               if (!p) continue;
               const nid = `p_${Math.random().toString(36).slice(2, 10)}`;
@@ -690,32 +754,41 @@ export function CanvasRoot() {
         label: 'Bring to front',
         hint: ']',
         disabled: !sel.length,
-        onSelect: () =>
+        onSelect: () => {
+          const currentSel = useEditorStore.getState().selectedParts;
+          if (!currentSel.length) return;
           transact('Bring to front', (d) => {
             let hi = -Infinity;
             for (const k in d.parts) hi = Math.max(hi, d.parts[k].z);
             let step = 0;
-            for (const id of sel) if (d.parts[id]) d.parts[id].z = hi + 1 + step++;
-          }),
+            for (const id of currentSel) if (d.parts[id]) d.parts[id].z = hi + 1 + step++;
+          });
+        },
       },
       {
         label: 'Send to back',
         hint: '[',
         disabled: !sel.length,
-        onSelect: () =>
+        onSelect: () => {
+          const currentSel = useEditorStore.getState().selectedParts;
+          if (!currentSel.length) return;
           transact('Send to back', (d) => {
             let lo = Infinity;
             for (const k in d.parts) lo = Math.min(lo, d.parts[k].z);
             let step = 0;
-            for (const id of sel) if (d.parts[id]) d.parts[id].z = lo - 1 - step++;
-          }),
+            for (const id of currentSel) if (d.parts[id]) d.parts[id].z = lo - 1 - step++;
+          });
+        },
       },
       { label: '', separator: true },
       {
         label: 'Zoom to selection',
         hint: 'Shift F',
         disabled: !sel.length,
-        onSelect: () => useEditorStore.getState().fitTo(selectionBounds()),
+        onSelect: () => {
+          const b = selectionBounds();
+          if (b) useEditorStore.getState().fitTo(b);
+        },
       },
       {
         label: 'Zoom to fit',
@@ -725,7 +798,14 @@ export function CanvasRoot() {
       {
         label: 'Add a note here',
         hint: 'N',
-        onSelect: () => window.dispatchEvent(new CustomEvent('circuitlab:new-note')),
+        onSelect: () => {
+          const m = menuRef.current;
+          window.dispatchEvent(
+            new CustomEvent('circuitlab:new-note', {
+              detail: m ? { clientX: m.x, clientY: m.y } : undefined,
+            }),
+          );
+        },
       },
       { label: '', separator: true },
       {
@@ -735,6 +815,7 @@ export function CanvasRoot() {
         disabled: !has,
         onSelect: () => {
           const st2 = useEditorStore.getState();
+          if (!st2.selectedParts.length && !st2.selectedWires.length) return;
           transact('Delete', (d) => {
             for (const id of st2.selectedParts) {
               delete d.parts[id];
@@ -773,10 +854,22 @@ export function CanvasRoot() {
         background: C.canvasBg,
         cursor: cursorFor(ed.mode.kind, !!ed.pendingPart, ed.handTool),
       }}
-      onPointerDown={onBackgroundDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerCancel}
+      onPointerDown={(e) => {
+        startLongPress(e);
+        onBackgroundDown(e);
+      }}
+      onPointerMove={(e) => {
+        checkMoveLongPress(e);
+        onPointerMove(e);
+      }}
+      onPointerUp={(e) => {
+        cancelLongPress();
+        onPointerUp(e);
+      }}
+      onPointerCancel={(e) => {
+        cancelLongPress();
+        onPointerCancel(e);
+      }}
       onContextMenu={(e) => {
         e.preventDefault();
         const el = (e.target as Element).closest('[data-part],[data-wire]');
@@ -852,7 +945,7 @@ export function CanvasRoot() {
               key={wire.id}
               d={d}
               selected={ed.selectedWires.includes(wire.id)}
-              hovered={false}
+              hovered={ed.hoverWire === wire.id}
             />
           ))}
         </g>
@@ -866,8 +959,8 @@ export function CanvasRoot() {
                 e.stopPropagation();
                 ed.select({ wires: [id], additive: e.shiftKey });
               }}
-              onPointerEnter={() => {}}
-              onPointerLeave={() => {}}
+              onPointerEnter={ed.setHoverWire}
+              onPointerLeave={() => ed.setHoverWire(null)}
             />
           ))}
         </g>

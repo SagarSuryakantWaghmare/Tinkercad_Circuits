@@ -501,6 +501,11 @@ function StartersGrid({
           <button
             key={s.id}
             onClick={() => onSelect(s)}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('text/starter', s.id);
+              e.dataTransfer.effectAllowed = 'copy';
+            }}
             className="flex w-full items-center gap-3 rounded-lg border border-neutral-200/80 bg-white p-2 text-left transition hover:border-sky-400 hover:shadow-xs"
             title={`${s.name}\n${s.blurb}`}
           >
@@ -523,6 +528,11 @@ function StartersGrid({
         <button
           key={s.id}
           onClick={() => onSelect(s)}
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData('text/starter', s.id);
+            e.dataTransfer.effectAllowed = 'copy';
+          }}
           className="group flex min-h-[96px] flex-col items-center justify-between rounded-lg border border-neutral-200/80 bg-white p-1.5 text-center transition hover:border-sky-400 hover:shadow-xs"
           title={`${s.name}\n${s.blurb}`}
         >
