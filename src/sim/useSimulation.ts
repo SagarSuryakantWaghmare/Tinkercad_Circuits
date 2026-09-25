@@ -27,7 +27,12 @@ export function useSimulation() {
       }
       useSimStore.getState().reset();
       useSimStore.getState().setRunState('running');
-      useEditorStore.getState().clearSelection();
+      const ed = useEditorStore.getState();
+      ed.clearSelection();
+      ed.setMode({ kind: 'idle' });
+      ed.setHoverTerminal(null);
+      ed.setHoverPart(null);
+      ed.setHoverWire(null);
       sim.start();
     };
 
@@ -35,6 +40,11 @@ export function useSimulation() {
       simRef.current?.stop();
       simRef.current = null;
       useSimStore.getState().reset();
+      const ed = useEditorStore.getState();
+      ed.setMode({ kind: 'idle' });
+      ed.setHoverTerminal(null);
+      ed.setHoverPart(null);
+      ed.setHoverWire(null);
     };
 
     const toggle = () => {
