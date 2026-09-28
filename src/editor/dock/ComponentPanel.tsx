@@ -2,14 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEditorStore } from '@/state/editorStore';
-import { useDesignStore } from '@/state/designStore';
 import { allParts, basicParts, categoriesOf, searchParts } from '@/parts/registry';
 import { CATEGORIES, type CategoryId, type PartDef } from '@/parts/types';
 import { STARTER_CATEGORIES, STARTERS, type Starter } from '@/starters';
 import { PartThumb } from './PartThumb';
 import { StarterThumb } from './StarterThumb';
 import { IconSearch } from '../icons';
-import { contentBounds } from '../useHotkeys';
+import { placeStarter } from '../placeStarter';
 
 /**
  * The headed sections of the "All" list.
@@ -46,9 +45,6 @@ export function ComponentPanel() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [listView, setListView] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const load = useDesignStore((s) => s.transact);
-  const design = useDesignStore((s) => s.design);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -113,42 +109,6 @@ export function ComponentPanel() {
       items: STARTERS.filter((s) => s.category === c.id),
     })).filter((g) => g.items.length > 0);
   }, [view, category, search]);
-
-  const placeStarter = (starter: Starter) => {
-    const busy = Object.keys(design.parts).length > 0;
-    if (busy) {
-      const ok = window.confirm(
-        `Replace the current design with “${starter.name}”?\n\nYour existing components and code will be cleared. Undo brings them back.`,
-      );
-      if (!ok) return;
-    }
-
-    const content = starter.build();
-    load(`Starter: ${starter.name}`, (d) => {
-      d.parts = {};
-      d.wires = {};
-      for (const p of content.parts) d.parts[p.id] = p;
-      for (const w of content.wires) d.wires[w.id] = w;
-      if (content.code) {
-        d.code.text = content.code;
-        d.code.language = 'arduino';
-        d.code.mode = 'text';
-        d.code.blocksAbandoned = true;
-      }
-      if (content.python) {
-        d.code.python = content.python;
-        d.code.language = 'micropython';
-        d.code.mode = 'text';
-        d.code.blocksAbandoned = true;
-      }
-      d.name = starter.name;
-    });
-
-    const ed = useEditorStore.getState();
-    ed.clearSelection();
-    if (content.code || content.python) ed.setCodeOpen(true);
-    setTimeout(() => ed.fitTo(contentBounds()), 40);
-  };
 
   return (
     <aside

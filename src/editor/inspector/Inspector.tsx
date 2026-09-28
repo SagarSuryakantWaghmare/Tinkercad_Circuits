@@ -5,9 +5,9 @@ import { useDesignStore } from '@/state/designStore';
 import { getPartDef } from '@/parts/registry';
 import type { PropSchema, PropValue } from '@/parts/types';
 import { WIRE_COLORS } from '@/lib/tokens';
-import { STARTERS, type Starter } from '@/starters';
+import { STARTERS } from '@/starters';
 import { useMemo, useState } from 'react';
-import { contentBounds } from '../useHotkeys';
+import { placeStarter } from '../placeStarter';
 import { IconChevronDown, IconInfo, IconMirror, IconRotate, IconTrash } from '../icons';
 
 const PREFIX: Record<string, number> = {
@@ -167,13 +167,11 @@ function isMicrocontroller(model?: string) {
 /**
  * A short list of ready-to-run starters that target the same board the user
  * has selected. Clicking one replaces the design — same behaviour as the
- * dedicated Starters drawer, but reachable from the part itself so beginners
+ * Starters view of the components panel, but reachable from the part itself so beginners
  * don't have to hunt for it.
  */
 function StartersPanel({ model }: { model: string }) {
   const [open, setOpen] = useState(false);
-  const design = useDesignStore((s) => s.design);
-  const transact = useDesignStore((s) => s.transact);
 
   const list = useMemo(() => {
     const category = model === 'microbit' ? 'microbit' : 'arduino';
@@ -181,42 +179,6 @@ function StartersPanel({ model }: { model: string }) {
   }, [model]);
 
   if (list.length === 0) return null;
-
-  const place = (starter: Starter) => {
-    const busy = Object.keys(design.parts).length > 0;
-    if (busy) {
-      const ok = window.confirm(
-        `Replace the current design with “${starter.name}”?\n\nYour existing components and code will be cleared. Undo brings them back.`,
-      );
-      if (!ok) return;
-    }
-
-    const content = starter.build();
-    transact(`Starter: ${starter.name}`, (d) => {
-      d.parts = {};
-      d.wires = {};
-      for (const p of content.parts) d.parts[p.id] = p;
-      for (const w of content.wires) d.wires[w.id] = w;
-      if (content.code) {
-        d.code.text = content.code;
-        d.code.language = 'arduino';
-        d.code.mode = 'text';
-        d.code.blocksAbandoned = true;
-      }
-      if (content.python) {
-        d.code.python = content.python;
-        d.code.language = 'micropython';
-        d.code.mode = 'text';
-        d.code.blocksAbandoned = true;
-      }
-      d.name = starter.name;
-    });
-
-    const ed = useEditorStore.getState();
-    ed.clearSelection();
-    if (content.code || content.python) ed.setCodeOpen(true);
-    setTimeout(() => ed.fitTo(contentBounds()), 40);
-  };
 
   return (
     <section className="rounded-lg border border-neutral-200 bg-neutral-50">
@@ -238,7 +200,7 @@ function StartersPanel({ model }: { model: string }) {
           {list.map((s) => (
             <li key={s.id}>
               <button
-                onClick={() => place(s)}
+                onClick={() => placeStarter(s)}
                 className="w-full rounded border border-neutral-200 bg-white px-2 py-1.5 text-left transition hover:border-sky-400 hover:bg-sky-50/40"
               >
                 <div className="text-[11.5px] font-medium text-neutral-800">{s.name}</div>

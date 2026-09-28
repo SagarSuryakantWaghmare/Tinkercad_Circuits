@@ -7,6 +7,7 @@ import { emptyDesign } from '@/state/design';
 import { newDesignId } from '@/lib/ids';
 import { deleteDesign, loadDesign, loadIndex, saveDesign, type DesignSummary } from '@/persist/store';
 import { STARTERS } from '@/starters';
+import { applyStarter } from '@/starters/apply';
 import { importDesignJson } from '@/persist/exporters';
 import { useActiveUsers } from '@/lib/presence';
 import { IconLightbulb, IconUsers } from '@/editor/icons';
@@ -57,20 +58,7 @@ export function Dashboard() {
     setBusy(true);
     const content = starter.build();
     const design = emptyDesign(newDesignId(), starter.name);
-    for (const p of content.parts) design.parts[p.id] = p;
-    for (const w of content.wires) design.wires[w.id] = w;
-    if (content.code) {
-      design.code.text = content.code;
-      design.code.language = 'arduino';
-      design.code.mode = 'text';
-      design.code.blocksAbandoned = true;
-    }
-    if (content.python) {
-      design.code.python = content.python;
-      design.code.language = 'micropython';
-      design.code.mode = 'text';
-      design.code.blocksAbandoned = true;
-    }
+    applyStarter(design, starter.name, content);
     await saveDesign(design);
     router.push(`/editor?id=${design.id}`);
   };
