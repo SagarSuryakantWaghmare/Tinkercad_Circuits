@@ -60,6 +60,8 @@ interface EditorStore {
   setHoverTerminal: (t: { partId: string; terminal: string } | null) => void;
   hoverPart: string | null;
   setHoverPart: (id: string | null) => void;
+  hoverWire: string | null;
+  setHoverWire: (id: string | null) => void;
 
   // pointer state machine ───────────────────────────────────────────────────
   mode: CanvasMode;
@@ -187,6 +189,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   setHoverTerminal: (t) => set({ hoverTerminal: t }),
   hoverPart: null,
   setHoverPart: (id) => set({ hoverPart: id }),
+  hoverWire: null,
+  setHoverWire: (id) => set({ hoverWire: id }),
 
   mode: { kind: 'idle' },
   setMode: (m) => set({ mode: m }),

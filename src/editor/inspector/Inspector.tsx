@@ -64,8 +64,8 @@ export function Inspector() {
     );
 
   return (
-    <div className="pointer-events-auto w-[236px] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-[0_8px_28px_rgba(15,23,42,0.14)]">
-      <header className="flex items-center justify-between border-b border-neutral-100 px-3 py-2">
+    <div className="pointer-events-auto flex max-h-[calc(100vh-120px)] w-[236px] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-[0_8px_28px_rgba(15,23,42,0.14)]">
+      <header className="flex shrink-0 items-center justify-between border-b border-neutral-100 px-3 py-2">
         <span className="truncate text-[12.5px] font-semibold text-neutral-800">{def.name}</span>
         <div className="flex items-center gap-0.5 text-neutral-500">
           <IconBtn
@@ -112,7 +112,7 @@ export function Inspector() {
         </div>
       </header>
 
-      <div className="space-y-2.5 px-3 py-2.5">
+      <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-3 py-2.5">
         <Field label="Name">
           <input
             value={inst.name ?? ''}
@@ -234,7 +234,7 @@ function StartersPanel({ model }: { model: string }) {
         />
       </button>
       {open && (
-        <ul className="space-y-1 border-t border-neutral-200 px-2 py-2">
+        <ul className="max-h-48 space-y-1 overflow-y-auto border-t border-neutral-200 px-2 py-2">
           {list.map((s) => (
             <li key={s.id}>
               <button
@@ -282,7 +282,7 @@ function LearnPanel({
         />
       </button>
       {open && (
-        <div className="space-y-2 border-t border-neutral-200 px-2.5 py-2 text-[11.5px] leading-snug text-neutral-700">
+        <div className="max-h-64 space-y-2 overflow-y-auto border-t border-neutral-200 px-2.5 py-2 text-[11.5px] leading-snug text-neutral-700">
           {summary && <p>{summary}</p>}
           {learn?.map((s) => (
             <div key={s.title}>

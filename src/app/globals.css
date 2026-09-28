@@ -82,3 +82,166 @@ svg {
   background: #aeb4bb;
   background-clip: content-box;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE LAYOUT & TOUCH SIZING: TABLET & IPAD RANGE (max-width: 1024px)
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Toolbar on large tablets: allow horizontal scroll if needed */
+  div[role="toolbar"] {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-shrink: 0;
+  }
+  div[role="toolbar"]::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Touch target sizing for toolbar buttons */
+  div[role="toolbar"] button {
+    min-height: 36px;
+    min-width: 32px;
+    padding: 6px;
+  }
+
+  /* Wire color buttons touch target */
+  div[role="toolbar"] button[aria-label^="Wire colour"] {
+    min-width: 18px;
+    min-height: 18px;
+  }
+
+  /* Component panel sizing on iPad */
+  aside[aria-label="Components"] {
+    width: 250px !important;
+  }
+
+  /* TopBar compact input */
+  header input[aria-label="Design name"] {
+    max-width: 160px;
+  }
+
+  /* Context Menu on Tablet */
+  div[role="menu"] {
+    min-width: 220px;
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.25);
+  }
+  div[role="menu"] button[role="menuitem"] {
+    min-height: 36px;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  /* Floating inspector sizing */
+  .pointer-events-auto.max-h-\[calc\(100vh-120px\)\] {
+    max-height: calc(100vh - 140px);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE LAYOUT & TOUCH SIZING: MOBILE & IPAD MINI (max-width: 768px)
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Editor TopBar on mobile: compact, prevent overflow */
+  header.h-12 {
+    height: 46px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    gap: 6px !important;
+  }
+  header.h-12 a[title="All designs"] span {
+    display: none;
+  }
+  header.h-12 input[aria-label="Design name"] {
+    width: auto !important;
+    max-width: 110px !important;
+    font-size: 12px !important;
+    padding: 2px 4px !important;
+  }
+  header.h-12 button {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    font-size: 12px !important;
+    height: 32px !important;
+  }
+
+  /* Dashboard header on mobile: natural height, clean wrapping */
+  header:not(.h-12) {
+    height: auto !important;
+  }
+  header div.max-w-6xl {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+
+  /* Toolbar on mobile: clean spacing with visible popover */
+  div[role="toolbar"] {
+    height: 44px !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    gap: 4px !important;
+    overflow: visible !important;
+  }
+  div[role="toolbar"] button {
+    min-height: 36px !important;
+    min-width: 36px !important;
+    padding: 6px !important;
+  }
+
+  /* Component panel on mobile: compact drawer width */
+  aside[aria-label="Components"] {
+    width: 180px !important;
+  }
+  aside[aria-label="Components"] header {
+    padding: 8px !important;
+  }
+  aside[aria-label="Components"] input[aria-label="Search"] {
+    font-size: 11px !important;
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+  }
+
+  /* Floating inspector on mobile: responsive width */
+  .pointer-events-auto.max-h-\[calc\(100vh-120px\)\] {
+    width: calc(100vw - 200px) !important;
+    max-width: 220px !important;
+    max-height: calc(100vh - 160px) !important;
+    font-size: 11.5px !important;
+  }
+
+  /* Zoom controls on mobile */
+  .pointer-events-auto.absolute.bottom-3.right-3 {
+    bottom: 8px !important;
+    right: 8px !important;
+    scale: 0.92;
+    transform-origin: bottom right;
+  }
+
+  /* Context Menu on mobile: touch-friendly target size and positioned safely */
+  div[role="menu"] {
+    min-width: 200px !important;
+    max-width: calc(100vw - 16px) !important;
+    padding: 6px 0 !important;
+  }
+  div[role="menu"] button[role="menuitem"] {
+    min-height: 40px !important;
+    padding: 10px 16px !important;
+    font-size: 13.5px !important;
+  }
+
+  /* Shortcuts dialog modal */
+  .fixed.inset-0.z-50 {
+    padding: 12px !important;
+  }
+
+  main.max-w-6xl {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    padding-top: 16px !important;
+  }
+}

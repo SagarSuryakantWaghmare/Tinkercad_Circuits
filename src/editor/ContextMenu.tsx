@@ -58,6 +58,7 @@ export function ContextMenu({
     <div
       ref={ref}
       role="menu"
+      onPointerDown={(e) => e.stopPropagation()}
       className="fixed z-50 min-w-[216px] rounded-lg border border-neutral-200 bg-white py-1.5 shadow-xl"
       style={{ left, top }}
     >
@@ -69,7 +70,9 @@ export function ContextMenu({
             key={it.label}
             role="menuitem"
             disabled={it.disabled}
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
+              if (it.disabled) return;
               it.onSelect?.();
               onClose();
             }}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { useDesignStore } from '@/state/designStore';
 import { rotationStepFor } from '@/canvas/snapping';
 import { useEditorStore } from '@/state/editorStore';
@@ -86,9 +87,51 @@ export function Toolbar() {
     clearSelection();
   };
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handlePointerDown = (e: PointerEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [mobileMenuOpen]);
+
+  const sendToBack = () =>
+    transact('Send to back', (d) => {
+      let lo = Infinity;
+      for (const k in d.parts) lo = Math.min(lo, d.parts[k].z);
+      let step = 0;
+      for (const id of selectedParts)
+        if (d.parts[id]) d.parts[id].z = lo - 1 - step++;
+    });
+
+  const bringToFront = () =>
+    transact('Bring to front', (d) => {
+      let hi = -Infinity;
+      for (const k in d.parts) hi = Math.max(hi, d.parts[k].z);
+      let step = 0;
+      for (const id of selectedParts)
+        if (d.parts[id]) d.parts[id].z = hi + 1 + step++;
+    });
+
+  const selectColor = (key: string) => {
+    setWireColor(key);
+    if (selectedWires.length) {
+      transact('Wire colour', (d) => {
+        for (const id of selectedWires) if (d.wires[id]) d.wires[id].color = key;
+      });
+    }
+  };
+
   return (
     <div
-      className="flex h-11 shrink-0 items-center gap-1 border-b border-neutral-300 bg-white px-2 shadow-sm"
+      className="relative flex h-11 shrink-0 items-center gap-1 border-b border-neutral-300 bg-white px-2 shadow-sm"
       role="toolbar"
       aria-label="Editing tools"
     >
@@ -133,145 +176,326 @@ export function Toolbar() {
         </TBtn>
       </div>
 
-      <Divider />
+      {/* ── Desktop & Tablet (>768px) inline toolbar ── */}
+      <div className="hidden min-[769px]:flex min-[769px]:items-center min-[769px]:gap-1 min-[769px]:flex-1">
+        <Divider />
 
-      <TBtn
-        title="Rotate (R)"
-        disabled={editDisabled || !selectedParts.length}
-        onClick={rotate}
-      >
-        <IconRotate />
-      </TBtn>
-      <TBtn
-        title="Mirror"
-        disabled={editDisabled || !selectedParts.length}
-        onClick={mirror}
-      >
-        <IconMirror />
-      </TBtn>
-      <TBtn
-        title="Delete (Del)"
-        disabled={editDisabled || !hasSelection}
-        onClick={remove}
-      >
-        <IconTrash />
-      </TBtn>
+        <TBtn
+          title="Rotate (R)"
+          disabled={editDisabled || !selectedParts.length}
+          onClick={rotate}
+        >
+          <IconRotate />
+        </TBtn>
+        <TBtn
+          title="Mirror"
+          disabled={editDisabled || !selectedParts.length}
+          onClick={mirror}
+        >
+          <IconMirror />
+        </TBtn>
+        <TBtn
+          title="Delete (Del)"
+          disabled={editDisabled || !hasSelection}
+          onClick={remove}
+        >
+          <IconTrash />
+        </TBtn>
 
-      <Divider />
+        <Divider />
 
-      {/* Stacking order — matches the right-click menu, exposed in the
-          toolbar so students discover it. Bracket icons are the app-wide
-          keyboard bindings, so putting them on the buttons keeps the
-          mapping visible. */}
-      <TBtn
-        title="Send to back ( [ )"
-        disabled={editDisabled || !selectedParts.length}
-        onClick={() =>
-          transact('Send to back', (d) => {
-            let lo = Infinity;
-            for (const k in d.parts) lo = Math.min(lo, d.parts[k].z);
-            let step = 0;
-            for (const id of selectedParts)
-              if (d.parts[id]) d.parts[id].z = lo - 1 - step++;
-          })
-        }
-      >
-        <span className="inline-block px-0.5 text-[14px] font-bold leading-none">[</span>
-      </TBtn>
-      <TBtn
-        title="Bring to front ( ] )"
-        disabled={editDisabled || !selectedParts.length}
-        onClick={() =>
-          transact('Bring to front', (d) => {
-            let hi = -Infinity;
-            for (const k in d.parts) hi = Math.max(hi, d.parts[k].z);
-            let step = 0;
-            for (const id of selectedParts)
-              if (d.parts[id]) d.parts[id].z = hi + 1 + step++;
-          })
-        }
-      >
-        <span className="inline-block px-0.5 text-[14px] font-bold leading-none">]</span>
-      </TBtn>
+        {/* Stacking order — matches the right-click menu, exposed in the
+            toolbar so students discover it. Bracket icons are the app-wide
+            keyboard bindings, so putting them on the buttons keeps the
+            mapping visible. */}
+        <TBtn
+          title="Send to back ( [ )"
+          disabled={editDisabled || !selectedParts.length}
+          onClick={sendToBack}
+        >
+          <span className="inline-block px-0.5 text-[14px] font-bold leading-none">[</span>
+        </TBtn>
+        <TBtn
+          title="Bring to front ( ] )"
+          disabled={editDisabled || !selectedParts.length}
+          onClick={bringToFront}
+        >
+          <span className="inline-block px-0.5 text-[14px] font-bold leading-none">]</span>
+        </TBtn>
 
-      <Divider />
+        <Divider />
 
-      <TBtn
-        title="Create note (N)"
-        onClick={() => window.dispatchEvent(new CustomEvent('circuitlab:new-note'))}
-      >
-        <IconNote />
-      </TBtn>
-      <TBtn
-        title={notesVisible ? 'Hide notes (Shift+N)' : 'Show notes (Shift+N)'}
-        onClick={toggleNotes}
-      >
-        {notesVisible ? <IconEye /> : <IconEyeOff />}
-      </TBtn>
+        <TBtn
+          title="Create note (N)"
+          onClick={() => window.dispatchEvent(new CustomEvent('circuitlab:new-note'))}
+        >
+          <IconNote />
+        </TBtn>
+        <TBtn
+          title={notesVisible ? 'Hide notes (Shift+N)' : 'Show notes (Shift+N)'}
+          onClick={toggleNotes}
+        >
+          {notesVisible ? <IconEye /> : <IconEyeOff />}
+        </TBtn>
 
-      <Divider />
+        <Divider />
 
-      <div className="flex items-center gap-1.5 pl-1">
-        <span className="text-[11px] font-medium text-neutral-500">Wire</span>
-        {WIRE_COLORS.map((c) => (
-          <button
-            key={c.key}
-            title={`${c.name} (${c.key})`}
-            aria-label={`Wire colour ${c.name}`}
-            aria-pressed={wireColor === c.key}
-            onClick={() => {
-              setWireColor(c.key);
-              if (selectedWires.length) {
-                transact('Wire colour', (d) => {
-                  for (const id of selectedWires) if (d.wires[id]) d.wires[id].color = c.key;
-                });
-              }
-            }}
-            className={`h-[15px] w-[15px] rounded-full border transition ${
-              wireColor === c.key
-                ? 'border-sky-500 ring-2 ring-sky-200'
-                : 'border-neutral-300 hover:scale-110'
-            }`}
-            style={{ background: c.hex }}
-          />
-        ))}
+        <div className="flex items-center gap-1.5 pl-1">
+          <span className="text-[11px] font-medium text-neutral-500">Wire</span>
+          {WIRE_COLORS.map((c) => (
+            <button
+              key={c.key}
+              title={`${c.name} (${c.key})`}
+              aria-label={`Wire colour ${c.name}`}
+              aria-pressed={wireColor === c.key}
+              onClick={() => selectColor(c.key)}
+              className={`h-[15px] w-[15px] rounded-full border transition ${
+                wireColor === c.key
+                  ? 'border-sky-500 ring-2 ring-sky-200'
+                  : 'border-neutral-300 hover:scale-110'
+              }`}
+              style={{ background: c.hex }}
+            />
+          ))}
+        </div>
+
+        <div className="ml-auto flex items-center gap-1">
+          {running && (
+            <span
+              className="mr-2 flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-70" />
+                <span className="relative inline-block h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              Simulating
+            </span>
+          )}
+          <span className="text-[11px] font-medium text-neutral-500">View</span>
+          {(['top', 'wires', 'schematic'] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setComponentView(v)}
+              className={`rounded px-2 py-1 text-[11.5px] font-medium capitalize transition ${
+                componentView === v
+                  ? 'bg-sky-50 text-sky-700'
+                  : 'text-neutral-600 hover:bg-neutral-100'
+              }`}
+            >
+              {v}
+            </button>
+          ))}
+          <Divider />
+          <TBtn
+            title="Keyboard shortcuts (?)"
+            onClick={() => window.dispatchEvent(new CustomEvent('circuitlab:shortcuts'))}
+          >
+            <IconKeyboard />
+          </TBtn>
+        </div>
       </div>
 
-      <div className="ml-auto flex items-center gap-1">
+      {/* ── Mobile / iPad-mini Dropdown Trigger (≤768px ONLY) ── */}
+      <div className="ml-auto flex items-center gap-1 min-[769px]:hidden" ref={mobileMenuRef}>
         {running && (
           <span
-            className="mr-2 flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700"
+            className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700"
             role="status"
-            aria-live="polite"
           >
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-70" />
-              <span className="relative inline-block h-2 w-2 rounded-full bg-emerald-500" />
-            </span>
-            Simulating
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            Sim
           </span>
         )}
-        <span className="text-[11px] font-medium text-neutral-500">View</span>
-        {(['top', 'wires', 'schematic'] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setComponentView(v)}
-            className={`rounded px-2 py-1 text-[11.5px] font-medium capitalize transition ${
-              componentView === v
-                ? 'bg-sky-50 text-sky-700'
-                : 'text-neutral-600 hover:bg-neutral-100'
-            }`}
-          >
-            {v}
-          </button>
-        ))}
-        <Divider />
-        <TBtn
-          title="Keyboard shortcuts (?)"
-          onClick={() => window.dispatchEvent(new CustomEvent('circuitlab:shortcuts'))}
+        <button
+          onClick={() => setMobileMenuOpen((o) => !o)}
+          aria-expanded={mobileMenuOpen}
+          aria-label="Toolbar actions"
+          title="More tools"
+          className={`flex h-8 items-center gap-1 rounded-md border px-2.5 text-[12px] font-medium transition ${
+            mobileMenuOpen
+              ? 'border-sky-500 bg-sky-50 text-sky-700'
+              : 'border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50'
+          }`}
         >
-          <IconKeyboard />
-        </TBtn>
+          <span>Tools</span>
+          <svg
+            className={`h-3 w-3 text-neutral-500 transition-transform ${mobileMenuOpen ? 'rotate-180' : ''}`}
+            viewBox="0 0 10 6"
+            fill="currentColor"
+          >
+            <path d="M0 0l5 6 5-6z" />
+          </svg>
+        </button>
+
+        {/* ── Mobile Dropdown Popover ── */}
+        {mobileMenuOpen && (
+          <div
+            onPointerDown={(e) => e.stopPropagation()}
+            className="absolute right-2 top-full z-50 mt-1.5 w-[280px] max-w-[calc(100vw-16px)] rounded-xl border border-neutral-200 bg-white p-2.5 shadow-xl"
+          >
+            {/* Quick Actions (Rotate, Mirror, Delete) */}
+            <div className="flex items-center justify-between gap-1 pb-1">
+              <button
+                disabled={editDisabled || !selectedParts.length}
+                onClick={() => {
+                  rotate();
+                  setMobileMenuOpen(false);
+                }}
+                className="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg border border-neutral-200 py-2 text-[11px] font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                <IconRotate width={16} height={16} />
+                <span>Rotate</span>
+              </button>
+              <button
+                disabled={editDisabled || !selectedParts.length}
+                onClick={() => {
+                  mirror();
+                  setMobileMenuOpen(false);
+                }}
+                className="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg border border-neutral-200 py-2 text-[11px] font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                <IconMirror width={16} height={16} />
+                <span>Mirror</span>
+              </button>
+              <button
+                disabled={editDisabled || !hasSelection}
+                onClick={() => {
+                  remove();
+                  setMobileMenuOpen(false);
+                }}
+                className="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg border border-neutral-200 py-2 text-[11px] font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                <IconTrash width={16} height={16} />
+                <span>Delete</span>
+              </button>
+            </div>
+
+            <div className="my-1.5 border-t border-neutral-100" />
+
+            {/* Stacking order */}
+            <div className="flex items-center justify-between gap-1 py-0.5">
+              <button
+                disabled={editDisabled || !selectedParts.length}
+                onClick={() => {
+                  sendToBack();
+                  setMobileMenuOpen(false);
+                }}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-neutral-200 py-1.5 text-[11.5px] font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                <span className="font-bold">[</span> Send to back
+              </button>
+              <button
+                disabled={editDisabled || !selectedParts.length}
+                onClick={() => {
+                  bringToFront();
+                  setMobileMenuOpen(false);
+                }}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-neutral-200 py-1.5 text-[11.5px] font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                <span className="font-bold">]</span> Bring to front
+              </button>
+            </div>
+
+            <div className="my-1.5 border-t border-neutral-100" />
+
+            {/* Notes */}
+            <div className="flex items-center justify-between gap-1 py-0.5">
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('circuitlab:new-note'));
+                  setMobileMenuOpen(false);
+                }}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-neutral-200 py-1.5 text-[11.5px] font-medium text-neutral-700 transition hover:bg-neutral-50"
+              >
+                <IconNote width={14} height={14} /> New note
+              </button>
+              <button
+                onClick={() => {
+                  toggleNotes();
+                  setMobileMenuOpen(false);
+                }}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-neutral-200 py-1.5 text-[11.5px] font-medium text-neutral-700 transition hover:bg-neutral-50"
+              >
+                {notesVisible ? <IconEye width={14} height={14} /> : <IconEyeOff width={14} height={14} />}
+                {notesVisible ? 'Hide notes' : 'Show notes'}
+              </button>
+            </div>
+
+            <div className="my-1.5 border-t border-neutral-100" />
+
+            {/* Wire Colors */}
+            <div className="py-1">
+              <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+                Wire colour
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {WIRE_COLORS.map((c) => (
+                  <button
+                    key={c.key}
+                    title={`${c.name} (${c.key})`}
+                    aria-label={`Wire colour ${c.name}`}
+                    aria-pressed={wireColor === c.key}
+                    onClick={() => {
+                      selectColor(c.key);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`h-[24px] w-[24px] rounded-full border-2 transition ${
+                      wireColor === c.key
+                        ? 'border-sky-500 scale-110 ring-2 ring-sky-200'
+                        : 'border-neutral-300 hover:scale-105'
+                    }`}
+                    style={{ background: c.hex }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="my-1.5 border-t border-neutral-100" />
+
+            {/* View switcher */}
+            <div className="py-1">
+              <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+                View
+              </div>
+              <div className="flex gap-1 rounded-md border border-neutral-200 bg-neutral-50 p-0.5">
+                {(['top', 'wires', 'schematic'] as const).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => {
+                      setComponentView(v);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`flex-1 rounded py-1 text-[11px] font-medium capitalize transition ${
+                      componentView === v
+                        ? 'bg-white font-semibold text-sky-700 shadow-xs'
+                        : 'text-neutral-600 hover:bg-neutral-100'
+                    }`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="my-1.5 border-t border-neutral-100" />
+
+            {/* Shortcuts */}
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('circuitlab:shortcuts'));
+                setMobileMenuOpen(false);
+              }}
+              className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[11.5px] font-medium text-neutral-700 transition hover:bg-neutral-50"
+            >
+              <span className="flex items-center gap-1.5">
+                <IconKeyboard width={14} height={14} /> Keyboard shortcuts
+              </span>
+              <span className="text-[11px] text-neutral-400">?</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
