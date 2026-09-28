@@ -644,11 +644,23 @@ export function CanvasRoot() {
   );
 
   // ── long-press on touch to open context menu ──────────────────────────────
+  // Touch only: a mouse has a right button, and a held left button is the
+  // start of a marquee or a drag that the menu would otherwise cut short.
+  // Hooked in the capture phase because parts and wires stop their presses
+  // from bubbling, and a long-press on a part is the one that matters.
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressStartRef = useRef<Vec2 | null>(null);
 
+  useEffect(
+    () => () => {
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    },
+    [],
+  );
+
   const startLongPress = (e: React.PointerEvent) => {
-    if (e.pointerType !== 'touch' && e.button !== 0) return;
+    // While simulating, a held press is a held pushbutton or slider.
+    if (e.pointerType !== 'touch' || running) return;
     const clientX = e.clientX;
     const clientY = e.clientY;
     longPressStartRef.current = { x: clientX, y: clientY };
@@ -850,22 +862,14 @@ export function CanvasRoot() {
         background: C.canvasBg,
         cursor: cursorFor(ed.mode.kind, !!ed.pendingPart, ed.handTool),
       }}
-      onPointerDown={(e) => {
-        startLongPress(e);
-        onBackgroundDown(e);
-      }}
-      onPointerMove={(e) => {
-        checkMoveLongPress(e);
-        onPointerMove(e);
-      }}
-      onPointerUp={(e) => {
-        cancelLongPress();
-        onPointerUp(e);
-      }}
-      onPointerCancel={(e) => {
-        cancelLongPress();
-        onPointerCancel(e);
-      }}
+      onPointerDownCapture={startLongPress}
+      onPointerMoveCapture={checkMoveLongPress}
+      onPointerUpCapture={cancelLongPress}
+      onPointerCancelCapture={cancelLongPress}
+      onPointerDown={onBackgroundDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
       onContextMenu={(e) => {
         e.preventDefault();
         const el = (e.target as Element).closest('[data-part],[data-wire]');
