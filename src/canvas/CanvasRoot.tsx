@@ -695,8 +695,6 @@ export function CanvasRoot() {
 
   // ── right-click menu ───────────────────────────────────────────────────────
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
-  const menuRef = useRef<{ x: number; y: number } | null>(null);
-  menuRef.current = menu;
 
   const menuItems = useMemo((): MenuItem[] => {
     const sel = ed.selectedParts;
@@ -798,14 +796,12 @@ export function CanvasRoot() {
       {
         label: 'Add a note here',
         hint: 'N',
-        onSelect: () => {
-          const m = menuRef.current;
+        onSelect: () =>
           window.dispatchEvent(
             new CustomEvent('circuitlab:new-note', {
-              detail: m ? { clientX: m.x, clientY: m.y } : undefined,
+              detail: menu ? { clientX: menu.x, clientY: menu.y } : undefined,
             }),
-          );
-        },
+          ),
       },
       { label: '', separator: true },
       {
@@ -839,7 +835,7 @@ export function CanvasRoot() {
         onSelect: () => window.dispatchEvent(new CustomEvent('circuitlab:shortcuts')),
       },
     ];
-  }, [transact, ed.selectedParts, ed.selectedWires]);
+  }, [transact, ed.selectedParts, ed.selectedWires, menu]);
 
   // ── derived render data ────────────────────────────────────────────────────
   const { pan, zoom } = ed;
