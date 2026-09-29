@@ -1,0 +1,102 @@
+EOD REPORT
+Date: 29 September 2026
+Project: Tinkercad Circuits
+
+SUMMARY
+=======
+Completed 48 commits today, covering editor usability, design persistence,
+canvas interactions, code generation, simulation accuracy, starter circuits,
+and automated test coverage.
+
+STATISTICS
+==========
+- Commits: 48
+- Lines added: approximately 7,801
+- Lines removed: approximately 1,876
+- Author: Sagar
+
+COMPLETED WORK
+==============
+
+1. Design management and persistence
+-------------------------------------
+- Added design rename, duplicate, and Trash functionality.
+- Made design renaming a single undo step.
+- Added save-status visibility to the editor.
+- Saved the active design before switching designs or leaving the editor.
+- Added autosave status handling and protection against racing saves.
+- Made imported design files open as new designs instead of replacing the
+  currently open design.
+- Added validation for imported design files and design state.
+- Added a design ID to the address bar when opening a bare /editor route.
+
+2. Editor, canvas, and interaction improvements
+-----------------------------------------------
+- Added keyboard-driven context menus that remain within the viewport.
+- Made the components panel collapsible and keyboard accessible.
+- Converted the shortcuts sheet into a proper dialog and corrected shortcut
+  entries.
+- Improved toolbar messaging when actions are unavailable.
+- Added tablet and mobile layout improvements.
+- Added copy, cut, and paste support for parts together with their wires.
+- Improved part drag placement based on the initial press location.
+- Improved touch controls, pointer tracking, and one-finger interactions.
+- Restored abandoned drags correctly without leaving transactions open.
+- Improved wire completion on tapped pins and prevented unwanted wire bending.
+- Prevented canvas shortcuts from leaking into Blockly.
+- Enabled Delete for notes.
+- Prevented no-op edits from becoming undo steps.
+
+3. Blockly and code generation
+------------------------------
+- Added operator-precedence parentheses to generated expressions.
+- Escaped backslashes correctly in generated string literals.
+- Included the upper bound in the Arduino random block.
+- Opened the serial port whenever a block prints.
+- Ensured a "set pin as" block takes precedence over an inferred pin mode.
+- Added tests confirming that toolbox blocks generate code accepted by the
+  interpreters.
+
+4. Simulation and electronics behavior
+--------------------------------------
+- Improved MCU expression evaluation for expressions without a generator.
+- Added IRrecv support to the IR receiver starter.
+- Corrected PMOS gate drive behavior and allowed reversed MOSFET operation.
+- Fixed PNP transistor collector/emitter behavior.
+- Corrected DIP package pin locations for multiple chips.
+- Prevented negative supply pins from incorrectly acting as ground.
+- Connected the trimmer capacitor to its simulation model.
+- Corrected electrolytic capacitor negative-lead marking.
+- Added resistor tolerance-band colors based on tolerance values.
+- Added a visible sunlight slider for solar parts.
+
+5. Starters and circuit loading
+-------------------------------
+- Centralized starter loading through a shared helper.
+- Ensured loaded starters begin from a clean program.
+- Added names for all starter parts.
+- Added validation that rejects starters containing unknown or misspelled
+  parts.
+- Fixed starters that crashed or displayed incorrect content.
+- Added tests for starter application and starter definitions.
+
+6. Testing and reliability
+--------------------------
+- Added headless simulation support for tests.
+- Added textbook-circuit simulation coverage.
+- Added clipboard tests covering parts and connected wires.
+- Added drag, wire-draft, touch-control, interaction, and hotkey tests.
+- Added DIP pinout and transistor behavior tests.
+- Added persistence, autosave, exporter, design-state, and inspector-number
+  tests.
+- Expanded generator and interpreter parsing coverage.
+
+REPOSITORY STATUS
+=================
+- The local main branch is 3 commits ahead of origin/main.
+- An uncommitted deletion exists for ThinkersCad_Vs_Circuits_Lab.pdf.
+- An untracked .claude/worktrees/ directory exists.
+- These unrelated worktree changes were not included in this report file.
+
+END OF DAY
+==========
